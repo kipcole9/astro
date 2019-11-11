@@ -5,6 +5,7 @@ defmodule Astro.MixProject do
     [
       app: :astro,
       version: "0.1.0",
+      licenses: ["Apache-2.0"],
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       deps: deps()
