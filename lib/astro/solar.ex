@@ -7,66 +7,89 @@ defmodule Astro.Solar do
 
   import Astro.{Utils, Earth, Time}
 
-  @zenith %{
-    geometric:  90.0,
+  @solar_elevation %{
+    geometric: 90.0,
     civil: 96.0,
-    nautical:  102.0,
-    astronomical:  108.0
+    nautical: 102.0,
+    astronomical: 108.0
   }
-  @valid_zenith Map.keys(@zenith)
+  @valid_solar_elevation Map.keys(@solar_elevation)
 
-  def zenith(zenith) when zenith in @valid_zenith do
-    Map.get(@zenith, zenith)
+  def solar_elevation(solar_elevation) when solar_elevation in @valid_solar_elevation do
+    Map.get(@solar_elevation, solar_elevation)
   end
 
-  def utc_sunrise(date, %Geo.PointZ{} = geo_location, zenith \\ zenith(:geometric)) do
-    utc_sun_position(date, geo_location, zenith, :sunrise)
+  def solar_elevation(solar_elevation) when is_number(solar_elevation) do
+    solar_elevation
   end
 
-  def utc_sunset(date, %Geo.PointZ{} = geo_location, zenith \\ zenith(:geometric)) do
-    utc_sun_position(date, geo_location, zenith, :sunset)
+  def utc_sunrise(date, %Geo.PointZ{} = geo_location, options) do
+    solar_elevation =
+      options
+      |> Map.fetch!(:solar_elevation)
+      |> solar_elevation()
+
+    utc_sun_position(date, geo_location, solar_elevation, :sunrise)
   end
 
-  def utc_sun_position(date, %Geo.PointZ{coordinates: {lng, lat, alt}}, zenith, mode) do
-    adjusted_zenith = adjusted_zenith(zenith, alt)
-    utc_time_in_minutes = calculate_utc_sun_position(ajd(date), lat, lng, adjusted_zenith, mode)
+  def utc_sunset(date, %Geo.PointZ{} = geo_location, options) do
+    solar_elevation =
+      options
+      |> Map.fetch!(:solar_elevation)
+      |> solar_elevation()
+
+    utc_sun_position(date, geo_location, solar_elevation, :sunset)
+  end
+
+  def utc_sun_position(date, %Geo.PointZ{coordinates: {lng, lat, alt}}, solar_elevation, mode) do
+    adjusted_solar_elevation = adjusted_solar_elevation(solar_elevation, alt)
+
+    utc_time_in_minutes =
+      calculate_utc_sun_position(ajd(date), lat, lng, adjusted_solar_elevation, mode)
+
     mod(utc_time_in_minutes / 60.0, 24.0)
   end
 
-  def calculate_utc_sun_position(julian_day, latitude, longitude, zenith, mode) do
+  def calculate_utc_sun_position(julian_day, latitude, longitude, solar_elevation, mode) do
     julian_centuries = julian_centuries_from_julian_day(julian_day)
 
     # first pass using solar noon
     noonmin = solar_noon_utc(julian_centuries, longitude)
     tnoon = julian_centuries_from_julian_day(julian_day + noonmin / 1440.0)
-    first_pass = approximate_utc_sun_position(tnoon, latitude, longitude, zenith, mode)
+    first_pass = approximate_utc_sun_position(tnoon, latitude, longitude, solar_elevation, mode)
 
     # refine using output of first pass
     trefinement = julian_centuries_from_julian_day(julian_day + first_pass / 1440.0)
-    approximate_utc_sun_position(trefinement, latitude, longitude, zenith, mode)
+    approximate_utc_sun_position(trefinement, latitude, longitude, solar_elevation, mode)
   end
 
-  def approximate_utc_sun_position(approx_julian_centuries, latitude, longitude, zenith, mode) do
+  def approximate_utc_sun_position(
+        approx_julian_centuries,
+        latitude,
+        longitude,
+        solar_elevation,
+        mode
+      ) do
     eq_time = equation_of_time(approx_julian_centuries)
     solar_dec = solar_declination(approx_julian_centuries)
-    hour_angle = sun_hour_angle_at_horizon(latitude, solar_dec, zenith, mode)
+    hour_angle = sun_hour_angle_at_horizon(latitude, solar_dec, solar_elevation, mode)
 
     delta = longitude - to_degrees(hour_angle)
     time_delta = delta * 4.0
-    (720.0 + time_delta - eq_time)
+    720.0 + time_delta - eq_time
   end
 
   @doc """
   Returns the hour angle in radians
   """
-  def sun_hour_angle_at_horizon(latitude, solar_dec, zenith, mode) do
+  def sun_hour_angle_at_horizon(latitude, solar_dec, solar_elevation, mode) do
     lat_r = to_radians(latitude)
     solar_dec_r = to_radians(solar_dec)
-    zenith_r = to_radians(zenith)
+    solar_elevation_r = to_radians(solar_elevation)
 
     hour_angle =
       :math.acos(
-        :math.cos(zenith_r) / (:math.cos(lat_r) * :math.cos(solar_dec_r)) -
+        :math.cos(solar_elevation_r) / (:math.cos(lat_r) * :math.cos(solar_dec_r)) -
           :math.tan(lat_r) * :math.tan(solar_dec_r)
       )
 
@@ -86,7 +109,7 @@ defmodule Astro.Solar do
     sint = :math.sin(correction) * :math.sin(lambda)
 
     sint
-    |> :math.asin
+    |> :math.asin()
     |> to_degrees
   end
 

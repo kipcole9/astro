@@ -76,5 +76,4 @@ defmodule Astro.Utils do
     mod = n2 - div * n2
     {div, mod}
   end
-
 end

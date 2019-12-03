@@ -1,7 +1,7 @@
 defmodule Astro.Earth do
   import Astro.Utils
 
-  @geometric_zenith 90.0
+  @geometric_solar_elevation 90.0
   @refraction 34 / 60.0
   @solar_radius 16 / 60.0
 
@@ -25,12 +25,11 @@ defmodule Astro.Earth do
     |> to_degrees
   end
 
-  def adjusted_zenith(@geometric_zenith = zenith, elevation) do
-    zenith + solar_radius() + refraction() + elevation_adjustment(elevation)
-
+  def adjusted_solar_elevation(@geometric_solar_elevation = solar_elevation, elevation) do
+    solar_elevation + solar_radius() + refraction() + elevation_adjustment(elevation)
   end
 
-  def adjusted_zenith(_zenith, _elevation) do
-    @geometric_zenith
+  def adjusted_solar_elevation(_solar_elevation, _elevation) do
+    @geometric_solar_elevation
   end
 end

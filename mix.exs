@@ -5,7 +5,6 @@ defmodule Astro.MixProject do
     [
       app: :astro,
       version: "0.1.0",
-      licenses: ["Apache-2.0"],
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -23,8 +22,8 @@ defmodule Astro.MixProject do
   defp deps do
     [
       {:tzdata, "~> 1.0"},
-      {:tz_world, github: "kipcole9/tz_world"},
-      {:geo, "~> 3.0", override: true},
+      {:tz_world, "~> 0.2"},
+      {:geo, "~> 3.0"},
       {:jason, "~> 1.0"}
     ]
   end

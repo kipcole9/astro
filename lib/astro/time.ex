@@ -13,6 +13,7 @@ defmodule Astro.Time do
 
   @julian_day_jan_1_2000 2_451_545.0
   @julian_days_per_century 36525.0
+  @utc_zone "Etc/UTC"
 
   @doc """
   Calculates the time zone from a longitude
@@ -80,7 +81,12 @@ defmodule Astro.Time do
     trunc(365.25 * (year + 4716)) + trunc(30.6001 * (month + 1)) + day + b - 1524.5
   end
 
-  def julian_day_from_date(%{year: year, month: month, day: day, calendar: Cldr.Calendar.Gregorian}) do
+  def julian_day_from_date(%{
+        year: year,
+        month: month,
+        day: day,
+        calendar: Cldr.Calendar.Gregorian
+      }) do
     julian_day_from_date(%{year: year, month: month, day: day, calendar: Calendar.ISO})
   end
 
@@ -92,10 +98,16 @@ defmodule Astro.Time do
     ajd(date) - 2_400_000.5
   end
 
-  def to_datetime(time_of_day, %{year: year, month: month, day: day, calendar: Calendar.ISO}) do
-    {hours, minutes, seconds} = to_hms(time_of_day)
-    {:ok, datetime} = NaiveDateTime.new(year, month, day, hours, minutes, seconds, 0)
-    datetime
+  def moment_to_datetime(time_of_day, %{
+        year: year,
+        month: month,
+        day: day,
+        calendar: Calendar.ISO
+      }) do
+    with {hours, minutes, seconds} <- to_hms(time_of_day),
+         {:ok, naive_datetime} <- NaiveDateTime.new(year, month, day, hours, minutes, seconds, 0) do
+      DateTime.from_naive(naive_datetime, @utc_zone)
+    end
   end
 
   def to_hms(time_of_day) do
@@ -109,4 +121,32 @@ defmodule Astro.Time do
     {hours, minutes, seconds}
   end
 
+  def datetime_in_requested_zone(utc_event_time, original_time_zone, location, options) do
+    %{time_zone_database: time_zone_database} = options
+
+    case Map.fetch!(options, :time_zone) do
+      :utc ->
+        {:ok, utc_event_time}
+
+      :default ->
+        DateTime.shift_zone(utc_event_time, original_time_zone, time_zone_database)
+
+      :local ->
+        with {:ok, time_zone} <- timezone_at(location) do
+          DateTime.shift_zone(utc_event_time, time_zone, time_zone_database)
+        end
+
+      time_zone when is_binary(time_zone) ->
+        DateTime.shift_zone(utc_event_time, time_zone, time_zone_database)
+    end
+  end
+
+  def timezone_at(%Geo.PointZ{} = location) do
+    location = %Geo.Point{coordinates: Tuple.delete_at(location.coordinates, 2)}
+    timezone_at(location)
+  end
+
+  def timezone_at(%Geo.Point{} = location) do
+    TzWorld.timezone_at(location)
+  end
 end
