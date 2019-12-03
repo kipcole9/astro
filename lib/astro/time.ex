@@ -90,13 +90,9 @@ defmodule Astro.Time do
 
   def to_hms(time_of_day) do
     hours = trunc(time_of_day)
-    minutes = (time_of_day - hours) * 60.0
-    seconds = (minutes - trunc(minutes)) * 60.0
+    minutes = (time_of_day - hours) * 60.0 |> trunc
 
-    minutes = trunc(minutes)
-    seconds = trunc(seconds)
-
-    {hours, minutes, seconds}
+    {hours, minutes, 0}
   end
 
   def datetime_in_requested_zone(utc_event_time, original_time_zone, location, options) do
@@ -106,10 +102,10 @@ defmodule Astro.Time do
       :utc ->
         {:ok, utc_event_time}
 
-      :default ->
+      :original ->
         DateTime.shift_zone(utc_event_time, original_time_zone, time_zone_database)
 
-      :local ->
+      :default ->
         with {:ok, time_zone} <- timezone_at(location) do
           DateTime.shift_zone(utc_event_time, time_zone, time_zone_database)
         end
