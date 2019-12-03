@@ -1,4 +1,6 @@
 defmodule Astro.Utils do
+  import Astro.Guards
+
   @radians_to_degrees 180.0 / :math.pi()
 
   def to_degrees(radians) do
@@ -75,5 +77,17 @@ defmodule Astro.Utils do
     div = n1 / n2
     mod = n2 - div * n2
     {div, mod}
+  end
+
+  def normalize_location({lng, lat, alt}) when is_lat(lat) and is_lng(lng) and is_alt(alt) do
+    %Geo.PointZ{coordinates: {lng, lat, alt}}
+  end
+
+  def normalize_location({lng, lat}) when is_lat(lat) and is_lng(lng) do
+    %Geo.PointZ{coordinates: {lng, lat, 0.0}}
+  end
+
+  def normalize_location(%Geo.Point{coordinates: {lng, lat}}) when is_lat(lat) and is_lng(lng) do
+    %Geo.PointZ{coordinates: {lng, lat, 0.0}}
   end
 end
