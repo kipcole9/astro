@@ -56,38 +56,16 @@ defmodule Astro.Time do
     julian_centuries * @julian_days_per_century + @julian_day_jan_1_2000
   end
 
-  # def julian_day_from_date(%{year: year, month: month, day: day, calendar: Calendar.ISO}) do
-  #   (1461 * (year + 4800 + (month - 14) / 12) / 4 +
-  #     367 * (month - 2 - 12 * ((month - 14) / 12)) / 12 -
-  #     3 * ((year + 4900 + (month - 14.0) / 12) / 100) / 4 + day - 32075)
-  #     |> IO.inspect(label: "Julian day")
-  # end
-
   def julian_day_from_date(%{year: year, month: month, day: day, calendar: Calendar.ISO}) do
-    {year, month} =
-      if month in 1..2 do
-        {year - 1, month + 12}
-      else
-        {year, month}
-      end
-
-    # That is if the date is Jan or Feb then the date is the 13th or
-    # 14th month of the preceding year for calculation purposes.
-    # If the date is on the Gregorian calendar (after 14 Oct 1582) then:
-
-    a = trunc(year / 100)
-    b = 2 - a + trunc(a / 4)
-
-    trunc(365.25 * (year + 4716)) + trunc(30.6001 * (month + 1)) + day + b - 1524.5
+    div((1461 * (year + 4800 + div(month - 14, 12))), 4) +
+    div((367 * (month - 2 - 12 * div(month - 14, 12))), 12) -
+    div(3 * div(year + 4900 + div(month - 14, 12), 100), 4) +
+    day - 32075 + 0.5
   end
 
-  def julian_day_from_date(%{
-        year: year,
-        month: month,
-        day: day,
-        calendar: Cldr.Calendar.Gregorian
-      }) do
-    julian_day_from_date(%{year: year, month: month, day: day, calendar: Calendar.ISO})
+  def julian_day_from_date(%{year: _, month: _, day: _, calendar: _} = date) do
+    {:ok, iso_date} = Date.convert(date, Calendar.ISO)
+    julian_day_from_date(iso_date)
   end
 
   def ajd(date) do

@@ -31,7 +31,7 @@ defmodule Astro do
 
   def sunrise(%Geo.PointZ{} = location, %Date{} = date, options) do
     with {:ok, naive_datetime} <-
-           NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0, 0, date.calendar) do
+           NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0, {0, 0}, date.calendar) do
       sunrise(location, naive_datetime, options)
     end
   end

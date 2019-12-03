@@ -45,7 +45,7 @@ defmodule Astro.Solar do
     adjusted_solar_elevation = adjusted_solar_elevation(solar_elevation, alt)
 
     utc_time_in_minutes =
-      calculate_utc_sun_position(ajd(date), lat, lng, adjusted_solar_elevation, mode)
+      calculate_utc_sun_position(ajd(date), lat, -lng, adjusted_solar_elevation, mode)
 
     mod(utc_time_in_minutes / 60.0, 24.0)
   end
@@ -126,9 +126,7 @@ defmodule Astro.Solar do
   Returns the suns true longitude in degrees
   """
   def sun_true_longitude(julian_centuries) do
-    sgml = sun_geometric_mean_longitude(julian_centuries)
-    center = sun_equation_of_center(julian_centuries)
-    sgml + center
+    sun_geometric_mean_longitude(julian_centuries) + sun_equation_of_center(julian_centuries)
   end
 
   @doc """
