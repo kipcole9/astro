@@ -1,5 +1,5 @@
 defmodule Astro do
-  alias Astro.{Time, Solar, Utils}
+  alias Astro.Solar
 
   def sunrise(location, date, options \\ default_options()) when is_list(options) do
     options = Keyword.put(options, :rise_or_set, :rise)
