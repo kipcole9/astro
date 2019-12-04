@@ -21,7 +21,7 @@ iex> Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
 iex> Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
 {:ok, #DateTime<2019-12-04 19:53:00.000000+11:00 AEDT Australia/Sydney>}
 
-# Sunset in the town of Alert NU, Canada
+# Sunset in the town of Alert in Nunavut, Canada
 # ...doesn't exist since there is no sunset in summer
 iex> Astro.sunset({-62.3481, 82.5018}, ~D[2019-07-01])
 {:error, :no_time}
@@ -40,7 +40,7 @@ The desired location of sunrise or sunset can be specified as either:
 
 ## Status
 
-Early development, not ready for use beyond experimental.
+Sunrise and sunset calculations are tested to be within 1 minute of
 
 ## Solar functions
 
@@ -55,6 +55,16 @@ Early development, not ready for use beyond experimental.
 * [ ] Moon rise
 * [ ] Moon set
 
+## References
+
+* Thanks to @pinnymz for the [ruby-zmanim](https://github.com/pinnymz/ruby-zmanim) gem which has a well structured ruby implementation of sunrise / sunset and some core astronomical algorithms.
+
+* Eventually all roads lead to the canonical book on the subject by Jean Meeus: [Astronomical Algorithms](https://www.amazon.com/Astronomical-Algorithms-Jean-Meeus/dp/0943396352)
+
+* For the intersection of calendars and astronomy, [Calendrical Calculations](https://www.amazon.com/Calendrical-Calculations-Ultimate-Edward-Reingold/dp/1107683165) by Nachum Dershowitz and Edward M. Reingold remains the standard reference.
+
+* On the web, [timeanddate.com](https://www.timeanddate.com/astronomy/) is a great reference. The sunrise/sunset calculations in this library are tested to return times within 1 minute of timeanddate.com results.
+
 ## Installation
 
 Astro can be installed by adding `astro` to your list of dependencies in `mix.exs`:
@@ -66,7 +76,8 @@ def deps do
   ]
 end
 ```
-Then:
+Then get dependencies and install the data required to determine a time zone from a location which is used by the dependency `tz_world`.
+
 ```
 mix deps.get
 mix tz_world.update

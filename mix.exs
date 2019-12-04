@@ -88,7 +88,8 @@ defmodule Astro.MixProject do
       {:tzdata, "~> 1.0"},
       {:tz_world, "~> 0.2"},
       {:geo, "~> 3.0"},
-      {:jason, "~> 1.0"}
+      {:jason, "~> 1.0"},
+      {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false}
     ]
   end
 

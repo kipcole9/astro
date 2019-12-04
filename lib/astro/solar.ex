@@ -1,11 +1,20 @@
 defmodule Astro.Solar do
   @moduledoc """
-  Imeplements sunrise and sunset according to the
-  US NOAA algorithm
+  Implements sunrise and sunset according to the
+  US NOAA algorithm which is based upon
+  [Astronomical Algorithms](https://www.amazon.com/Astronomical-Algorithms-Jean-Meeus/dp/0943396352)
+  by Jean Meeus.
 
   """
 
   alias Astro.{Utils, Earth, Time}
+
+  @solar_elevation %{
+    geometric: 90.0,
+    civil: 96.0,
+    nautical: 102.0,
+    astronomical: 108.0
+  }
 
   def sun_rise_or_set(location, date, options) when is_list(options) do
     options =
@@ -38,8 +47,8 @@ defmodule Astro.Solar do
          {:ok, adjusted_datetime} <- Time.antimeridian_adjustment(location, iso_datetime, options),
          {:ok, moment_of_rise_or_set} <- utc_sun_rise_or_set(adjusted_datetime, location, options),
          {:ok, utc_rise_or_set} <- Time.moment_to_datetime(moment_of_rise_or_set, adjusted_datetime),
-         {:ok, local_rise_or_set} <- Time.adjust_for_wraparound(utc_rise_or_set, location, options),
-         {:ok, local_rise_or_set} <- Time.datetime_in_requested_zone(local_rise_or_set, location, options) do
+         {:ok, adjusted_rise_or_set} <- Time.adjust_for_wraparound(utc_rise_or_set, location, options),
+         {:ok, local_rise_or_set} <- Time.datetime_in_requested_zone(adjusted_rise_or_set, location, options) do
       DateTime.convert(local_rise_or_set, datetime.calendar)
     end
   end
@@ -56,13 +65,6 @@ defmodule Astro.Solar do
   def utc_sun_rise_or_set(utc_datetime, location, %{rise_or_set: :set} = options) do
     utc_sunset(utc_datetime, location, options)
   end
-
-  @solar_elevation %{
-    geometric: 90.0,
-    civil: 96.0,
-    nautical: 102.0,
-    astronomical: 108.0
-  }
 
   def utc_sunrise(date, %Geo.PointZ{} = geo_location, options) do
     solar_elevation =
@@ -91,6 +93,17 @@ defmodule Astro.Solar do
     solar_elevation
   end
 
+  @doc """
+  This implementation is based on equations from
+  [Astronomical Algorithms](https://www.amazon.com/astronomical-algorithms-jean-meeus/dp/0943396611),
+  by Jean Meeus. The sunrise and sunset results are
+  theoretically accurate to within a minute for
+  locations between +/- 72° latitude, and within
+  10 minutes outside of those latitudes. However, due to
+  variations in atmospheric composition, temperature,
+  pressure and conditions, observed values may vary from
+  calculations.
+  """
   def utc_sun_position(date, %Geo.PointZ{coordinates: {lng, lat, alt}}, solar_elevation, mode) do
     adjusted_solar_elevation = Earth.adjusted_solar_elevation(solar_elevation, alt)
 
