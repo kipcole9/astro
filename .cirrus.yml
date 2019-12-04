@@ -22,6 +22,7 @@ test_task:
   tz_world_cache:
     folder: priv
     populate_script:
+      mix deps.get
       mix tz_world.update
   compile_script:
     mix local.hex --force;
