@@ -7,8 +7,6 @@ defmodule Astro.Solar do
 
   alias Astro.{Utils, Earth, Time}
 
-  @utc_zone "Etc/UTC"
-
   def sun_rise_or_set(location, date, options) when is_list(options) do
     options =
       Astro.default_options()
@@ -36,14 +34,13 @@ defmodule Astro.Solar do
   end
 
   def sun_rise_or_set(%Geo.PointZ{} = location, %DateTime{} = datetime, options) do
-    %{time_zone_database: time_zone_database} = options
     with {:ok, iso_datetime} <- DateTime.convert(datetime, Calendar.ISO),
-         {:ok, utc_datetime} <- DateTime.shift_zone(iso_datetime, @utc_zone, time_zone_database),
-         moment_of_sunrise = utc_sun_rise_or_set(utc_datetime, location, options),
-         {:ok, utc_sunrise} <- Time.moment_to_datetime(moment_of_sunrise, utc_datetime),
-         {:ok, zone_sunrise} <-
-           Time.datetime_in_requested_zone(utc_sunrise, datetime.time_zone, location, options) do
-      DateTime.convert(zone_sunrise, datetime.calendar)
+         {:ok, adjusted_datetime} <- Time.antimeridian_adjustment(location, iso_datetime, options),
+         {:ok, moment_of_rise_or_set} <- utc_sun_rise_or_set(adjusted_datetime, location, options),
+         {:ok, utc_rise_or_set} <- Time.moment_to_datetime(moment_of_rise_or_set, adjusted_datetime),
+         {:ok, local_rise_or_set} <- Time.adjust_for_wraparound(utc_rise_or_set, location, options),
+         {:ok, local_rise_or_set} <- Time.datetime_in_requested_zone(local_rise_or_set, location, options) do
+      DateTime.convert(local_rise_or_set, datetime.calendar)
     end
   end
 
@@ -66,15 +63,6 @@ defmodule Astro.Solar do
     nautical: 102.0,
     astronomical: 108.0
   }
-  @valid_solar_elevation Map.keys(@solar_elevation)
-
-  def solar_elevation(solar_elevation) when solar_elevation in @valid_solar_elevation do
-    Map.get(@solar_elevation, solar_elevation)
-  end
-
-  def solar_elevation(solar_elevation) when is_number(solar_elevation) do
-    solar_elevation
-  end
 
   def utc_sunrise(date, %Geo.PointZ{} = geo_location, options) do
     solar_elevation =
@@ -94,13 +82,22 @@ defmodule Astro.Solar do
     utc_sun_position(date, geo_location, solar_elevation, :sunset)
   end
 
+  @valid_solar_elevation Map.keys(@solar_elevation)
+  def solar_elevation(solar_elevation) when solar_elevation in @valid_solar_elevation do
+    Map.get(@solar_elevation, solar_elevation)
+  end
+
+  def solar_elevation(solar_elevation) when is_number(solar_elevation) do
+    solar_elevation
+  end
+
   def utc_sun_position(date, %Geo.PointZ{coordinates: {lng, lat, alt}}, solar_elevation, mode) do
     adjusted_solar_elevation = Earth.adjusted_solar_elevation(solar_elevation, alt)
 
-    utc_time_in_minutes =
-      calculate_utc_sun_position(Time.ajd(date), lat, -lng, adjusted_solar_elevation, mode)
-
-    Utils.mod(utc_time_in_minutes / 60.0, 24.0)
+    with {:ok, utc_time_in_minutes} <-
+      calculate_utc_sun_position(Time.ajd(date), lat, -lng, adjusted_solar_elevation, mode) do
+      {:ok, Utils.mod(utc_time_in_minutes / 60.0, 24.0)}
+    end
   end
 
   def calculate_utc_sun_position(julian_day, latitude, longitude, solar_elevation, mode) do
@@ -113,7 +110,10 @@ defmodule Astro.Solar do
 
     # refine using output of first pass
     trefinement = Time.julian_centuries_from_julian_day(julian_day + first_pass / 1440.0)
-    approximate_utc_sun_position(trefinement, latitude, longitude, solar_elevation, mode)
+    position = approximate_utc_sun_position(trefinement, latitude, longitude, solar_elevation, mode)
+    {:ok, position}
+  rescue ArithmeticError ->
+    {:error, :no_time}
   end
 
   def approximate_utc_sun_position(
