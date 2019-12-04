@@ -21,7 +21,6 @@ test_task:
       mix deps.get
   tz_world_cache:
     folder: priv
-    fingerprint_script: md5sum priv/timezones-geodata.etf.zip
     populate_script:
       mix tz_world.update
   compile_script:
