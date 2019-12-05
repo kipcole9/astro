@@ -1,4 +1,10 @@
 defmodule Astro.Earth do
+  @moduledoc """
+  Constants and astronomical calculations
+  related to the earth.
+
+  """
+
   import Astro.Utils
 
   @geometric_solar_elevation 90.0
@@ -54,11 +60,42 @@ defmodule Astro.Earth do
     @earth_radius
   end
 
+  @doc """
+  Adjusts the solar elevation to account
+  for the elevation of the requeste location
+
+  ## Arguments
+
+  * `elevation` is elevation in meters
+
+  ## Returns
+
+  * The solar elevation angle adjusted for the elevation
+
+  """
   def elevation_adjustment(elevation) do
     :math.acos(earth_radius() / (earth_radius() + elevation / @meters_per_kilometer))
     |> to_degrees
   end
 
+  @doc """
+  Adjusts the solar elevation to be the apparent angle
+  at sunrise if the requested angle is `:geometric`
+  (or 90°)
+
+  ## Arguments
+
+  * `solar_elevation` is the requested solar elevation
+    in degress. It will be 90° for sunrise and sunset.
+
+  * `elevation` is elevation in meters
+
+  ## Returns
+
+  * The solar elevation angle adjusted for refraction,
+    elevation and solar radius.
+
+  """
   def adjusted_solar_elevation(@geometric_solar_elevation = solar_elevation, elevation) do
     solar_elevation + solar_radius() + refraction() + elevation_adjustment(elevation)
   end

@@ -99,7 +99,7 @@ defmodule Astro do
 
   """
   @spec sunrise(location, date, options) ::
-    {:ok, DateTime.t()} | {:error, :time_zone_not_found | :no_time}
+          {:ok, DateTime.t()} | {:error, :time_zone_not_found | :no_time}
 
   def sunrise(location, date, options \\ default_options()) when is_list(options) do
     options = Keyword.put(options, :rise_or_set, :rise)
@@ -191,7 +191,7 @@ defmodule Astro do
 
   """
   @spec sunset(location, date, options) ::
-    {:ok, DateTime.t()} | {:error, :time_zone_not_found | :no_time}
+          {:ok, DateTime.t()} | {:error, :time_zone_not_found | :no_time}
 
   def sunset(location, date, options \\ default_options()) when is_list(options) do
     options = Keyword.put(options, :rise_or_set, :set)

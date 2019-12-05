@@ -69,7 +69,7 @@ defmodule Astro.MixProject do
         "mix.exs",
         "README*",
         "CHANGELOG*",
-        "LICENSE*",
+        "LICENSE*"
       ]
     ]
   end

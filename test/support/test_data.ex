@@ -1,8 +1,8 @@
 defmodule Astro.TestData do
   def sunrise(file) do
     File.read!("./test/support/#{file}.csv")
-    |> String.replace( ~r/#.*\n/, "")
-    |> String.replace( ~r/\t/, "")
+    |> String.replace(~r/#.*\n/, "")
+    |> String.replace(~r/\t/, "")
     |> String.split("\n")
     |> Enum.map(&String.trim/1)
     |> Enum.map(&String.split(&1, ",", trim: true))

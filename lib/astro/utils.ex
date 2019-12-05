@@ -1,4 +1,6 @@
 defmodule Astro.Utils do
+  @moduledoc false
+
   import Astro.Guards
 
   @radians_to_degrees 180.0 / :math.pi()
