@@ -17,6 +17,9 @@ defmodule Astro.Solar do
   }
 
   @doc false
+  @spec sun_rise_or_set(Astro.location, Astro.date, keyword()) ::
+    {:ok, DateTime.t()} | {:error, :time_zone_not_found | :no_time}
+
   def sun_rise_or_set(location, date, options) when is_list(options) do
     options =
       Astro.default_options()
@@ -235,6 +238,7 @@ defmodule Astro.Solar do
   equatorial plane
 
   """
+  @spec solar_declination(float) :: float()
   def solar_declination(julian_centuries) do
     correction = obliquity_correction(julian_centuries) |> Utils.to_radians()
     lambda = sun_apparent_longitude(julian_centuries) |> Utils.to_radians()
@@ -265,6 +269,7 @@ defmodule Astro.Solar do
   as opposed to mean longitude
 
   """
+  @spec sun_apparent_longitude(float) :: float()
   def sun_apparent_longitude(julian_centuries) do
     true_longitude = sun_true_longitude(julian_centuries)
     omega = 125.04 - 1934.136 * julian_centuries
@@ -297,6 +302,7 @@ defmodule Astro.Solar do
   body would be located at a particular time.
 
   """
+  @spec sun_true_longitude(float) :: float()
   def sun_true_longitude(julian_centuries) do
     sun_geometric_mean_longitude(julian_centuries) + sun_equation_of_center(julian_centuries)
   end
@@ -327,6 +333,7 @@ defmodule Astro.Solar do
   function of mean anomaly, M, and orbital eccentricity, e.
 
   """
+  @spec sun_equation_of_center(float) :: float()
   def sun_equation_of_center(julian_centuries) do
     mrad = sun_geometric_mean_anomaly(julian_centuries) |> Utils.to_radians()
     sinm = :math.sin(mrad)
@@ -338,6 +345,36 @@ defmodule Astro.Solar do
       sin3m * 0.000289
   end
 
+  @doc """
+  Returns solar noon as a fractional
+  part of a day.
+
+  ## Arguments
+
+  * `julian_centuries` is the any moment
+    in time expressed as julian centuries
+
+  * `longitude` is the longitude in degrees
+    of the location from which solar noon
+    is to be measured
+
+  ## Returns
+
+  * solar noon as a `float` number of
+    hours since midnight UTC
+
+  ## Notes
+
+  Solar noon is the moment when the Sun passes a
+  location's meridian and reaches its highest position
+  in the sky. In most cases, it doesn't happen at 12 o'clock.
+
+  At solar noon, the Sun reaches its
+  highest position in the sky as it passes the
+  local meridian.
+
+  """
+  @spec solar_noon_utc(float, Astro.longitude) :: float()
   def solar_noon_utc(julian_centuries, longitude) do
     century_start = Time.julian_day_from_julian_centuries(julian_centuries)
 
@@ -414,6 +451,7 @@ defmodule Astro.Solar do
   or later depending on where it is in its orbit.
 
   """
+  @spec equation_of_time(float) :: float()
   def equation_of_time(julian_centuries) when is_float(julian_centuries) do
     epsilon = obliquity_correction(julian_centuries) |> Utils.to_radians()
     sgml = sun_geometric_mean_longitude(julian_centuries) |> Utils.to_radians()
@@ -462,6 +500,7 @@ defmodule Astro.Solar do
   every Kepler orbit is a conic section.
 
   """
+  @spec earth_orbit_eccentricity(float) :: float()
   def earth_orbit_eccentricity(julian_centuries) do
     0.016708634 - julian_centuries * (0.000042037 + 0.0000001267 * julian_centuries)
   end
@@ -493,6 +532,7 @@ defmodule Astro.Solar do
   orbital period as the actual body in its elliptical orbit
 
   """
+  @spec sun_geometric_mean_anomaly(float) :: float()
   def sun_geometric_mean_anomaly(julian_centuries) do
     anomaly = 357.52911 + julian_centuries * (35999.05029 - 0.0001537 * julian_centuries)
     Utils.mod(anomaly, 360.0)
@@ -525,6 +565,7 @@ defmodule Astro.Solar do
   of the center.
 
   """
+  @spec sun_geometric_mean_longitude(float) :: float()
   def sun_geometric_mean_longitude(julian_centuries) do
     longitude = 280.46646 + julian_centuries * (36000.76983 + 0.0003032 * julian_centuries)
     Utils.mod(longitude, 360.0)
@@ -544,6 +585,7 @@ defmodule Astro.Solar do
     degrees as a `float`
 
   """
+  @spec obliquity_correction(float) :: float()
   def obliquity_correction(julian_centuries) do
     obliquity_of_ecliptic = mean_obliquity_of_ecliptic(julian_centuries)
 
@@ -580,6 +622,7 @@ defmodule Astro.Solar do
   obliquity changes over time, although very, very slowly.
 
   """
+  @spec mean_obliquity_of_ecliptic(float) :: float()
   def mean_obliquity_of_ecliptic(julian_centuries) do
     seconds =
       21.448 -

@@ -1,6 +1,9 @@
 defmodule AstroTest do
   use ExUnit.Case
   doctest Astro
+  doctest Astro.Time
+  doctest Astro.Solar
+  doctest Astro.Earth
 
   test "A time zone not found for a location returns an error" do
     assert Astro.sunrise({1.1, 3.5}, Date.utc_today()) == {:error, :timezone_not_found}
