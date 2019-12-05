@@ -20,7 +20,7 @@ defmodule Astro.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       dialyzer: [
         ignore_warnings: ".dialyzer_ignore_warnings",
-        plt_add_apps: ~w(gettext inets jason mix plug sweet_xml)a
+        plt_add_apps: ~w(inets jason geo mix)a
       ],
       compilers: Mix.compilers()
     ]
@@ -28,9 +28,8 @@ defmodule Astro.MixProject do
 
   defp description do
     """
-    Common Locale Data Repository (CLDR) functions for Elixir to localize and format numbers,
-    dates, lists and units with support for over 500 locales for internationalized (i18n) and
-    localized (L10N) applications.
+    Astronomical calculations in Elixir including sunrise, sunset, moonrise, moonset,
+    equinox, solstice, moonphase and more.
     """
   end
 
