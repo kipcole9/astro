@@ -17,7 +17,7 @@ defmodule Astro.Solar do
   }
 
   @doc false
-  @spec sun_rise_or_set(Astro.location, Astro.date, keyword()) ::
+  @spec sun_rise_or_set(Astro.location, Astro.date, map() | keyword()) ::
     {:ok, DateTime.t()} | {:error, :time_zone_not_found | :no_time}
 
   def sun_rise_or_set(location, date, options) when is_list(options) do
@@ -118,7 +118,7 @@ defmodule Astro.Solar do
   * `date` is a `DateTime.t()` in the UTC
     time zone
 
-  * `location` is any `GeoPointZ.t()`
+  * `location` is any `Geo.PointZ.t()`
     location
 
   * `solar_elevation` is the required solar
@@ -151,7 +151,7 @@ defmodule Astro.Solar do
   calculations.
 
   """
-  @spec utc_sun_position(DateTime.t(), GeoPointZ.t(), float(), :sunrise | :sunset) ::
+  @spec utc_sun_position(DateTime.t(), Geo.PointZ.t(), float(), :sunrise | :sunset) ::
     {:ok, float} | {:error, :no_time}
 
   def utc_sun_position(date, %Geo.PointZ{coordinates: {lng, lat, alt}}, solar_elevation, mode) do
