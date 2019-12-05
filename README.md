@@ -35,8 +35,8 @@ The desired location of sunrise or sunset can be specified as either:
 
 * a tuple of longitude and latitude (note the order) such as `{-62.3481, 82.5018}`
 * a tuple of longitude, latitude and elevation (note the order) such as `{-62.3481, 82.5018, 0}`. The elevation is specified in meters.
-* a `%Geo.Point{}` struct
-* a `Geo.PointZ{}` struct
+* a `Geo.Point.t` struct
+* a `Geo.PointZ.t` struct
 
 ## Status
 
