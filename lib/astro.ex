@@ -6,7 +6,7 @@ defmodule Astro do
 
   """
 
-  alias Astro.{Solar}
+  alias Astro.{Solar, Utils, Time}
 
   @type longitude :: float()
   @type latitude :: float()
@@ -87,15 +87,14 @@ defmodule Astro do
     very high latitudes during summer and winter.
 
   ## Examples
-  ```
-    # Sunrise in Sydney, Australia
-    Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
-    {:ok, #DateTime<2019-12-04 05:37:00.000000+11:00 AEDT Australia/Sydney>}
 
-    # Sunrise in Alert, Nanavut, Canada
-    Astro.sunrise({-62.3481, 82.5018}, ~D[2019-12-04])
-    {:error, :no_time}
-  ```
+      # Sunrise in Sydney, Australia
+      Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
+      {:ok, #DateTime<2019-12-04 05:37:00.000000+11:00 AEDT Australia/Sydney>}
+
+      # Sunrise in Alert, Nanavut, Canada
+      Astro.sunrise({-62.3481, 82.5018}, ~D[2019-12-04])
+      {:error, :no_time}
 
   """
   @spec sunrise(location, date, options) ::
@@ -179,15 +178,14 @@ defmodule Astro do
     very high latitudes during summer and winter.
 
   ## Examples
-  ```
-    # Sunset in Sydney, Australia
-    Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
-    {:ok, #DateTime<2019-12-04 19:53:00.000000+11:00 AEDT Australia/Sydney>}
 
-    # Sunset in Alert, Nanavut, Canada
-    Astro.sunset({-62.3481, 82.5018}, ~D[2019-12-04])
-    {:error, :no_time}
-  ```
+      # Sunset in Sydney, Australia
+      Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
+      {:ok, #DateTime<2019-12-04 19:53:00.000000+11:00 AEDT Australia/Sydney>}
+
+      # Sunset in Alert, Nanavut, Canada
+      Astro.sunset({-62.3481, 82.5018}, ~D[2019-12-04])
+      {:error, :no_time}
 
   """
   @spec sunset(location, date, options) ::
@@ -217,10 +215,10 @@ defmodule Astro do
 
   ## Examples
 
-    iex> Astro.equinox 2019, :march
-    {:ok, ~U[2019-03-20 21:58:06Z]}
-    iex> Astro.equinox 2019, :september
-    {:ok, ~U[2019-09-23 07:49:30Z]}
+      iex> Astro.equinox 2019, :march
+      {:ok, ~U[2019-03-20 21:58:06Z]}
+      iex> Astro.equinox 2019, :september
+      {:ok, ~U[2019-09-23 07:49:30Z]}
 
   ## Notes
 
@@ -260,10 +258,10 @@ defmodule Astro do
 
   ## Examples
 
-    iex> Astro.solstice 2019, :december
-    {:ok, ~U[2019-12-22 04:18:57Z]}
-    iex> Astro.solstice 2019, :june
-    {:ok, ~U[2019-06-21 15:53:45Z]}
+      iex> Astro.solstice 2019, :december
+      {:ok, ~U[2019-12-22 04:18:57Z]}
+      iex> Astro.solstice 2019, :june
+      {:ok, ~U[2019-06-21 15:53:45Z]}
 
   ## Notes
 
@@ -295,6 +293,60 @@ defmodule Astro do
   @spec solstice(Calendar.year, :june | :december) :: {:ok, DateTime.t()}
   def solstice(year, event) when event in [:june, :december] and year in 1000..3000 do
     Solar.equinox_and_solstice(year, event)
+  end
+
+  @doc """
+  Returns solar noon for a
+  given date and location as
+  a UTC datetime
+
+  ## Arguments
+
+  * `date` is any date in the Gregorian
+    calendar (for example, `Calendar.ISO`)
+
+  * `location` is the latitude, longitude and
+    optionally elevation for the desired solar noon
+    time. It can be expressed as:
+
+    * `{lng, lat}` - a tuple with longitude and latitude
+      as floating point numbers. **Note** the order of the
+      arguments.
+    * a `Geo.Point.t` struct to represent a location without elevation
+    * a `Geo.PointZ.t` struct to represent a location and elevation
+
+  ## Returns
+
+  * a UTC datetime representing solar noon
+    at the given location for the given date
+
+  ## Example
+
+      iex> Astro.solar_noon ~D[2019-12-06], {151.20666584, -33.8559799094}
+      {:ok, ~U[2019-12-06 01:45:42Z]}
+
+  ## Notes
+
+  Solar noon is the moment when the Sun passes a
+  location's meridian and reaches its highest position
+  in the sky. In most cases, it doesn't happen at 12 o'clock.
+
+  At solar noon, the Sun reaches its
+  highest position in the sky as it passes the
+  local meridian.
+
+  """
+  @spec solar_noon(Calendar.date(), Astro.location()) :: DateTime.t()
+  def solar_noon(date, location) do
+    julian_day =  Time.julian_day_from_date(date)
+    julian_centuries = Time.julian_centuries_from_julian_day(julian_day)
+
+    %Geo.PointZ{coordinates: {longitude, _, _}} =
+      Utils.normalize_location(location)
+
+    julian_centuries
+    |> Solar.solar_noon_utc(-longitude)
+    |> Time.datetime_from_date_and_minutes(date)
   end
 
   @doc false

@@ -34,9 +34,17 @@ iex> Astro.sunrise({-62.3481, 82.5018}, ~D[2019-12-04])
 The desired location of sunrise or sunset can be specified as either:
 
 * a tuple of longitude and latitude (note the order) such as `{-62.3481, 82.5018}`
-* a tuple of longitude, latitude and elevation (note the order) such as `{-62.3481, 82.5018, 0}`. The elevation is specified in meters.
+* a tuple of longitude, latitude and elevation (note the order) such as `{-62.3481, 82.5018, 0}`.
 * a `Geo.Point.t` struct
 * a `Geo.PointZ.t` struct
+
+### Location units and direction
+
+For this implementation, the latitude and longitude of the functions in `Astro` are specified as follows:
+
+* Longitude is `+` for eastern longitudes and `-` for western longitudes and specified in degrees
+* Latitude is `+` for northern latitudes and `-` for southern latitudes and specified in degrees
+* Elevation is specified in meters
 
 ## Status
 

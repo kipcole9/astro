@@ -17,6 +17,15 @@ defmodule Astro.Time do
   @seconds_per_minute 60
   @seconds_per_hour @seconds_per_minute * 60
   @seconds_per_day @seconds_per_hour * 24
+  @minutes_per_day 1440.0
+  @minutes_per_hour 60.0
+  @hours_per_day 24.0
+
+  @doc false
+  def minutes_per_day, do: @minutes_per_day
+  def hours_per_day, do: @hours_per_day
+  def minutes_per_hour, do: @minutes_per_hour
+  def days_from_minutes(minutes), do: minutes / @minutes_per_day
 
   @doc """
   Returns the astronomical Julian day for a given
@@ -100,8 +109,8 @@ defmodule Astro.Time do
 
   ## Example
 
-    iex> Astro.Time.datetime_from_julian_days 2458822.5
-    {:ok, ~U[2019-12-05 00:00:00Z]}
+      iex> Astro.Time.datetime_from_julian_days 2458822.5
+      {:ok, ~U[2019-12-05 00:00:00Z]}
 
   """
   def datetime_from_julian_days(julian_days) when is_float(julian_days) do
@@ -293,6 +302,27 @@ defmodule Astro.Time do
     minutes = trunc((time_of_day - hours) * 60.0)
 
     {hours, minutes, 0}
+  end
+
+  @doc """
+  Adds the requested minutes to a date
+  returning a datetime in the UTC time zone
+
+  ## Arguments
+
+  * `minutes` is a float number of minutes since midnight
+
+  * `date` is any date in the Gregorian calendar
+
+  ## Returns
+
+  * a datetime in the UTC time zone
+
+  """
+  def datetime_from_date_and_minutes(minutes, date) do
+    {:ok, naive_datetime} = NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0)
+    {:ok, datetime} = DateTime.from_naive(naive_datetime, @utc_zone)
+    {:ok, DateTime.add(datetime, trunc(minutes * @seconds_per_minute), :second)}
   end
 
   @doc """

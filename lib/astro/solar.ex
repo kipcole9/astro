@@ -8,6 +8,9 @@ defmodule Astro.Solar do
   """
 
   alias Astro.{Utils, Earth, Time}
+  import Time, only: [minutes_per_day: 0, hours_per_day: 0, minutes_per_hour: 0]
+
+  @minutes_per_degree 4.0
 
   @solar_elevation %{
     geometric: 90.0,
@@ -159,7 +162,7 @@ defmodule Astro.Solar do
 
     with {:ok, utc_time_in_minutes} <-
            calculate_utc_sun_position(Time.ajd(date), lat, -lng, adjusted_solar_elevation, mode) do
-      {:ok, Utils.mod(utc_time_in_minutes / 60.0, 24.0)}
+      {:ok, Utils.mod(utc_time_in_minutes / minutes_per_hour(), hours_per_day())}
     end
   end
 
@@ -168,11 +171,11 @@ defmodule Astro.Solar do
 
     # first pass using solar noon
     noonmin = solar_noon_utc(julian_centuries, longitude)
-    tnoon = Time.julian_centuries_from_julian_day(julian_day + noonmin / 1440.0)
+    tnoon = Time.julian_centuries_from_julian_day(julian_day + noonmin / minutes_per_day())
     first_pass = approximate_utc_sun_position(tnoon, latitude, longitude, solar_elevation, mode)
 
     # refine using output of first pass
-    trefinement = Time.julian_centuries_from_julian_day(julian_day + first_pass / 1440.0)
+    trefinement = Time.julian_centuries_from_julian_day(julian_day + first_pass / minutes_per_day())
 
     position =
       approximate_utc_sun_position(trefinement, latitude, longitude, solar_elevation, mode)
@@ -350,8 +353,8 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns solar noon as a fractional
-  part of a day.
+  Returns solar noon as minutes since
+  midnight UTC
 
   ## Arguments
 
@@ -365,7 +368,7 @@ defmodule Astro.Solar do
   ## Returns
 
   * solar noon as a `float` number of
-    hours since midnight UTC
+    minutes since midnight UTC
 
   ## Notes
 
@@ -385,12 +388,12 @@ defmodule Astro.Solar do
     # first pass to yield approximate solar noon
     approx_tnoon = Time.julian_centuries_from_julian_day(century_start + longitude / 360.0)
     approx_eq_time = equation_of_time(approx_tnoon)
-    approx_sol_noon = 720.0 + longitude * 4.0 - approx_eq_time
+    approx_sol_noon = 720.0 + longitude * @minutes_per_degree - approx_eq_time
 
     # refinement using output of first pass
-    tnoon = Time.julian_centuries_from_julian_day(century_start - 0.5 + approx_sol_noon / 1440.0)
+    tnoon = Time.julian_centuries_from_julian_day(century_start - 0.5 + approx_sol_noon / minutes_per_day())
     eq_time = equation_of_time(tnoon)
-    720.0 + longitude * 4.0 - eq_time
+    720.0 + longitude * @minutes_per_degree - eq_time
   end
 
   @doc """
