@@ -646,7 +646,7 @@ defmodule Astro.Solar do
   @spec equinox_and_solstice(pos_integer, :march | :june | :september | :december) ::
     {:ok, DateTime.t()}
 
-  def equinox_and_solstice(year, event) do
+  def equinox_and_solstice(year, event) when event in [:march, :june, :september, :december] do
     jde0 = initial_estimate(year, event)
     t = (jde0 - 2_451_545.0) / 36_525
     w = 35_999.373 * t - 2.47
@@ -658,7 +658,7 @@ defmodule Astro.Solar do
     Time.utc_datetime_from_terrestrial_datetime(tdt)
   end
 
-  defp initial_estimate(year, event) when event in [:march, :june, :september, :december] do
+  defp initial_estimate(year, event) do
     year = (year - 2000) / 1000
 
     equinox_and_solstice_solar_terms()
