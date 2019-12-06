@@ -9,7 +9,13 @@ Astro is a library to provide basic astromonomical functions with a focus on fun
 
 ## Usage
 
-The two primary functions are `Astro.sunrise/3` and `Astro.sunset/3`.
+The primary functions are:
+
+* `Astro.sunrise/3`
+* `Astro.sunset/3`
+* `Astro.solice/2`
+* `Astro.equinox/2`
+* `Astro.hours_of_daylight/2`
 
 ### Examples
 ```elixir
@@ -58,6 +64,7 @@ The two primary functions are `Astro.sunrise/3` and `Astro.sunset/3`.
 ```
 
 ### Specifying a location
+
 The desired location of sunrise or sunset can be specified as either:
 
 * a tuple of longitude and latitude (note the order) such as `{-62.3481, 82.5018}`
@@ -72,23 +79,6 @@ For this implementation, the latitude and longitude of the functions in `Astro` 
 * Longitude is `+` for eastern longitudes and `-` for western longitudes and specified in degrees
 * Latitude is `+` for northern latitudes and `-` for southern latitudes and specified in degrees
 * Elevation is specified in meters
-
-## Status
-
-Sunrise and sunset calculations are tested to be within 1 minute of
-
-## Solar functions
-
-* [X] Sunrise
-* [X] Sunset
-* [X] Solstice
-* [X] Equinox
-
-## Lunar functions
-
-* [ ] Moon phase
-* [ ] Moon rise
-* [ ] Moon set
 
 ## References
 
@@ -109,7 +99,7 @@ Astro can be installed by adding `astro` to your list of dependencies in `mix.ex
 ```elixir
 def deps do
   [
-    {:astro, "~> 0.1.0"}
+    {:astro, "~> 0.3.0"}
   ]
 end
 ```
