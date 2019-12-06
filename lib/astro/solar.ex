@@ -17,8 +17,8 @@ defmodule Astro.Solar do
   }
 
   @doc false
-  @spec sun_rise_or_set(Astro.location, Astro.date, map() | keyword()) ::
-    {:ok, DateTime.t()} | {:error, :time_zone_not_found | :no_time}
+  @spec sun_rise_or_set(Astro.location(), Astro.date(), map() | keyword()) ::
+          {:ok, DateTime.t()} | {:error, :time_zone_not_found | :no_time}
 
   def sun_rise_or_set(location, date, options) when is_list(options) do
     options =
@@ -152,7 +152,7 @@ defmodule Astro.Solar do
 
   """
   @spec utc_sun_position(DateTime.t(), Geo.PointZ.t(), float(), :sunrise | :sunset) ::
-    {:ok, float} | {:error, :no_time}
+          {:ok, float} | {:error, :no_time}
 
   def utc_sun_position(date, %Geo.PointZ{coordinates: {lng, lat, alt}}, solar_elevation, mode) do
     adjusted_solar_elevation = Earth.adjusted_solar_elevation(solar_elevation, alt)
@@ -184,12 +184,12 @@ defmodule Astro.Solar do
   end
 
   defp approximate_utc_sun_position(
-        approx_julian_centuries,
-        latitude,
-        longitude,
-        solar_elevation,
-        mode
-      ) do
+         approx_julian_centuries,
+         latitude,
+         longitude,
+         solar_elevation,
+         mode
+       ) do
     eq_time = equation_of_time(approx_julian_centuries)
     solar_dec = solar_declination(approx_julian_centuries)
     hour_angle = sun_hour_angle_at_horizon(latitude, solar_dec, solar_elevation, mode)
@@ -267,6 +267,10 @@ defmodule Astro.Solar do
   The apparent longitude is the sun's celestial
   longitude corrected for aberration and nutation
   as opposed to mean longitude
+
+  An equinox is the instants when the Sun's
+  apparent geocentric longitude is 0° (northward
+  equinox) or 180° (southward equinox).
 
   """
   @spec sun_apparent_longitude(float) :: float()
@@ -374,7 +378,7 @@ defmodule Astro.Solar do
   local meridian.
 
   """
-  @spec solar_noon_utc(float, Astro.longitude) :: float()
+  @spec solar_noon_utc(float, Astro.longitude()) :: float()
   def solar_noon_utc(julian_centuries, longitude) do
     century_start = Time.julian_day_from_julian_centuries(julian_centuries)
 
@@ -630,5 +634,77 @@ defmodule Astro.Solar do
 
     # in degrees
     23.0 + (26.0 + seconds / 60.0) / 60.0
+  end
+
+  @doc """
+  Returns the datetime of an equinox or solstice
+
+  """
+  @spec equinox_and_solstice(pos_integer, :march | :june | :september | :december) ::
+    DateTime.t()
+
+  def equinox_and_solstice(year, event) do
+    jde0 = initial_estimate(year, event)
+    t = (jde0 - 2_451_545.0) / 36_525
+    w = 35_999.373 * t - 2.47
+    dl = 1 + 0.0334 * Utils.cos(w) + 0.0007 * Utils.cos(2 * w)
+    s = periodic24(t)
+    jde = jde0 + 0.00001 * s / dl
+
+    {:ok, tdt} = Time.datetime_from_julian_days(jde)
+    Time.dynamical_datetime_to_utc_datetime(tdt)
+  end
+
+  defp initial_estimate(year, event) when event in [:march, :june, :september, :december] do
+    year = (year - 2000) / 1000
+
+    equinox_and_solstice_solar_terms()
+    |> Map.get(event)
+    |> Enum.with_index()
+    |> Enum.reduce(0, fn {term, i}, acc ->
+      acc + term * :math.pow(year, i)
+    end)
+  end
+
+  defp equinox_and_solstice_solar_terms do
+    %{
+      march: [2_451_623.80984, 365_242.37404, 0.05169, -0.00411, -0.00057],
+      june: [2_451_716.56767, 365_241.62603, 0.00325, 0.00888, -0.00030],
+      september: [2_451_810.21715, 365_242.01767, -0.11575, 0.00337, 0.00078],
+      december: [2_451_900.05952, 365_242.74049, -0.06223, -0.00823, 0.00032]
+    }
+  end
+
+  defp periodic24(t) do
+    [a, b, c] = periodic24_terms()
+    periodic24(t, a, b, c)
+  end
+
+  defp periodic24(_t, [], [], []) do
+    0
+  end
+
+  defp periodic24(t, [a | rest_a], [b | rest_b], [c | rest_c]) do
+    a * Utils.cos(b + c * t) + periodic24(t, rest_a, rest_b, rest_c)
+  end
+
+  defp periodic24_terms do
+    [
+      [
+        485, 203, 199, 182, 156, 136, 77, 74, 70, 58, 52, 50, 45, 44, 29, 18,
+        17, 16, 14, 12, 12, 12, 9, 8
+      ],
+      [
+        324.96, 337.23, 342.08, 27.85, 73.14, 171.52, 222.54, 296.72, 243.58,
+        119.81, 297.17, 21.02, 247.54, 325.15, 60.93, 155.12, 288.79, 198.04,
+        199.76, 95.39, 287.11, 320.81, 227.73, 15.45
+      ],
+      [
+        1934.136, 32964.467, 20.186, 445_267.112, 45036.886, 22518.443, 65928.934,
+        3034.906, 9037.513, 33718.147, 150.678, 2281.226, 29929.562, 31555.956,
+        4443.417, 67555.328, 4562.452, 62894.029, 31436.921, 14577.848, 31931.756,
+        34777.259, 1222.114, 16859.074
+      ]
+    ]
   end
 end

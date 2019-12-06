@@ -9,7 +9,7 @@ defmodule Astro.Time do
 
   """
 
-  @julian_day_jan_1_2000 2_451_545.0
+  @julian_day_jan_1_2000 2_451_545
   @julian_days_per_century 36525.0
   @utc_zone "Etc/UTC"
 
@@ -30,6 +30,11 @@ defmodule Astro.Time do
 
   * the astronomical Julian day as a `float`
 
+  ## Example
+
+    iex> Astro.Time.julian_day_from_date ~D[2019-12-05]
+    2458822.5
+
   """
   def julian_day_from_date(%{year: year, month: month, day: day, calendar: Calendar.ISO}) do
     div(1461 * (year + 4800 + div(month - 14, 12)), 4) +
@@ -42,6 +47,8 @@ defmodule Astro.Time do
     {:ok, iso_date} = Date.convert(date, Calendar.ISO)
     julian_day_from_date(iso_date)
   end
+
+  defdelegate ajd(date), to: __MODULE__, as: :julian_day_from_date
 
   @doc """
   Returns the Julian centuries for a given
@@ -79,7 +86,98 @@ defmodule Astro.Time do
     julian_centuries * @julian_days_per_century + @julian_day_jan_1_2000
   end
 
-  defdelegate ajd(date), to: __MODULE__, as: :julian_day_from_date
+  @doc """
+  Returns the datetime for a given Julian day
+
+  ## Arguments
+
+  * `julian_day` is any astronomical Julian day such
+    as returned from `Astro.Time.julian_day_from_date/1`
+
+  ## Returns
+
+  * a `DateTime.t` in the UTC time zone
+
+  ## Example
+
+    iex> Astro.Time.datetime_from_julian_days 2458822.5
+    {:ok, ~U[2019-12-05 00:00:00Z]}
+
+  """
+  def datetime_from_julian_days(julian_days) when is_float(julian_days) do
+    z = trunc(julian_days + 0.5)
+    f = julian_days + 0.5 - z
+
+    a =
+      if z < 2_299_161 do
+        z
+      else
+        alpha = trunc((z - 1_867_216.25) / 36_524.25)
+        z + 1 + alpha - trunc(alpha / 4)
+      end
+
+    b = a + 1_524
+    c = trunc((b - 122.1) / 365.25)
+    d = trunc(365.25 * c)
+    e = trunc((b - d) / 30.6001)
+    dt = b - d - trunc(30.6001 * e) + f
+    month = e - if(e < 13.5, do: 1, else: 13)
+    year = c - if(month > 2.5, do: 4716, else: 4715)
+    day = trunc(dt)
+    h = 24 * (dt - day)
+    hours = trunc(h)
+    m = 60 * (h - hours)
+    minutes = trunc(m)
+    seconds = trunc(60 * (m - minutes))
+
+    {:ok, naive_datetime} = NaiveDateTime.new(year, month, day, hours, minutes, seconds, {0, 0})
+    DateTime.from_naive(naive_datetime, @utc_zone)
+  end
+
+  def dynamical_datetime_to_utc_datetime(%{year: year} = datetime) do
+    t = (year - 2000) / 100
+    delta_seconds = trunc(delta_seconds_for_year(year, t))
+    DateTime.add(datetime, -delta_seconds, :second)
+  end
+
+  @correction_first_year 1620
+  @correction_last_year 2002
+  @correction_lookup @correction_first_year..@correction_last_year
+
+  defp delta_seconds_for_year(year, _t) when year in @correction_lookup and rem(year, 2) == 0 do
+    elem(delta_seconds_1620_2002(), (year - @correction_first_year) / 2)
+  end
+
+  defp delta_seconds_for_year(year, t) when year in @correction_lookup do
+    (delta_seconds_for_year(year - 1, t) + delta_seconds_for_year(year + 1, t)) / 2
+  end
+
+  defp delta_seconds_for_year(year, t) when year < 948 do
+    2177 + 497 * t + 44.1 * :math.pow(t, 2)
+  end
+
+  defp delta_seconds_for_year(year, t) when year in 2000..2100 do
+    delta_t = 102 + 102 * t + 25.3 * :math.pow(t, 2)
+    delta_t + 0.37 * (year - 2100)
+  end
+
+  defp delta_seconds_for_year(year, t) when year >= 948 do
+    102 + 102 * t + 25.3 * :math.pow(t, 2)
+  end
+
+  defp delta_seconds_1620_2002 do
+    {121, 112, 103, 95, 88, 82, 77, 72, 68, 63, 60, 56, 53, 51, 48, 46, 44, 42, 40, 38, 35, 33,
+     31, 29, 26, 24, 22, 20, 18, 16, 14, 12, 11, 10, 9, 8, 7, 7, 7, 7, 7, 7, 8, 8, 9, 9, 9, 9, 9,
+     10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 14, 14, 14,
+     14, 15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 13, 13.1, 12.5, 12.2,
+     12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 11.9, 11.6, 11.0, 10.2, 9.2, 8.2, 7.1, 6.2, 5.6, 5.4,
+     5.3, 5.4, 5.6, 5.9, 6.2, 6.5, 6.8, 7.1, 7.3, 7.5, 7.6, 7.7, 7.3, 6.2, 5.2, 2.7, 1.4, -1.2,
+     -2.8, -3.8, -4.8, -5.5, -5.3, -5.6, -5.7, -5.9, -6.0, -6.3, -6.5, -6.2, -4.7, -2.8, -0.1,
+     2.6, 5.3, 7.7, 10.4, 13.3, 16.0, 18.2, 20.2, 21.1, 22.4, 23.5, 23.8, 24.3, 24.0, 23.9, 23.9,
+     23.7, 24.0, 24.3, 25.3, 26.2, 27.3, 28.2, 29.1, 30.0, 30.7, 31.4, 32.2, 33.1, 34.0, 35.0,
+     36.5, 38.3, 40.2, 42.2, 44.5, 46.5, 48.5, 50.5, 52.5, 53.8, 54.9, 55.8, 56.9, 58.3, 60.0,
+     61.6, 63.0, 63.8, 64.3}
+  end
 
   @doc """
   Returns the modified Julian day for a date

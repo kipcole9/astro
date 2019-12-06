@@ -92,4 +92,10 @@ defmodule Astro.Utils do
   def normalize_location(%Geo.Point{coordinates: {lng, lat}}) when is_lat(lat) and is_lng(lng) do
     %Geo.PointZ{coordinates: {lng, lat, 0.0}}
   end
+
+  def cos(degrees) do
+    degrees
+    |> to_radians
+    |> :math.cos()
+  end
 end

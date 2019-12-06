@@ -6,7 +6,7 @@ defmodule Astro do
 
   """
 
-  alias Astro.Solar
+  alias Astro.{Solar}
 
   @type longitude :: float()
   @type latitude :: float()
@@ -196,6 +196,14 @@ defmodule Astro do
   def sunset(location, date, options \\ default_options()) when is_list(options) do
     options = Keyword.put(options, :rise_or_set, :set)
     Solar.sun_rise_or_set(location, date, options)
+  end
+
+  def equinox(year, event) when event in [:march, :september] do
+    Solar.equinox_and_solstice(year, event)
+  end
+
+  def solstice(year, event) when event in [:june, :december] do
+    Solar.equinox_and_solstice(year, event)
   end
 
   @doc false

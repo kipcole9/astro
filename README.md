@@ -46,8 +46,8 @@ Sunrise and sunset calculations are tested to be within 1 minute of
 
 * [X] Sunrise
 * [X] Sunset
-* [ ] Solstice
-* [ ] Equinox
+* [X] Solstice
+* [X] Equinox
 
 ## Lunar functions
 
@@ -64,6 +64,8 @@ Sunrise and sunset calculations are tested to be within 1 minute of
 * For the intersection of calendars and astronomy, [Calendrical Calculations](https://www.amazon.com/Calendrical-Calculations-Ultimate-Edward-Reingold/dp/1107683165) by Nachum Dershowitz and Edward M. Reingold remains the standard reference.
 
 * On the web, [timeanddate.com](https://www.timeanddate.com/astronomy/) is a great reference. The sunrise/sunset calculations in this library are tested to return times within 1 minute of timeanddate.com results.
+
+* [Wikipedia](https://wikipedia.com) for content to help describe the understanding behind some of the functions
 
 ## Installation
 
