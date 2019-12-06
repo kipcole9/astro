@@ -13,7 +13,7 @@ The primary functions are:
 
 * `Astro.sunrise/3`
 * `Astro.sunset/3`
-* `Astro.solice/2`
+* `Astro.solstice/2`
 * `Astro.equinox/2`
 * `Astro.hours_of_daylight/2`
 

@@ -10,7 +10,6 @@ test_task:
   container:
     matrix:
       image: elixir:latest
-      image: elixir:1.8.2-otp-22
   mix_cache:
     folder: deps
     fingerprint_script: cat mix.lock
