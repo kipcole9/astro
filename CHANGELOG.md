@@ -1,3 +1,17 @@
+# Changelog for Astro version 0.3.0
+
+This is the changelog for Astro version 0.3.0 released on December ____, 2019.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Change in behaviour
+
+* Seconds are no longer truncated to zero when calculating datetimes and durations
+
+### Enhancements
+
+* Add `Astro.solar_noon/2` to return the true solar noon for a location and date
+
+* Add `Astro.hours_of_daylight/2` to return hours, minutes and seconds as a `Time.t()` representing the number of daylight hours for a give location and date
+
 # Changelog for Astro version 0.2.0
 
 This is the changelog for Astro version 0.2.0 released on December 6th, 2019.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

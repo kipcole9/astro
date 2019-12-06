@@ -6,7 +6,7 @@ defmodule Astro do
 
   """
 
-  alias Astro.{Solar, Utils, Time}
+  alias Astro.{Solar, Utils}
 
   @type longitude :: float()
   @type latitude :: float()
@@ -302,9 +302,6 @@ defmodule Astro do
 
   ## Arguments
 
-  * `date` is any date in the Gregorian
-    calendar (for example, `Calendar.ISO`)
-
   * `location` is the latitude, longitude and
     optionally elevation for the desired solar noon
     time. It can be expressed as:
@@ -315,6 +312,9 @@ defmodule Astro do
     * a `Geo.Point.t` struct to represent a location without elevation
     * a `Geo.PointZ.t` struct to represent a location and elevation
 
+  * `date` is any date in the Gregorian
+    calendar (for example, `Calendar.ISO`)
+
   ## Returns
 
   * a UTC datetime representing solar noon
@@ -322,7 +322,7 @@ defmodule Astro do
 
   ## Example
 
-      iex> Astro.solar_noon ~D[2019-12-06], {151.20666584, -33.8559799094}
+      iex> Astro.solar_noon {151.20666584, -33.8559799094}, ~D[2019-12-06]
       {:ok, ~U[2019-12-06 01:45:42Z]}
 
   ## Notes
@@ -336,17 +336,89 @@ defmodule Astro do
   local meridian.
 
   """
-  @spec solar_noon(Calendar.date(), Astro.location()) :: DateTime.t()
-  def solar_noon(date, location) do
-    julian_day =  Time.julian_day_from_date(date)
-    julian_centuries = Time.julian_centuries_from_julian_day(julian_day)
-
+  @spec solar_noon(Astro.location(), Calendar.date()) :: {:ok, DateTime.t()}
+  def solar_noon(location, date) do
     %Geo.PointZ{coordinates: {longitude, _, _}} =
       Utils.normalize_location(location)
 
+    julian_day =  Astro.Time.julian_day_from_date(date)
+    julian_centuries = Astro.Time.julian_centuries_from_julian_day(julian_day)
+
     julian_centuries
     |> Solar.solar_noon_utc(-longitude)
-    |> Time.datetime_from_date_and_minutes(date)
+    |> Astro.Time.datetime_from_date_and_minutes(date)
+  end
+
+  @doc """
+  Returns the number of hours of daylight for a given
+  location on a given date.
+
+  ## Arguments
+
+  * `location` is the latitude, longitude and
+    optionally elevation for the desired hours of
+    daylight. It can be expressed as:
+
+    * `{lng, lat}` - a tuple with longitude and latitude
+      as floating point numbers. **Note** the order of the
+      arguments.
+    * a `Geo.Point.t` struct to represent a location without elevation
+    * a `Geo.PointZ.t` struct to represent a location and elevation
+
+  * `date` is any date in the Gregorian
+    calendar (for example, `Calendar.ISO`)
+
+  ## Returns
+
+  * `{:ok, time}` where `time` is a `Time.t()`
+
+  ## Examples
+
+      iex> Astro.hours_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-07]
+      {:ok, ~T[14:18:45]}
+
+      # No sunset in summer
+      iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-06-07]
+      {:ok, ~T[23:59:59]}
+
+      # No sunrise in winter
+      iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-12-07]
+      {:ok, ~T[00:00:00]}
+
+  ## Notes
+
+  In latitudes above the polar circles (approximately
+  +/- 66.5631 degrees) there will be no hours of daylight
+  in winter and 24 hours of daylight in summer.
+
+  """
+  @spec hours_of_daylight(Astro.location(), Calendar.date()) :: {:ok, Time.t()}
+  def hours_of_daylight(location, date) do
+    with {:ok, sunrise} <- sunrise(location, date),
+         {:ok, sunset} <- sunset(location, date) do
+      seconds_of_sunlight = DateTime.diff(sunset, sunrise)
+      {hours, minutes, seconds} = Astro.Time.seconds_to_hms(seconds_of_sunlight)
+      Time.new(hours, minutes, seconds)
+    else
+      {:error, :no_time} ->
+        if no_daylight_hours?(location, date) do
+          Time.new(0, 0, 0)
+        else
+          Time.new(23, 59, 59)
+        end
+    end
+  end
+
+  @polar_circle_latitude 66.5631
+  defp no_daylight_hours?(location, date) do
+    %Geo.PointZ{coordinates: {_longitude, latitude, _elevation}} =
+      Utils.normalize_location(location)
+
+    cond do
+      latitude >= @polar_circle_latitude and date.month in 10..12 or date.month in 1..3 -> true
+      latitude <= -@polar_circle_latitude and date.month in 4..9 -> true
+      true -> false
+    end
   end
 
   @doc false

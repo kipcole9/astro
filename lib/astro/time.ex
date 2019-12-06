@@ -264,19 +264,15 @@ defmodule Astro.Time do
 
   """
   def moment_to_datetime(time_of_day, %{year: year, month: month, day: day}) do
-    with {hours, minutes, seconds} <- to_hms(time_of_day),
+    with {hours, minutes, seconds} <- hours_to_hms(time_of_day),
          {:ok, naive_datetime} <- NaiveDateTime.new(year, month, day, hours, minutes, seconds, 0) do
       DateTime.from_naive(naive_datetime, @utc_zone)
     end
   end
 
   @doc """
-  Converts a float number of hourse
+  Converts a float number of hours
   since midnight into `{hours, minutes, seconds}`.
-
-  `seconds` is forced to zero since the accuracy
-  of astronomical calculations doesn't extend to
-  seconds.
 
   ## Arguments
 
@@ -289,19 +285,47 @@ defmodule Astro.Time do
 
   ## Examples
 
-    iex> Astro.Time.to_hms 0.0
+    iex> Astro.Time.hours_to_hms 0.0
     {0, 0, 0}
-    iex> Astro.Time.to_hms 23.999
-    {23, 59, 0}
-    iex> Astro.Time.to_hms 15.456
-    {15, 27, 0}
+    iex> Astro.Time.hours_to_hms 23.999
+    {23, 59, 56}
+    iex> Astro.Time.hours_to_hms 15.456
+    {15, 27, 21}
 
   """
-  def to_hms(time_of_day) when is_float(time_of_day) do
+  def hours_to_hms(time_of_day) when is_float(time_of_day) do
     hours = trunc(time_of_day)
-    minutes = trunc((time_of_day - hours) * 60.0)
+    minutes = (time_of_day - hours) * @minutes_per_hour
+    seconds = (minutes - trunc(minutes)) * @seconds_per_minute
 
-    {hours, minutes, 0}
+    {hours, trunc(minutes), trunc(seconds)}
+  end
+
+  @doc """
+  Converts a number of seconds
+  since midnight into `{hours, minutes, seconds}`.
+
+  ## Arguments
+
+  * `time_of_day` is a number of seconds
+
+  ## Returns
+
+  * A `{hour, minute, second}` tuple.
+
+  ## Examples
+
+    iex> Astro.Time.seconds_to_hms 0.0
+    {0, 0, 0}
+    iex> Astro.Time.seconds_to_hms 3214
+    {0, 53, 34}
+    iex> Astro.Time.seconds_to_hms 10_000
+    {2, 46, 39}
+
+  """
+  def seconds_to_hms(time_of_day) when is_number(time_of_day) do
+    (time_of_day / @seconds_per_minute / @minutes_per_hour)
+    |> hours_to_hms
   end
 
   @doc """

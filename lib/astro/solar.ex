@@ -644,7 +644,7 @@ defmodule Astro.Solar do
 
   """
   @spec equinox_and_solstice(pos_integer, :march | :june | :september | :december) ::
-    DateTime.t()
+    {:ok, DateTime.t()}
 
   def equinox_and_solstice(year, event) do
     jde0 = initial_estimate(year, event)
