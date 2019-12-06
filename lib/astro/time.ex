@@ -134,10 +134,42 @@ defmodule Astro.Time do
     DateTime.from_naive(naive_datetime, @utc_zone)
   end
 
-  def dynamical_datetime_to_utc_datetime(%{year: year} = datetime) do
+  @doc """
+  Converts a terrestrial datetime to a UTC datetime
+
+  ## Arguments
+
+  * `datetime` is any UTC datetime which is considered
+    to be a Terrestrial Time.
+
+  ## Returns
+
+  * A UTC datetime adjusted for the difference
+    between Terrestrial Time and UTC time
+
+  ## Notes
+
+  Terrestrial Time (TT) was introduced by the IAU in 1979 as
+  the coordinate time scale for an observer on the
+  surface of Earth. It takes into account relativistic
+  effects and is based on International Atomic Time (TAI),
+  which is a high-precision standard using several hundred
+  atomic clocks worldwide. As such, TD is the atomic time
+  equivalent to its predecessor Ephemeris Time (ET) and is
+  used in the theories of motion for bodies in the solar
+  system.
+
+  To ensure continuity with ET, TD was defined to match
+  ET for the date 1977 Jan 01. In 1991, the IAU refined
+  the definition of TT to make it more precise. It was
+  also renamed Terrestrial Time (TT) from the earlier
+  Terrestrial Dynamical Time (TDT).
+
+  """
+  def utc_datetime_from_terrestrial_datetime(%{year: year} = datetime) do
     t = (year - 2000) / 100
     delta_seconds = trunc(delta_seconds_for_year(year, t))
-    DateTime.add(datetime, -delta_seconds, :second)
+    {:ok, DateTime.add(datetime, -delta_seconds, :second)}
   end
 
   @correction_first_year 1620
@@ -145,7 +177,7 @@ defmodule Astro.Time do
   @correction_lookup @correction_first_year..@correction_last_year
 
   defp delta_seconds_for_year(year, _t) when year in @correction_lookup and rem(year, 2) == 0 do
-    elem(delta_seconds_1620_2002(), (year - @correction_first_year) / 2)
+    elem(delta_seconds_1620_2002(), div(year - @correction_first_year, 2))
   end
 
   defp delta_seconds_for_year(year, t) when year in @correction_lookup do

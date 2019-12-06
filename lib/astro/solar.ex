@@ -652,7 +652,7 @@ defmodule Astro.Solar do
     jde = jde0 + 0.00001 * s / dl
 
     {:ok, tdt} = Time.datetime_from_julian_days(jde)
-    Time.dynamical_datetime_to_utc_datetime(tdt)
+    Time.utc_datetime_from_terrestrial_datetime(tdt)
   end
 
   defp initial_estimate(year, event) when event in [:march, :june, :september, :december] do

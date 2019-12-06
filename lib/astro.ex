@@ -198,11 +198,102 @@ defmodule Astro do
     Solar.sun_rise_or_set(location, date, options)
   end
 
-  def equinox(year, event) when event in [:march, :september] do
+  @doc """
+  Returns the datetime in UTC for either the
+  March or September equinox.
+
+  ## Arguments
+
+  * `year` is the gregorian year for which the equinox is
+    to be calculated
+
+  * `event` is either `:march` or `:september` indicating
+    which of the two annual equinox datetimes is required
+
+  ## Returns
+
+  * `{:ok, datetime}` representing the UTC datetime of
+    the equinox
+
+  ## Examples
+
+    iex> Astro.equinox 2019, :march
+    {:ok, ~U[2019-03-20 21:58:06Z]}
+    iex> Astro.equinox 2019, :september
+    {:ok, ~U[2019-09-23 07:49:30Z]}
+
+  ## Notes
+
+  This equinox calculation is expected to be accurate
+  to within 2 minutes for the years 1000 CE to 3000 CE.
+
+  An equinox is commonly regarded as the instant of
+  time when the plane of Earth's equator passes through
+  the center of the Sun. This occurs twice each year:
+  around 20 March and 23 September.
+
+  In other words, it is the moment at which the
+  center of the visible Sun is directly above the equator.
+
+  """
+  @spec equinox(Calendar.year, :march | :september) :: {:ok, DateTime.t()}
+  def equinox(year, event) when event in [:march, :september] and year in 1000..3000 do
     Solar.equinox_and_solstice(year, event)
   end
 
-  def solstice(year, event) when event in [:june, :december] do
+  @doc """
+  Returns the datetime in UTC for either the
+  June or December solstice.
+
+  ## Arguments
+
+  * `year` is the gregorian year for which the solstice is
+    to be calculated
+
+  * `event` is either `:june` or `:december` indicating
+    which of the two annual solstice datetimes is required
+
+  ## Returns
+
+  * `{:ok, datetime}` representing the UTC datetime of
+    the solstice
+
+  ## Examples
+
+    iex> Astro.solstice 2019, :december
+    {:ok, ~U[2019-12-22 04:18:57Z]}
+    iex> Astro.solstice 2019, :june
+    {:ok, ~U[2019-06-21 15:53:45Z]}
+
+  ## Notes
+
+  This solstice calculation is expected to be accurate
+  to within 2 minutes for the years 1000 CE to 3000 CE.
+
+  A solstice is an event occurring when the Sun appears
+  to reach its most northerly or southerly excursion
+  relative to the celestial equator on the celestial
+  sphere. Two solstices occur annually, around June 21
+  and December 21.
+
+  The seasons of the year are determined by
+  reference to both the solstices and the equinoxes.
+
+  The term solstice can also be used in a broader
+  sense, as the day when this occurs. The day of a
+  solstice in either hemisphere has either the most
+  sunlight of the year (summer solstice) or the least
+  sunlight of the year (winter solstice) for any place
+  other than the Equator.
+
+  Alternative terms, with no ambiguity as to which
+  hemisphere is the context, are "June solstice" and
+  "December solstice", referring to the months in
+  which they take place every year.
+
+  """
+  @spec solstice(Calendar.year, :june | :december) :: {:ok, DateTime.t()}
+  def solstice(year, event) when event in [:june, :december] and year in 1000..3000 do
     Solar.equinox_and_solstice(year, event)
   end
 
