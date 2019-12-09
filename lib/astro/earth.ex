@@ -11,8 +11,7 @@ defmodule Astro.Earth do
   @refraction 34 / 60.0
   @solar_radius 16 / 60.0
   @meters_per_kilometer 1000.0
-
-  # Radius in km
+  @obliquity Astro.Utils.to_radians(23.4397)
   @earth_radius 6356.9
 
   @doc """
@@ -58,6 +57,13 @@ defmodule Astro.Earth do
   """
   def earth_radius do
     @earth_radius
+  end
+
+  @doc """
+  Returns the obliquity of the earth
+  """
+  def obliquity do
+    @obliquity
   end
 
   @doc """

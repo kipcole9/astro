@@ -10,6 +10,7 @@ defmodule Astro do
 
   @type longitude :: float()
   @type latitude :: float()
+  @type degrees :: float()
   @type location :: {longitude, latitude} | Geo.Point.t() | Geo.PointZ.t()
   @type date :: Calendar.date() | Calendar.naive_datetime() | Calendar.datetime()
   @type options :: keyword()
@@ -347,6 +348,56 @@ defmodule Astro do
     julian_centuries
     |> Solar.solar_noon_utc(-longitude)
     |> Astro.Time.datetime_from_date_and_minutes(date)
+  end
+
+  @doc """
+  Returns solar longitude for a
+  given date. Solar longitude is used
+  to identify the seasons.
+
+  ## Arguments
+
+  * `date` is any date in the Gregorian
+    calendar (for example, `Calendar.ISO`)
+
+  ## Returns
+
+  * a `float` number of degrees between 0 and
+    360 representing the solar longitude
+    on `date`
+
+  ## Examples
+
+      iex> Astro.sun_apparent_longitude ~D[2019-03-21]
+      0.08035853207991295
+      iex> Astro.sun_apparent_longitude ~D[2019-06-22]
+      90.32130455695378
+      iex> Astro.sun_apparent_longitude ~D[2019-09-23]
+      179.68691978440197
+      iex> Astro.sun_apparent_longitude ~D[2019-12-23]
+      270.83941087483504
+
+  ## Notes
+
+  Solar longitude (the ecliptic longitude of the sun)
+  in effect describes the position of the earth in its
+  orbit, being zero at the moment of the vernal
+  equinox.
+
+  Since it is based on how far the earth has moved
+  in its orbit since the equinox, it is a measure of
+  what time of the tropical year (the year of seasons)
+  we are in, but without the inaccuracies of a calendar
+  date, which is perturbed by leap years and calendar
+  imperfections.
+
+  """
+  @spec sun_apparent_longitude(Calendar.date()) :: degrees()
+  def sun_apparent_longitude(date) do
+    date
+    |> Astro.Time.julian_day_from_date()
+    |> Astro.Time.julian_centuries_from_julian_day()
+    |> Solar.sun_apparent_longitude()
   end
 
   @doc """

@@ -1,6 +1,6 @@
 # Changelog for Astro version 0.3.0
 
-This is the changelog for Astro version 0.3.0 released on December ____, 2019.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 0.3.0 released on December 9th, 2019.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Change in behaviour
 
@@ -11,6 +11,8 @@ This is the changelog for Astro version 0.3.0 released on December ____, 2019.  
 * Add `Astro.solar_noon/2` to return the true solar noon for a location and date
 
 * Add `Astro.hours_of_daylight/2` to return hours, minutes and seconds as a `Time.t()` representing the number of daylight hours for a give location and date
+
+* Add `Astro.sun_apparent_longitude/1` to return the apparent solar longitude on a given date. The result, a number of degrees between 0 and 360, can be used to determine the seasons.
 
 # Changelog for Astro version 0.2.0
 

@@ -280,7 +280,9 @@ defmodule Astro.Solar do
   def sun_apparent_longitude(julian_centuries) do
     true_longitude = sun_true_longitude(julian_centuries)
     omega = 125.04 - 1934.136 * julian_centuries
+
     true_longitude - 0.00569 - 0.00478 * :math.sin(Utils.to_radians(omega))
+    |> Utils.mod(360)
   end
 
   @doc """

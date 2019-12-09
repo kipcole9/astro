@@ -93,6 +93,11 @@ defmodule Astro.Utils do
     %Geo.PointZ{coordinates: {lng, lat, 0.0}}
   end
 
+  def normalize_location(%Geo.PointZ{coordinates: {lng, lat, alt}} = location)
+      when is_lat(lat) and is_lng(lng) and is_alt(alt) do
+    location
+  end
+
   def cos(degrees) do
     degrees
     |> to_radians
