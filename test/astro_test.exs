@@ -6,7 +6,7 @@ defmodule AstroTest do
   doctest Astro.Earth
 
   test "A time zone not found for a location returns an error" do
-    assert Astro.sunrise({1.1, 3.5}, Date.utc_today()) == {:error, :timezone_not_found}
+    assert Astro.sunrise({1.1, 3.5}, Date.utc_today()) == {:error, :time_zone_not_found}
   end
 
   test "An invalid timezone returns an error" do

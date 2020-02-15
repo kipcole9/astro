@@ -1,3 +1,11 @@
+# Changelog for Astro version 0.4.0
+
+This is the changelog for Astro version 0.4.0 released on February 16th, 2020.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Breaking Change
+
+* When no timezone is found the return is changed from `{:error, :timezone_not_found}` to `{:error, :time_zone_not_found}` to be consistent with Elixir and `TzData`.
+
 # Changelog for Astro version 0.3.0
 
 This is the changelog for Astro version 0.3.0 released on December 9th, 2019.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

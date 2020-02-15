@@ -1,7 +1,7 @@
 defmodule Astro.MixProject do
   use Mix.Project
 
-  @version "0.3.0"
+  @version "0.4.0"
 
   def project do
     [
@@ -54,7 +54,7 @@ defmodule Astro.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:hackney, :tzdata, :logger]
     ]
   end
 
@@ -85,7 +85,7 @@ defmodule Astro.MixProject do
   defp deps do
     [
       {:tzdata, "~> 1.0"},
-      {:tz_world, "~> 0.2"},
+      {:tz_world, "~> 0.3"},
       {:geo, "~> 3.0"},
       {:jason, "~> 1.0"},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
