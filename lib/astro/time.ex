@@ -9,8 +9,21 @@ defmodule Astro.Time do
 
   """
 
+  alias Astro.Math
+  import Astro.Math, only: [poly: 2, hr: 1]
+
+  @type hours() :: number()
+
+  @typedoc """
+  A moment is a floating point representations of
+  days (the mantissa) and fraction of a day (the
+  fraction). Days is since a known epoch.
+  """
+  @type moment() :: float()
+  @type season() :: Math.angle()
+
   @julian_day_jan_1_2000 2_451_545
-  @julian_days_per_century 36525.0
+  @julian_days_per_century 36_525.0
   @utc_zone "Etc/UTC"
 
   @minutes_per_degree 4
@@ -26,6 +39,57 @@ defmodule Astro.Time do
   def hours_per_day, do: @hours_per_day
   def minutes_per_hour, do: @minutes_per_hour
   def days_from_minutes(minutes), do: minutes / @minutes_per_day
+  def seconds_per_hour, do: @seconds_per_hour
+  def seconds_per_minute, do: @seconds_per_minute
+
+  @spec universal_from_local(moment(), Math.location()) :: moment()
+  def universal_from_local(t, %{longitude: longitude}) do
+    t - zone_from_longitude(longitude)
+  end
+
+  def local_from_universal(t, %{longitude: longitude}) do
+    t + zone_from_longitude(longitude)
+  end
+
+  def standard_from_universal(t, %{zone: zone}) do
+    t + zone
+  end
+
+  def universal_from_standard(t, %{zone: zone}) do
+    t - zone
+  end
+
+  def standard_from_local(t, locale) do
+    t
+    |> universal_from_local(locale)
+    |> standard_from_universal(locale)
+  end
+
+  def dynamical_from_universal(t) do
+    t + ephemeris_correction(t)
+  end
+
+  def universal_from_dynamical(t) do
+    t - ephemeris_correction(t)
+  end
+
+  def sidereal_from_moment(t) do
+    c =  (t - j2000()) / @julian_days_per_century
+    Math.mod(
+      Math.poly(c,
+        Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
+      ),
+      360
+    )
+  end
+
+  def zone_from_longitude(%{longitude: angle}) do
+    zone_from_longitude(angle)
+  end
+
+  def zone_from_longitude(angle) when is_number(angle) do
+    angle / Math.deg(360.0)
+  end
 
   @doc """
   Returns the astronomical Julian day for a given
@@ -77,6 +141,22 @@ defmodule Astro.Time do
     (julian_day - @julian_day_jan_1_2000) / @julian_days_per_century
   end
 
+  def julian_centuries_from_moment(t) do
+    (dynamical_from_universal(t) - j2000()) / @julian_days_per_century
+  end
+
+  @doc """
+  Returns the day number for
+  January 1st, 2000
+
+  """
+  @new_year_2000 Date.new!(2000, 1, 1)
+  @j2000 Cldr.Calendar.date_to_iso_days(@new_year_2000) + 0.5
+
+  def j2000 do
+    @j2000
+  end
+
   @doc """
   Returns the Julian day for a given
   Julian century
@@ -122,7 +202,7 @@ defmodule Astro.Time do
         z
       else
         alpha = trunc((z - 1_867_216.25) / 36_524.25)
-        z + 1 + alpha - trunc(alpha / 4)
+        z + 1 + alpha - trunc(alpha / 4.0)
       end
 
     b = a + 1_524
@@ -176,7 +256,7 @@ defmodule Astro.Time do
 
   """
   def utc_datetime_from_terrestrial_datetime(%{year: year} = datetime) do
-    t = (year - 2000) / 100
+    t = (year - 2000) / 100.0
     delta_seconds = trunc(delta_seconds_for_year(year, t))
     {:ok, DateTime.add(datetime, -delta_seconds, :second)}
   end
@@ -418,6 +498,7 @@ defmodule Astro.Time do
   #
   # The offset is the difference between Local Mean Time at the given
   # longitude and Standard Time in effect for the given time zone.
+
   @doc false
   def local_mean_time_offset(%Geo.PointZ{} = location, gregorian_seconds, time_zone) do
     %Geo.PointZ{coordinates: {lng, _, _}} = location
@@ -459,5 +540,45 @@ defmodule Astro.Time do
   @doc false
   def timezone_at(%Geo.Point{} = location) do
     TzWorld.timezone_at(location)
+  end
+
+  def ephemeris_correction(t) do
+    %{year: year} = Cldr.Calendar.date_from_iso_days(floor(t), Cldr.Calendar.Gregorian)
+    c = (1.0 / @julian_days_per_century) * Date.diff(Date.new!(1900, 1, 1), Date.new!(year, 7, 1))
+    x = hr(12) + Date.diff(Date.new!(1810, 1, 1), Date.new!(year, 1, 1))
+
+    cond do
+      year in [1988..2019] ->
+        (1.0 / @seconds_per_day) * (year - 1933)
+
+      year in [1900, 1987] ->
+        poly(c, [
+          -0.00002, 0.000297, 0.025184,
+          -0.181133, 0.553040, -0.861938,
+          0.677066, -0.212591
+        ])
+
+      year in 1800..1899 ->
+        poly(c, [
+          -0.000009, 0.003844, 0.083563,
+          0.865736, 4.867575, 15.845535,
+          31.332267, 38.291999, 28.316289,
+          11.636204, 2.043794
+        ])
+
+      year in [1700, 1799] ->
+        (1.0 / @seconds_per_day) *
+        poly(year - 1700, [
+          8.118780842, -0.005092142,
+          0.003336121, -0.0000266484
+        ])
+
+       year in [1600..1699] ->
+          (1.0 / @seconds_per_day) *
+          poly(year - 1600, [196.58333, -4.0675, 0.0219167])
+
+       true ->
+        (1.0 / @seconds_per_day) * ((x * x) / 41048480.0 - 15)
+    end
   end
 end

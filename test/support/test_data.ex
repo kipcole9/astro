@@ -24,7 +24,12 @@ defmodule Astro.TestData do
     |> Enum.map(&String.split(&1, ",", trim: true))
     |> Enum.map(&trim_columns/1)
     |> Enum.map(fn [year, month, day, time] ->
-      [String.to_integer(year), transform_month(month), String.to_integer(day), transform_time(time)]
+      [
+        String.to_integer(year),
+        transform_month(month),
+        String.to_integer(day),
+        transform_time(time)
+      ]
     end)
   end
 
@@ -41,5 +46,4 @@ defmodule Astro.TestData do
     row
     |> Enum.map(&String.trim/1)
   end
-
 end

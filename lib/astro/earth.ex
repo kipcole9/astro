@@ -5,13 +5,13 @@ defmodule Astro.Earth do
 
   """
 
-  import Astro.Utils
+  import Astro.Math, only: [to_radians: 1, to_degrees: 1]
 
   @geometric_solar_elevation 90.0
   @refraction 34 / 60.0
   @solar_radius 16 / 60.0
   @meters_per_kilometer 1000.0
-  @obliquity Astro.Utils.to_radians(23.4397)
+  @obliquity to_radians(23.4397)
   @earth_radius 6356.9
 
   @doc """
@@ -109,4 +109,5 @@ defmodule Astro.Earth do
   def adjusted_solar_elevation(_solar_elevation, _elevation) do
     @geometric_solar_elevation
   end
+
 end

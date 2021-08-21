@@ -235,7 +235,7 @@ defmodule Astro do
   center of the visible Sun is directly above the equator.
 
   """
-  @spec equinox(Calendar.year, :march | :september) :: {:ok, DateTime.t()}
+  @spec equinox(Calendar.year(), :march | :september) :: {:ok, DateTime.t()}
   def equinox(year, event) when event in [:march, :september] and year in 1000..3000 do
     Solar.equinox_and_solstice(year, event)
   end
@@ -291,7 +291,7 @@ defmodule Astro do
   which they take place every year.
 
   """
-  @spec solstice(Calendar.year, :june | :december) :: {:ok, DateTime.t()}
+  @spec solstice(Calendar.year(), :june | :december) :: {:ok, DateTime.t()}
   def solstice(year, event) when event in [:june, :december] and year in 1000..3000 do
     Solar.equinox_and_solstice(year, event)
   end
@@ -339,10 +339,9 @@ defmodule Astro do
   """
   @spec solar_noon(Astro.location(), Calendar.date()) :: {:ok, DateTime.t()}
   def solar_noon(location, date) do
-    %Geo.PointZ{coordinates: {longitude, _, _}} =
-      Utils.normalize_location(location)
+    %Geo.PointZ{coordinates: {longitude, _, _}} = Utils.normalize_location(location)
 
-    julian_day =  Astro.Time.julian_day_from_date(date)
+    julian_day = Astro.Time.julian_day_from_date(date)
     julian_centuries = Astro.Time.julian_centuries_from_julian_day(julian_day)
 
     julian_centuries
@@ -466,7 +465,7 @@ defmodule Astro do
       Utils.normalize_location(location)
 
     cond do
-      latitude >= @polar_circle_latitude and date.month in 10..12 or date.month in 1..3 -> true
+      (latitude >= @polar_circle_latitude and date.month in 10..12) or date.month in 1..3 -> true
       latitude <= -@polar_circle_latitude and date.month in 4..9 -> true
       true -> false
     end

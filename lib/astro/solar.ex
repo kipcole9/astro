@@ -7,7 +7,7 @@ defmodule Astro.Solar do
 
   """
 
-  alias Astro.{Utils, Earth, Time}
+  alias Astro.{Math, Earth, Time, Utils}
   import Time, only: [minutes_per_day: 0, hours_per_day: 0, minutes_per_hour: 0]
 
   @minutes_per_degree 4.0
@@ -162,7 +162,7 @@ defmodule Astro.Solar do
 
     with {:ok, utc_time_in_minutes} <-
            calculate_utc_sun_position(Time.ajd(date), lat, -lng, adjusted_solar_elevation, mode) do
-      {:ok, Utils.mod(utc_time_in_minutes / minutes_per_hour(), hours_per_day())}
+      {:ok, Math.mod(utc_time_in_minutes / minutes_per_hour(), hours_per_day())}
     end
   end
 
@@ -197,15 +197,15 @@ defmodule Astro.Solar do
     solar_dec = solar_declination(approx_julian_centuries)
     hour_angle = sun_hour_angle_at_horizon(latitude, solar_dec, solar_elevation, mode)
 
-    delta = longitude - Utils.to_degrees(hour_angle)
+    delta = longitude - Math.to_degrees(hour_angle)
     time_delta = delta * 4.0
     720.0 + time_delta - eq_time
   end
 
   defp sun_hour_angle_at_horizon(latitude, solar_dec, solar_elevation, mode) do
-    lat_r = Utils.to_radians(latitude)
-    solar_dec_r = Utils.to_radians(solar_dec)
-    solar_elevation_r = Utils.to_radians(solar_elevation)
+    lat_r = Math.to_radians(latitude)
+    solar_dec_r = Math.to_radians(solar_dec)
+    solar_elevation_r = Math.to_radians(solar_elevation)
 
     hour_angle =
       :math.acos(
@@ -243,13 +243,13 @@ defmodule Astro.Solar do
   """
   @spec solar_declination(float) :: float()
   def solar_declination(julian_centuries) do
-    correction = obliquity_correction(julian_centuries) |> Utils.to_radians()
-    lambda = sun_apparent_longitude(julian_centuries) |> Utils.to_radians()
+    correction = obliquity_correction(julian_centuries) |> Math.to_radians()
+    lambda = sun_apparent_longitude(julian_centuries) |> Math.to_radians()
     sint = :math.sin(correction) * :math.sin(lambda)
 
     sint
     |> :math.asin()
-    |> Utils.to_degrees()
+    |> Math.to_degrees()
   end
 
   @doc """
@@ -271,7 +271,7 @@ defmodule Astro.Solar do
   longitude corrected for aberration and nutation
   as opposed to mean longitude
 
-  An equinox is the instants when the Sun's
+  An equinox is the instant when the Sun's
   apparent geocentric longitude is 0° (northward
   equinox) or 180° (southward equinox).
 
@@ -281,8 +281,8 @@ defmodule Astro.Solar do
     true_longitude = sun_true_longitude(julian_centuries)
     omega = 125.04 - 1934.136 * julian_centuries
 
-    true_longitude - 0.00569 - 0.00478 * :math.sin(Utils.to_radians(omega))
-    |> Utils.mod(360)
+    true_longitude - 0.00569 - 0.00478 * :math.sin(Math.to_radians(omega))
+    |> Math.mod(360)
   end
 
   @doc """
@@ -344,7 +344,7 @@ defmodule Astro.Solar do
   """
   @spec sun_equation_of_center(float) :: float()
   def sun_equation_of_center(julian_centuries) do
-    mrad = sun_geometric_mean_anomaly(julian_centuries) |> Utils.to_radians()
+    mrad = sun_geometric_mean_anomaly(julian_centuries) |> Math.to_radians()
     sinm = :math.sin(mrad)
     sin2m = :math.sin(2 * mrad)
     sin3m = :math.sin(3 * mrad)
@@ -462,9 +462,9 @@ defmodule Astro.Solar do
   """
   @spec equation_of_time(float) :: float()
   def equation_of_time(julian_centuries) when is_float(julian_centuries) do
-    epsilon = obliquity_correction(julian_centuries) |> Utils.to_radians()
-    sgml = sun_geometric_mean_longitude(julian_centuries) |> Utils.to_radians()
-    sgma = sun_geometric_mean_anomaly(julian_centuries) |> Utils.to_radians()
+    epsilon = obliquity_correction(julian_centuries) |> Math.to_radians()
+    sgml = sun_geometric_mean_longitude(julian_centuries) |> Math.to_radians()
+    sgma = sun_geometric_mean_anomaly(julian_centuries) |> Math.to_radians()
     eoe = earth_orbit_eccentricity(julian_centuries)
 
     y = :math.tan(epsilon / 2.0)
@@ -480,7 +480,7 @@ defmodule Astro.Solar do
       y * sin2l0 - 2.0 * eoe * sinm + 4.0 * eoe * y * sinm * cos2l0 - 0.5 * y * y * sin4l0 -
         1.25 * eoe * eoe * sin2m
 
-    Utils.to_degrees(eq_time) * 4.0
+    Math.to_degrees(eq_time) * 4.0
   end
 
   @doc """
@@ -544,7 +544,7 @@ defmodule Astro.Solar do
   @spec sun_geometric_mean_anomaly(float) :: float()
   def sun_geometric_mean_anomaly(julian_centuries) do
     anomaly = 357.52911 + julian_centuries * (35999.05029 - 0.0001537 * julian_centuries)
-    Utils.mod(anomaly, 360.0)
+    Math.mod(anomaly, 360.0)
   end
 
   @doc """
@@ -577,7 +577,7 @@ defmodule Astro.Solar do
   @spec sun_geometric_mean_longitude(float) :: float()
   def sun_geometric_mean_longitude(julian_centuries) do
     longitude = 280.46646 + julian_centuries * (36000.76983 + 0.0003032 * julian_centuries)
-    Utils.mod(longitude, 360.0)
+    Math.mod(longitude, 360.0)
   end
 
   @doc """
@@ -599,8 +599,8 @@ defmodule Astro.Solar do
     obliquity_of_ecliptic = mean_obliquity_of_ecliptic(julian_centuries)
 
     omega = 125.04 - 1934.136 * julian_centuries
-    correction = obliquity_of_ecliptic + 0.00256 * :math.cos(Utils.to_radians(omega))
-    Utils.mod(correction, 360.0)
+    correction = obliquity_of_ecliptic + 0.00256 * :math.cos(Math.to_radians(omega))
+    Math.mod(correction, 360.0)
   end
 
   @doc """
@@ -652,7 +652,7 @@ defmodule Astro.Solar do
     jde0 = initial_estimate(year, event)
     t = (jde0 - 2_451_545.0) / 36_525
     w = 35_999.373 * t - 2.47
-    dl = 1 + 0.0334 * Utils.cos(w) + 0.0007 * Utils.cos(2 * w)
+    dl = 1 + 0.0334 * Math.cos(w) + 0.0007 * Math.cos(2 * w)
     s = periodic24(t)
     jde = jde0 + 0.00001 * s / dl
 
@@ -690,7 +690,7 @@ defmodule Astro.Solar do
   end
 
   defp periodic24(t, [a | rest_a], [b | rest_b], [c | rest_c]) do
-    a * Utils.cos(b + c * t) + periodic24(t, rest_a, rest_b, rest_c)
+    a * Math.cos(b + c * t) + periodic24(t, rest_a, rest_b, rest_c)
   end
 
   defp periodic24_terms do

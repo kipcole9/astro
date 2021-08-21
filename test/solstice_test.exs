@@ -9,5 +9,4 @@ defmodule Astro.Test.Solstice do
       assert_in_delta solstice.minute, unquote(minute), 2
     end
   end
-
 end
