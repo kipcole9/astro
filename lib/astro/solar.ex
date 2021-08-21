@@ -652,7 +652,7 @@ defmodule Astro.Solar do
     jde0 = initial_estimate(year, event)
     t = (jde0 - 2_451_545.0) / 36_525
     w = 35_999.373 * t - 2.47
-    dl = 1 + 0.0334 * Math.cos(w) + 0.0007 * Math.cos(2 * w)
+    dl = 1 + 0.0334 * Math.cos(w) + 0.0007 * Math.cos(2.0 * w)
     s = periodic24(t)
     jde = jde0 + 0.00001 * s / dl
 
