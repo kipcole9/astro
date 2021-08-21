@@ -1,5 +1,16 @@
 # Changelog for Astro version 0.4.0
 
+This is the changelog for Astro version 0.5.0 released on August 21st, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Updates documentation to be clear about installation and setup requirements for `tz_world`
+
+* Fixes test data for Sao Paulo now that it no longer uses DST
+
+* Ensure `:astro` is started in test mode
+
+
 This is the changelog for Astro version 0.4.0 released on February 16th, 2020.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Breaking Change

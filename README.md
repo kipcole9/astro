@@ -9,6 +9,8 @@ Astro is a library to provide basic astromonomical functions with a focus on fun
 
 ## Usage
 
+**NOTE: It's important to install and configure `Astro` correctly before use. See the [installation](#installation) notes below.**
+
 The primary functions are:
 
 * `Astro.sunrise/3`
@@ -94,20 +96,57 @@ For this implementation, the latitude and longitude of the functions in `Astro` 
 
 ## Installation
 
+### Configure Astro
 Astro can be installed by adding `astro` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:astro, "~> 0.3.0"}
+    {:astro, "~> 0.4.0"}
   ]
 end
 ```
+
+### Install TzWorld Data
 Then get dependencies and install the data required to determine a time zone from a location which is used by the dependency `tz_world`.
 
 ```
 mix deps.get
 mix tz_world.update
+```
+
+### Add TzWorld to supervision tree
+
+It is also required that `tz_world` be added to your applications supervision tree by adding the relevant `tz_world` backend to it in your `MyApp.Application` module:
+```
+defmodule MyApp.Application do
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      .....
+      # See the documentation for tz_world for the
+      # various available backends. This is the recommended
+      # backend.
+      TzWorld.Backend.DetsWithIndexCache
+    ]
+
+    opts = [strategy: :one_for_one, name: Astro.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+end
+```
+
+### Configure your application module
+
+Make sure that you have configured your application in `mix.exs`:
+```elixir
+  def application do
+    [
+      mod: {MyApp.Application, [strategy: :one_for_one]},
+      .....
+    ]
+  end
 ```
 
 Documentation can be found at [https://hexdocs.pm/astro](https://hexdocs.pm/astro).

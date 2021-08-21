@@ -67,10 +67,10 @@ defmodule Astro.SunriseSunsetTest do
     end
   end
 
-  @sao_paulo {-46.6333, -23.5505}
+  @sao_paulo {-46.6396, -23.5558}
 
   for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.TestData.sunrise("sao_paulo") do
-    test "Sunrise on December #{day} 2019 for Sao Paulo, Brazil" do
+    test "Sunrise on December #{day} 2019 for São Paulo, Brazil" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunrise} = Astro.sunrise(@sao_paulo, date)
       assert sunrise.day == unquote(day)
@@ -80,7 +80,7 @@ defmodule Astro.SunriseSunsetTest do
   end
 
   for [day, _, _, sunset_hour, sunset_minute] <- Astro.TestData.sunrise("sao_paulo") do
-    test "Sunset on December #{day} 2019 for Sao Paulo, Brazil" do
+    test "Sunset on December #{day} 2019 for São Paulo, Brazil" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunset} = Astro.sunset(@sao_paulo, date)
       assert sunset.day == unquote(day)
