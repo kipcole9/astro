@@ -19,45 +19,48 @@ defmodule Astro.Lunar do
 
   @mean_synodic_month 29.530588861
   @months_epoch_to_j2000 24_724.0
+  @average_distance_earth_to_moon 385_000_560.0
 
   def new_moon_before(%{year: _year, month: _month, day: _day, calendar: calendar} = date) do
     date
     |> Cldr.Calendar.date_to_iso_days()
     |> new_moon_before()
-    |> naive_datetime_from_iso_days()
-    |> NaiveDateTime.convert!(calendar)
+    |> datetime_from_iso_days()
+    |> DateTime.convert!(calendar)
   end
 
   def new_moon_before(t) when is_number(t) do
-    t0 = nth_new_moon(0)
+    t0 = nth_new_moon(0.0)
     phi = lunar_phase(t)
     n = round((t - t0) / mean_synodic_month() - phi / deg(360.0))
-    nth_new_moon(Math.final(1.0 - n, fn k -> nth_new_moon(k) < t end))
+    nth_new_moon(Math.final(1.0 - n, &(nth_new_moon(&1) < t)))
   end
 
   def new_moon_at_or_after(%{year: _year, month: _month, day: _day, calendar: calendar} = date) do
     date
     |> Cldr.Calendar.date_to_iso_days()
     |> new_moon_at_or_after()
-    |> naive_datetime_from_iso_days()
-    |> NaiveDateTime.convert!(calendar)
+    |> datetime_from_iso_days()
+    |> DateTime.convert!(calendar)
   end
 
   def new_moon_at_or_after(t) when is_number(t) do
-    t0 = nth_new_moon(0)
+    t0 = nth_new_moon(0.0)
     phi = lunar_phase(t)
     n = round((t - t0) / mean_synodic_month() - phi / deg(360.0))
-    nth_new_moon(Math.next(n, fn k -> nth_new_moon(k) >= t end))
+    nth_new_moon(Math.next(n, &(nth_new_moon(&1) >= t)))
   end
 
-  def naive_datetime_from_iso_days(t) do
+  def datetime_from_iso_days(t) do
     days = trunc(t)
     fraction = Float.ratio(t - days)
 
     {year, month, day, hour, minute, second, fraction} =
       Cldr.Calendar.Gregorian.naive_datetime_from_iso_days({days, fraction})
 
-    NaiveDateTime.new!(year, month, day, hour, minute, second, fraction)
+    {:ok, date} = Elixir.Date.new(year, month, day)
+    {:ok, time} = Elixir.Time.new(hour, minute, second, fraction)
+    DateTime.new!(date, time)
   end
 
   @doc """
@@ -67,7 +70,6 @@ defmodule Astro.Lunar do
   """
   def lunar_phase(%{year: _year, month: _month, day: _day, calendar: _calendar} = date) do
     date
-    |> Date.convert!(Cldr.Calendar.Gregorian)
     |> Cldr.Calendar.date_to_iso_days()
     |> lunar_phase()
   end
@@ -437,7 +439,7 @@ defmodule Astro.Lunar do
         fn [v,w,x,y,z] -> v * :math.pow(e, abs(x)) * cos(w * d + x * m + y * m_prime + z * f) end
       )
 
-    mt(385_000_560.0) + correction
+    mt(@average_distance_earth_to_moon) + correction
   end
 
   def lunar_parallax(t, locale) do
@@ -468,7 +470,7 @@ defmodule Astro.Lunar do
     a = cos(eta) * sin(p1)
     b = cos(p1)
     arg = atan(a, b)
-    mod(p2+ p1 - arg, 360.0)
+    mod(p2 + p1 - arg, 360.0)
   end
 
   def sidereal_start() do
@@ -477,6 +479,7 @@ defmodule Astro.Lunar do
 
   # This should be replacable with the functions in Astro.Solar but
   # need to work out which one is is: mean, apparent or true
+
   @spec solar_longitude(Time.moment()) :: Time.season()
   def solar_longitude(t) do
     c = julian_centuries_from_moment(t)

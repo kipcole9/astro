@@ -1,15 +1,22 @@
-# Changelog for Astro version 0.4.0
+# Changelog
 
-This is the changelog for Astro version 0.5.0 released on August 21st, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+## Astro version 0.5.0
+
+This is the changelog for Astro version 0.5.0 released on August 22nd, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Bug Fixes
 
 * Updates documentation to be clear about installation and setup requirements for `tz_world`
 
-* Fixes test data for Sao Paulo now that it no longer uses DST
+* Fixes test data for São Paulo now that it no longer uses DST
 
 * Ensure `:astro` is started in test mode
 
+### Enhancements
+
+This primary focus of this release is to add lunar calculations including moon phase.
+
+## Astro version 0.4.0
 
 This is the changelog for Astro version 0.4.0 released on February 16th, 2020.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
@@ -17,7 +24,7 @@ This is the changelog for Astro version 0.4.0 released on February 16th, 2020.  
 
 * When no timezone is found the return is changed from `{:error, :timezone_not_found}` to `{:error, :time_zone_not_found}` to be consistent with Elixir and `TzData`.
 
-# Changelog for Astro version 0.3.0
+## Astro version 0.3.0
 
 This is the changelog for Astro version 0.3.0 released on December 9th, 2019.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
@@ -33,7 +40,7 @@ This is the changelog for Astro version 0.3.0 released on December 9th, 2019.  F
 
 * Add `Astro.sun_apparent_longitude/1` to return the apparent solar longitude on a given date. The result, a number of degrees between 0 and 360, can be used to determine the seasons.
 
-# Changelog for Astro version 0.2.0
+## Astro version 0.2.0
 
 This is the changelog for Astro version 0.2.0 released on December 6th, 2019.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
@@ -45,7 +52,7 @@ This is the changelog for Astro version 0.2.0 released on December 6th, 2019.  F
 
 * Add `Astro.Time.utc_datetime_from_terrestrial_datetime/1`
 
-# Changelog for Astro version 0.1.0
+## Astro version 0.1.0
 
 This is the changelog for Astro version 0.1.0 released on December 5th, 2019.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 

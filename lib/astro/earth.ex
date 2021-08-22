@@ -68,7 +68,7 @@ defmodule Astro.Earth do
 
   @doc """
   Adjusts the solar elevation to account
-  for the elevation of the requeste location
+  for the elevation of the requested location
 
   ## Arguments
 

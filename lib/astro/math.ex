@@ -1,6 +1,6 @@
 defmodule Astro.Math do
   @moduledoc false
-  import Kernel, except: [min: 2, max: 2]
+  import Kernel, except: [min: 2, max: 2, ceil: 1, floor: 1]
   alias Astro.Time
 
   @radians_to_degrees 180.0 / :math.pi()
@@ -63,6 +63,23 @@ defmodule Astro.Math do
       x < 0 -> to_degrees(:math.atan(y / x)) + deg(180.0)
     end
     |> mod(360.0)
+  end
+
+  def floor(x) when x >= 0 do
+    trunc(x)
+  end
+
+  def floor(x) when x < 0 do
+    t = trunc(x)
+    if x - t == 0 do
+      t
+    else
+      t - 1
+    end
+  end
+
+  def ceil(x) do
+    -floor(-x)
   end
 
   # `min(I, Pred)' returns the first `I' value for which
