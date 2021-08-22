@@ -1,4 +1,9 @@
 defmodule Astro.Lunar do
+  @moduledoc """
+
+
+  """
+
   alias Astro.{Math, Time}
 
   import Astro.Math, only: [
@@ -22,8 +27,8 @@ defmodule Astro.Lunar do
     j2000: 0,
     julian_centuries_from_moment: 1,
     sidereal_from_moment: 1,
-    datetime_from_iso_days: 1,
-    datetime_to_iso_days: 1
+    date_time_from_iso_days: 1,
+    date_time_to_iso_days: 1
   ]
 
   @type angle() :: number()
@@ -36,74 +41,139 @@ defmodule Astro.Lunar do
   @months_epoch_to_j2000 24_724.0
   @average_distance_earth_to_moon 385_000_560.0
 
-  def new_moon_before(unquote(Cldr.Calendar.datetime()) = date_time) do
+  @doc """
+  Returns the date time of the new
+  moon before a given date or date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime`, `Date` or
+    a `moment` which is a float number of days
+    since `0000-01-01`
+
+  ## Returns
+
+  * a `DateTime` if the argument is a `DateTime`
+    or `Date`. Returns a `moment` if the argument
+    is a `moment`.
+
+  ## Examples
+
+  """
+  @doc since: "0.5.0"
+  @spec date_time_new_moon_before(Calendar.date_time() | Calendar.date() | Time.moment()) ::
+    Calendar.date_time() | Calendar.date_time() | Time.moment()
+
+  def date_time_new_moon_before(unquote(Cldr.Calendar.datetime()) = date_time) do
     date_time
-    |> datetime_to_iso_days()
-    |> new_moon_before()
-    |> datetime_from_iso_days()
+    |> date_time_to_iso_days()
+    |> date_time_new_moon_before()
+    |> date_time_from_iso_days()
     |> DateTime.convert!(calendar)
   end
 
-  def new_moon_before(unquote(Cldr.Calendar.date()) = date) do
+  def date_time_new_moon_before(unquote(Cldr.Calendar.date()) = date) do
     date
     |> Cldr.Calendar.date_to_iso_days()
-    |> new_moon_before()
-    |> datetime_from_iso_days()
+    |> date_time_new_moon_before()
+    |> date_time_from_iso_days()
     |> DateTime.convert!(calendar)
   end
 
-  def new_moon_before(t) when is_number(t) do
+  def date_time_new_moon_before(t) when is_number(t) do
     t0 = nth_new_moon(0.0)
-    phi = lunar_phase(t)
+    phi = lunar_phase_at(t)
     n = round((t - t0) / mean_synodic_month() - phi / deg(360.0))
     nth_new_moon(Math.final(1.0 - n, &(nth_new_moon(&1) < t)))
   end
 
-  def new_moon_at_or_after(unquote(Cldr.Calendar.datetime()) = datetime) do
+  @doc """
+  Returns the date time of the new
+  moon at or after a given date or
+  date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime`, `Date` or
+    a `moment` which is a float number of days
+    since `0000-01-01`
+
+  ## Returns
+
+  * a `DateTime` if the argument is a `DateTime`
+    or `Date`. Returns a `moment` if the argument
+    is a `moment`.
+
+  ## Examples
+
+  """
+  @doc since: "0.5.0"
+  @spec date_time_new_moon_at_or_after(Calendar.date_time() | Calendar.date() | Time.moment()) ::
+    Calendar.date_time() | Calendar.date_time()
+
+  def date_time_new_moon_at_or_after(unquote(Cldr.Calendar.datetime()) = datetime) do
     datetime
-    |> datetime_to_iso_days()
-    |> new_moon_at_or_after()
-    |> datetime_from_iso_days()
+    |> date_time_to_iso_days()
+    |> date_time_new_moon_at_or_after()
+    |> date_time_from_iso_days()
     |> DateTime.convert!(calendar)
   end
 
-  def new_moon_at_or_after(unquote(Cldr.Calendar.date()) = date) do
+  def date_time_new_moon_at_or_after(unquote(Cldr.Calendar.date()) = date) do
     date
     |> Cldr.Calendar.date_to_iso_days()
-    |> new_moon_at_or_after()
-    |> datetime_from_iso_days()
+    |> date_time_new_moon_at_or_after()
+    |> date_time_from_iso_days()
     |> DateTime.convert!(calendar)
   end
 
-  def new_moon_at_or_after(t) when is_number(t) do
+  def date_time_new_moon_at_or_after(t) when is_number(t) do
     t0 = nth_new_moon(0.0)
-    phi = lunar_phase(t)
+    phi = lunar_phase_at(t)
     n = round((t - t0) / mean_synodic_month() - phi / deg(360.0))
     nth_new_moon(Math.next(n, &(nth_new_moon(&1) >= t)))
   end
 
   @doc """
-  Returns the lunar phase for a date in
-  degrees between `0.0` and `360.0`.
+  Returns the lunar phase as a
+  float number of degrees at a given
+  date or date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime`, `Date` or
+    a `moment` which is a float number of days
+    since `0000-01-01`
+
+  ## Returns
+
+  * the lunar phase as a float number of
+    degrees.
+
+  ## Examples
 
   """
-  def lunar_phase(unquote(Cldr.Calendar.datetime()) = datetime) do
+  @doc since: "0.5.0"
+  @spec lunar_phase_at(Calendar.date_time() | Calendar.date() | Time.moment()) ::
+    Calendar.date_time() | Time.moment()
+
+  def lunar_phase_at(unquote(Cldr.Calendar.datetime()) = date_time) do
     _ = calendar
 
-    datetime
-    |> datetime_to_iso_days()
-    |> lunar_phase()
+    date_time
+    |> date_time_to_iso_days()
+    |> lunar_phase_at()
   end
 
-  def lunar_phase(unquote(Cldr.Calendar.date()) = date) do
+  def lunar_phase_at(unquote(Cldr.Calendar.date()) = date) do
     _ = calendar
 
     date
     |> Cldr.Calendar.date_to_iso_days()
-    |> lunar_phase()
+    |> lunar_phase_at()
   end
 
-  def lunar_phase(t) when is_number(t) do
+  def lunar_phase_at(t) when is_number(t) do
     phi = mod(lunar_longitude(t) - solar_longitude(t), 360)
     t0 = nth_new_moon(0)
     n = round((t - t0) / mean_synodic_month())
@@ -116,74 +186,163 @@ defmodule Astro.Lunar do
     end
   end
 
-  @spec lunar_phase_at_or_before(phase(), Time.moment()) :: Time.moment()
-  def lunar_phase_at_or_before(unquote(Cldr.Calendar.datetime()) = datetime, phi) do
+  @doc """
+  Returns the date time of a given
+  lunar phase at or before a given
+  date time or date.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime`, `Date` or
+    a `moment` which is a float number of days
+    since `0000-01-01`
+
+  * `phase` is the required lunar phase expressed
+    as a float number of degrees between `0` and
+    `3660`
+
+  ## Returns
+
+  * a `DateTime` if the argument is a `DateTime`
+    or `Date`. Returns a `moment` if the argument
+    is a `moment`.
+
+  ## Examples
+
+  """
+
+  @doc since: "0.5.0"
+  @spec date_time_lunar_phase_at_or_before(Calendar.date_time() | Calendar.date() | Time.moment(), phase()) ::
+    Calendar.date_time() | Time.moment()
+
+  def date_time_lunar_phase_at_or_before(unquote(Cldr.Calendar.datetime()) = date_time, phase) do
     _ = calendar
 
-    datetime
-    |> datetime_to_iso_days()
-    |> lunar_phase_at_or_before(phi)
-    |> datetime_from_iso_days()
+    date_time
+    |> date_time_to_iso_days()
+    |> date_time_lunar_phase_at_or_before(phase)
+    |> date_time_from_iso_days()
   end
 
-  def lunar_phase_at_or_before(unquote(Cldr.Calendar.date()) = date, phi) do
+  def date_time_lunar_phase_at_or_before(unquote(Cldr.Calendar.date()) = date, phase) do
     _ = calendar
 
     date
     |> Cldr.Calendar.date_to_iso_days()
-    |> lunar_phase_at_or_before(phi)
-    |> datetime_from_iso_days()
+    |> date_time_lunar_phase_at_or_before(phase)
+    |> date_time_from_iso_days()
   end
 
-  def lunar_phase_at_or_before(t, phi) do
-    tau = t - mean_synodic_month() * (1.0 / deg(360.0)) * mod(lunar_phase(t) - phi, 360.0)
+  def date_time_lunar_phase_at_or_before(t, phase) do
+    tau = t - mean_synodic_month() * (1.0 / deg(360.0)) * mod(lunar_phase_at(t) - phase, 360.0)
     a = tau - 2
     b = min(t, tau + 2)
-    invert_angular(&lunar_phase/1, phi, a, b)
+    invert_angular(&lunar_phase_at/1, phase, a, b)
   end
 
-  @spec lunar_phase_at_or_before(Time.moment(), phase()) :: Time.moment()
-  def lunar_phase_at_or_after(unquote(Cldr.Calendar.datetime()) = datetime, phi) do
+  @doc """
+  Returns the date time of a given
+  lunar phase at or after a given
+  date time or date.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime`, `Date` or
+    a `moment` which is a float number of days
+    since `0000-01-01`
+
+  * `phase` is the required lunar phase expressed
+    as a float number of degrees between `0` and
+    `3660`
+
+  ## Returns
+
+  * a `DateTime` if the argument is a `DateTime`
+    or `Date`. Returns a `moment` if the argument
+    is a `moment`.
+
+  ## Examples
+
+  """
+
+  @doc since: "0.5.0"
+  @spec date_time_lunar_phase_at_or_before(Calendar.date_time() | Calendar.date() | Time.moment(), phase()) ::
+    Calendar.date_time() | Time.moment()
+
+  def date_time_lunar_phase_at_or_after(unquote(Cldr.Calendar.datetime()) = date_time, phase) do
     _ = calendar
 
-    datetime
-    |> datetime_to_iso_days()
-    |> lunar_phase_at_or_after(phi)
-    |> datetime_from_iso_days()
+    date_time
+    |> date_time_to_iso_days()
+    |> date_time_lunar_phase_at_or_after(phase)
+    |> date_time_from_iso_days()
   end
 
-  def lunar_phase_at_or_after(unquote(Cldr.Calendar.date()) = date, phi) do
+  def date_time_lunar_phase_at_or_after(unquote(Cldr.Calendar.date()) = date, phase) do
     _ = calendar
 
     date
     |> Cldr.Calendar.date_to_iso_days()
-    |> lunar_phase_at_or_after(phi)
-    |> datetime_from_iso_days()
+    |> date_time_lunar_phase_at_or_after(phase)
+    |> date_time_from_iso_days()
   end
 
-  def lunar_phase_at_or_after(t, phi) do
-    tau = t + mean_synodic_month() * (1 / deg(360.0)) * mod(phi - lunar_phase(t), 360.0)
+  def date_time_lunar_phase_at_or_after(t, phase) do
+    tau = t + mean_synodic_month() * (1 / deg(360.0)) * mod(phase - lunar_phase_at(t), 360.0)
     a = max(t, tau - 2)
     b = tau + 2
-    invert_angular(&lunar_phase/1, phi, a, b)
+    invert_angular(&lunar_phase_at/1, phase, a, b)
   end
 
-  def new() do
+  @doc """
+  Returns the new moon lunar
+  phase expressed as a float number
+  of degrees.
+
+  """
+  @doc since: "0.5.0"
+  @spec new_moon() :: phase()
+  def new_moon() do
     deg(0.0)
   end
 
-  def full() do
+  @doc """
+  Returns the full moon lunar
+  phase expressed as a float number
+  of degrees.
+
+  """
+  @doc since: "0.5.0"
+  @spec full_moon() :: phase()
+  def full_moon() do
     deg(180.0)
   end
 
+  @doc """
+  Returns the first quarter lunar
+  phase expressed as a float number
+  of degrees.
+
+  """
+  @doc since: "0.5.0"
+  @spec first_quarter() :: phase()
   def first_quarter() do
     deg(90.0)
   end
 
+  @doc """
+  Returns the last quarter lunar
+  phase expressed as a float number
+  of degrees.
+
+  """
+  @doc since: "0.5.0"
+  @spec last_quarter() :: phase()
   def last_quarter() do
     deg(270.0)
   end
 
+  @doc false
   def mean_synodic_month do
     @mean_synodic_month
   end
@@ -277,7 +436,7 @@ defmodule Astro.Lunar do
   end
 
   @doc false
-  @spec lunar_phase(Time.moment()) :: phase()
+  @spec lunar_longitude(Time.moment()) :: phase()
   def lunar_longitude(t) do
     c = julian_centuries_from_moment(t)
     l = mean_lunar_longitude(c)

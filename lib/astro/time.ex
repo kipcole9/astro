@@ -585,9 +585,9 @@ defmodule Astro.Time do
   end
 
   @doc false
-  @spec datetime_from_iso_days(moment()) :: Calendar.date_time()
+  @spec date_time_from_iso_days(moment()) :: Calendar.date_time()
 
-  def datetime_from_iso_days(t) do
+  def date_time_from_iso_days(t) do
     days = trunc(t)
     fraction = Float.ratio(t - days)
 
@@ -600,18 +600,18 @@ defmodule Astro.Time do
   end
 
   @doc false
-  @spec datetime_to_iso_days(Calendar.date_time()) :: moment()
+  @spec date_time_to_iso_days(Calendar.date_time()) :: moment()
 
-  def datetime_to_iso_days(unquote(Cldr.Calendar.datetime()) = datetime) do
+  def date_time_to_iso_days(unquote(Cldr.Calendar.datetime()) = date_time) do
     _ = calendar
-    datetime =
-      datetime
+    date_time =
+      date_time
       |> DateTime.shift_zone!("Etc/UTC")
       |> DateTime.convert!(Gregorian)
       |> DateTime.to_naive()
 
     %{year: year, month: month, day: day, hour: hour, minute: minute, second: second, microsecond: microsecond} =
-      datetime
+      date_time
 
     {days, {numerator, denominator}} =
       Gregorian.naive_datetime_to_iso_days(year, month, day, hour, minute, second, microsecond)
