@@ -2,13 +2,28 @@ defmodule Astro.Lunar do
   alias Astro.{Math, Time}
 
   import Astro.Math, only: [
-    deg: 1, sin: 1, cos: 1, sigma: 2, mod: 2, degrees: 1,
-    poly: 2, asin: 1, atan: 2, tan: 1,
-    mt: 1, secs: 1, invert_angular: 4, angle: 3
+    deg: 1,
+    sin: 1,
+    cos: 1,
+    sigma: 2,
+    mod: 2,
+    degrees: 1,
+    poly: 2,
+    asin: 1,
+    atan: 2,
+    tan: 1,
+    mt: 1,
+    secs: 1,
+    invert_angular: 4,
+    angle: 3
   ]
 
   import Astro.Time, only: [
-    j2000: 0, julian_centuries_from_moment: 1, sidereal_from_moment: 1
+    j2000: 0,
+    julian_centuries_from_moment: 1,
+    sidereal_from_moment: 1,
+    datetime_from_iso_days: 1,
+    datetime_to_iso_days: 1
   ]
 
   @type angle() :: number()
@@ -21,7 +36,15 @@ defmodule Astro.Lunar do
   @months_epoch_to_j2000 24_724.0
   @average_distance_earth_to_moon 385_000_560.0
 
-  def new_moon_before(%{year: _year, month: _month, day: _day, calendar: calendar} = date) do
+  def new_moon_before(unquote(Cldr.Calendar.datetime()) = date_time) do
+    date_time
+    |> datetime_to_iso_days()
+    |> new_moon_before()
+    |> datetime_from_iso_days()
+    |> DateTime.convert!(calendar)
+  end
+
+  def new_moon_before(unquote(Cldr.Calendar.date()) = date) do
     date
     |> Cldr.Calendar.date_to_iso_days()
     |> new_moon_before()
@@ -36,7 +59,15 @@ defmodule Astro.Lunar do
     nth_new_moon(Math.final(1.0 - n, &(nth_new_moon(&1) < t)))
   end
 
-  def new_moon_at_or_after(%{year: _year, month: _month, day: _day, calendar: calendar} = date) do
+  def new_moon_at_or_after(unquote(Cldr.Calendar.datetime()) = datetime) do
+    datetime
+    |> datetime_to_iso_days()
+    |> new_moon_at_or_after()
+    |> datetime_from_iso_days()
+    |> DateTime.convert!(calendar)
+  end
+
+  def new_moon_at_or_after(unquote(Cldr.Calendar.date()) = date) do
     date
     |> Cldr.Calendar.date_to_iso_days()
     |> new_moon_at_or_after()
@@ -51,24 +82,22 @@ defmodule Astro.Lunar do
     nth_new_moon(Math.next(n, &(nth_new_moon(&1) >= t)))
   end
 
-  def datetime_from_iso_days(t) do
-    days = trunc(t)
-    fraction = Float.ratio(t - days)
-
-    {year, month, day, hour, minute, second, fraction} =
-      Cldr.Calendar.Gregorian.naive_datetime_from_iso_days({days, fraction})
-
-    {:ok, date} = Elixir.Date.new(year, month, day)
-    {:ok, time} = Elixir.Time.new(hour, minute, second, fraction)
-    DateTime.new!(date, time)
-  end
-
   @doc """
   Returns the lunar phase for a date in
   degrees between `0.0` and `360.0`.
 
   """
-  def lunar_phase(%{year: _year, month: _month, day: _day, calendar: _calendar} = date) do
+  def lunar_phase(unquote(Cldr.Calendar.datetime()) = datetime) do
+    _ = calendar
+
+    datetime
+    |> datetime_to_iso_days()
+    |> lunar_phase()
+  end
+
+  def lunar_phase(unquote(Cldr.Calendar.date()) = date) do
+    _ = calendar
+
     date
     |> Cldr.Calendar.date_to_iso_days()
     |> lunar_phase()
@@ -88,14 +117,51 @@ defmodule Astro.Lunar do
   end
 
   @spec lunar_phase_at_or_before(phase(), Time.moment()) :: Time.moment()
-  def lunar_phase_at_or_before(phi, t) do
+  def lunar_phase_at_or_before(unquote(Cldr.Calendar.datetime()) = datetime, phi) do
+    _ = calendar
+
+    datetime
+    |> datetime_to_iso_days()
+    |> lunar_phase_at_or_before(phi)
+    |> datetime_from_iso_days()
+  end
+
+  def lunar_phase_at_or_before(unquote(Cldr.Calendar.date()) = date, phi) do
+    _ = calendar
+
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> lunar_phase_at_or_before(phi)
+    |> datetime_from_iso_days()
+  end
+
+  def lunar_phase_at_or_before(t, phi) do
     tau = t - mean_synodic_month() * (1.0 / deg(360.0)) * mod(lunar_phase(t) - phi, 360.0)
     a = tau - 2
     b = min(t, tau + 2)
     invert_angular(&lunar_phase/1, phi, a, b)
   end
 
-  def lunar_phase_at_or_after(phi, t) do
+  @spec lunar_phase_at_or_before(Time.moment(), phase()) :: Time.moment()
+  def lunar_phase_at_or_after(unquote(Cldr.Calendar.datetime()) = datetime, phi) do
+    _ = calendar
+
+    datetime
+    |> datetime_to_iso_days()
+    |> lunar_phase_at_or_after(phi)
+    |> datetime_from_iso_days()
+  end
+
+  def lunar_phase_at_or_after(unquote(Cldr.Calendar.date()) = date, phi) do
+    _ = calendar
+
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> lunar_phase_at_or_after(phi)
+    |> datetime_from_iso_days()
+  end
+
+  def lunar_phase_at_or_after(t, phi) do
     tau = t + mean_synodic_month() * (1 / deg(360.0)) * mod(phi - lunar_phase(t), 360.0)
     a = max(t, tau - 2)
     b = tau + 2
@@ -122,8 +188,9 @@ defmodule Astro.Lunar do
     @mean_synodic_month
   end
 
+  @doc false
   @spec nth_new_moon(integer()) :: Time.moment()
-  def nth_new_moon(n) do
+  defp nth_new_moon(n) do
     k = n - @months_epoch_to_j2000 # months since j2000
     c = k / 1_236.85
 
@@ -209,6 +276,7 @@ defmodule Astro.Lunar do
     Time.universal_from_dynamical(approx + correction + extra + additional)
   end
 
+  @doc false
   @spec lunar_phase(Time.moment()) :: phase()
   def lunar_longitude(t) do
     c = julian_centuries_from_moment(t)
@@ -267,44 +335,52 @@ defmodule Astro.Lunar do
     mod(l + correction + venus + jupiter + flat_earth + nutation(t), 360.0)
   end
 
+  @doc false
   def mean_lunar_longitude(c) do
     degrees(poly(c,
       Enum.map([218.3164477, 481267.88123421, -0.0015786, 1/538841, -1/65194000], &deg/1)
     ))
   end
 
+  @doc false
   def lunar_elongation(c) do
     degrees(poly(c,
       Enum.map([297.8501921, 445267.1114034, -0.0018819, 1/545868, -1/113065000], &deg/1)
     ))
   end
 
+  @doc false
   def solar_anomaly(c) do
     degrees(poly(c,
       Enum.map([357.5291092, 35999.0502909, -0.0001536, 1.0 / 24490000.0], &deg/1)
     ))
   end
 
+  @doc false
   def lunar_anomaly(c) do
     degrees(poly(c,
       Enum.map([134.9633964, 477198.8675055, 0.0087414, 1/69699, -1/14712000], &deg/1)
     ))
   end
 
-  def moon_node(x) do
+  @doc false
+  defp moon_node(x) do
     degrees(poly(x,
       Enum.map([93.2720950, 483202.0175233, -0.0036539, -1 / 3526000.0, 1 / 863310000.0], &deg/1)
     ))
   end
 
+  @doc false
   def lunar_node(d) do
     mod(moon_node(julian_centuries_from_moment(d)) + deg(90.0), deg(180.0)) + deg(90.0)
   end
 
+  @doc false
   def sidereal_lunar_longitude(t) do
     mod(lunar_longitude(t) - precession(t) + sidereal_start(), 360.0)
   end
 
+  @doc false
   @spec lunar_latitude(Time.moment()) :: angle()
   def lunar_latitude(t) do
     c = julian_centuries_from_moment(t)
@@ -376,6 +452,7 @@ defmodule Astro.Lunar do
     beta + venus + flat_earth + extra
   end
 
+  @doc false
   @spec lunar_altitude(Time.moment(), location()) :: angle()
   def lunar_altitude(t, %{latitude: phi, longitude: psi}) do
     lambda = lunar_longitude(t)
@@ -388,6 +465,7 @@ defmodule Astro.Lunar do
     mod(altitude + deg(180.0), 360.0) - deg(180.0)
   end
 
+  @doc false
   @spec lunar_distance(Time.moment()) :: meters()
   def lunar_distance(t) do
     c = julian_centuries_from_moment(t)
@@ -442,6 +520,7 @@ defmodule Astro.Lunar do
     mt(@average_distance_earth_to_moon) + correction
   end
 
+  @doc false
   def lunar_parallax(t, locale) do
     geo = lunar_altitude(t, locale)
     delta = lunar_distance(t)
@@ -450,10 +529,12 @@ defmodule Astro.Lunar do
     asin(arg)
   end
 
+  @doc false
   def topocentric_lunar_altitude(t, locale) do
     lunar_altitude(t, locale) - lunar_parallax(t, locale)
   end
 
+  @doc false
   @spec nutation(Time.moment()) :: angle()
   def nutation(t) do
     c = julian_centuries_from_moment(t)
@@ -462,6 +543,7 @@ defmodule Astro.Lunar do
     deg(-0.004778) * sin(a) + deg(-0.0003667) * sin(b)
   end
 
+  @doc false
   def precession(t) do
     c = julian_centuries_from_moment(t)
     eta = mod(poly(c, [secs(47.0029), secs(-0.03302), secs(0.000060)]), 360.0)
@@ -473,6 +555,7 @@ defmodule Astro.Lunar do
     mod(p2 + p1 - arg, 360.0)
   end
 
+  @doc false
   def sidereal_start() do
     deg(156.13605090692624)
   end
@@ -480,6 +563,7 @@ defmodule Astro.Lunar do
   # This should be replacable with the functions in Astro.Solar but
   # need to work out which one is is: mean, apparent or true
 
+  @doc false
   @spec solar_longitude(Time.moment()) :: Time.season()
   def solar_longitude(t) do
     c = julian_centuries_from_moment(t)
@@ -534,18 +618,22 @@ defmodule Astro.Lunar do
     mod(lambda + aberration(t) + nutation(t), 360.0)
   end
 
+  @doc false
   @spec aberration(Time.moment()) :: angle()
   def aberration(t) do
     c = julian_centuries_from_moment(t)
     deg(0.0000974) * cos(deg(177.63) + deg(35999.01848) * c) - deg(0.005575)
   end
 
+  @doc false
   @spec declination(Time.moment(), angle(), angle()) :: angle()
   def declination(t, beta, lambda) do
     epsilon = obliquity(t)
     asin(sin(beta) * cos(epsilon) + cos(beta) * sin(epsilon) * sin(lambda))
   end
 
+  @doc false
+  @spec obliquity(Time.moment()) :: angle()
   def obliquity(t) do
     c = julian_centuries_from_moment(t)
 
@@ -557,6 +645,7 @@ defmodule Astro.Lunar do
     ])
   end
 
+  @doc false
   @spec right_ascension(Time.moment(), angle(), angle()) :: angle()
   def right_ascension(t, beta, lambda) do
     epsilon = obliquity(t)

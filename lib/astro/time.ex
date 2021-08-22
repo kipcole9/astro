@@ -10,6 +10,8 @@ defmodule Astro.Time do
   """
 
   alias Astro.Math
+  alias Cldr.Calendar.Gregorian
+
   import Astro.Math, only: [poly: 2, hr: 1]
 
   @type hours() :: number()
@@ -580,5 +582,40 @@ defmodule Astro.Time do
        true ->
         (1.0 / @seconds_per_day) * ((x * x) / 41048480.0 - 15)
     end
+  end
+
+  @doc false
+  @spec datetime_from_iso_days(moment()) :: Calendar.date_time()
+
+  def datetime_from_iso_days(t) do
+    days = trunc(t)
+    fraction = Float.ratio(t - days)
+
+    {year, month, day, hour, minute, second, fraction} =
+      Gregorian.naive_datetime_from_iso_days({days, fraction})
+
+    {:ok, date} = Elixir.Date.new(year, month, day)
+    {:ok, time} = Elixir.Time.new(hour, minute, second, fraction)
+    DateTime.new!(date, time)
+  end
+
+  @doc false
+  @spec datetime_to_iso_days(Calendar.date_time()) :: moment()
+
+  def datetime_to_iso_days(unquote(Cldr.Calendar.datetime()) = datetime) do
+    _ = calendar
+    datetime =
+      datetime
+      |> DateTime.shift_zone!("Etc/UTC")
+      |> DateTime.convert!(Gregorian)
+      |> DateTime.to_naive()
+
+    %{year: year, month: month, day: day, hour: hour, minute: minute, second: second, microsecond: microsecond} =
+      datetime
+
+    {days, {numerator, denominator}} =
+      Gregorian.naive_datetime_to_iso_days(year, month, day, hour, minute, second, microsecond)
+
+    days + numerator / denominator
   end
 end
