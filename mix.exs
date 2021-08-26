@@ -8,7 +8,7 @@ defmodule Astro.MixProject do
       app: :astro,
       name: "Astro",
       version: @version,
-      elixir: "~> 1.9",
+      elixir: "~> 1.11",
       source_url: "https://github.com/kipcole9/astro",
       docs: docs(),
       description: description(),

@@ -4,6 +4,8 @@
 
 This is the changelog for Astro version 0.5.0 released on August 26th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
+**Please note that Elixir 1.11 or later is required.**
+
 ### Bug Fixes
 
 * Updates documentation to be clear about installation and setup requirements for `tz_world`
