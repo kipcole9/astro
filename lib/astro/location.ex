@@ -1,7 +1,16 @@
-defmodule Astro.Utils do
+defmodule Astro.Location do
   @moduledoc false
+
   import Astro.Guards
 
+  def new(lng, lat, alt \\ 0.0) when is_lat(lat) and is_lng(lng) and is_alt(alt) do
+    %Geo.PointZ{coordinates: {lng, lat, alt}}
+  end
+
+  @doc """
+  Normalizes a location into a `t:Geo.PointZ` struct.
+
+  """
   def normalize_location({lng, lat, alt}) when is_lat(lat) and is_lng(lng) and is_alt(alt) do
     %Geo.PointZ{coordinates: {lng, lat, alt}}
   end

@@ -1,7 +1,7 @@
 defmodule Astro.Test.Solstice do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
-  for [year, month, day, [hour, minute]] <- Astro.TestData.solstice() do
+  for [year, month, day, [hour, minute]] <- Astro.Sun.TestData.solstice() do
     test "Solstice for #{String.capitalize(Atom.to_string(month))}, #{year}" do
       {:ok, solstice} = Astro.solstice(unquote(year), unquote(month))
       assert solstice.day == unquote(day)

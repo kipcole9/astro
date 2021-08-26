@@ -1,9 +1,9 @@
 defmodule Astro.SunriseSunsetTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   @sydney {151.20666584, -33.8559799094}
 
-  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.TestData.sunrise("sydney") do
+  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.Sun.TestData.sunrise("sydney") do
     test "Sunrise on December #{day} 2019 for Sydney, Australia" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunrise} = Astro.sunrise(@sydney, date)
@@ -13,7 +13,7 @@ defmodule Astro.SunriseSunsetTest do
     end
   end
 
-  for [day, _, _, sunset_hour, sunset_minute] <- Astro.TestData.sunrise("sydney") do
+  for [day, _, _, sunset_hour, sunset_minute] <- Astro.Sun.TestData.sunrise("sydney") do
     test "Sunset on December #{day} 2019 for Sydney, Australia" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunset} = Astro.sunset(@sydney, date)
@@ -25,7 +25,7 @@ defmodule Astro.SunriseSunsetTest do
 
   @moscow {37.6173, 55.7558}
 
-  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.TestData.sunrise("moscow") do
+  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.Sun.TestData.sunrise("moscow") do
     test "Sunrise on December #{day} 2019 for Moscow, Russia" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunrise} = Astro.sunrise(@moscow, date)
@@ -35,7 +35,7 @@ defmodule Astro.SunriseSunsetTest do
     end
   end
 
-  for [day, _, _, sunset_hour, sunset_minute] <- Astro.TestData.sunrise("moscow") do
+  for [day, _, _, sunset_hour, sunset_minute] <- Astro.Sun.TestData.sunrise("moscow") do
     test "Sunset on December #{day} 2019 for Moscow, Russia" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunset} = Astro.sunset(@moscow, date)
@@ -47,7 +47,7 @@ defmodule Astro.SunriseSunsetTest do
 
   @nyc {-74.0060, 40.7128}
 
-  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.TestData.sunrise("nyc") do
+  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.Sun.TestData.sunrise("nyc") do
     test "Sunrise on December #{day} 2019 for NY, NY" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunrise} = Astro.sunrise(@nyc, date)
@@ -57,7 +57,7 @@ defmodule Astro.SunriseSunsetTest do
     end
   end
 
-  for [day, _, _, sunset_hour, sunset_minute] <- Astro.TestData.sunrise("nyc") do
+  for [day, _, _, sunset_hour, sunset_minute] <- Astro.Sun.TestData.sunrise("nyc") do
     test "Sunset on December #{day} 2019 for NY, NY" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunset} = Astro.sunset(@nyc, date)
@@ -69,7 +69,7 @@ defmodule Astro.SunriseSunsetTest do
 
   @sao_paulo {-46.6396, -23.5558}
 
-  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.TestData.sunrise("sao_paulo") do
+  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.Sun.TestData.sunrise("sao_paulo") do
     test "Sunrise on December #{day} 2019 for São Paulo, Brazil" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunrise} = Astro.sunrise(@sao_paulo, date)
@@ -79,7 +79,7 @@ defmodule Astro.SunriseSunsetTest do
     end
   end
 
-  for [day, _, _, sunset_hour, sunset_minute] <- Astro.TestData.sunrise("sao_paulo") do
+  for [day, _, _, sunset_hour, sunset_minute] <- Astro.Sun.TestData.sunrise("sao_paulo") do
     test "Sunset on December #{day} 2019 for São Paulo, Brazil" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunset} = Astro.sunset(@sao_paulo, date)
@@ -91,7 +91,7 @@ defmodule Astro.SunriseSunsetTest do
 
   @beijing {116.4074, 39.9042}
 
-  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.TestData.sunrise("beijing") do
+  for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.Sun.TestData.sunrise("beijing") do
     test "Sunrise on December #{day} 2019 for Beijing, China" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunrise} = Astro.sunrise(@beijing, date)
@@ -101,7 +101,7 @@ defmodule Astro.SunriseSunsetTest do
     end
   end
 
-  for [day, _, _, sunset_hour, sunset_minute] <- Astro.TestData.sunrise("beijing") do
+  for [day, _, _, sunset_hour, sunset_minute] <- Astro.Sun.TestData.sunrise("beijing") do
     test "Sunset on December #{day} 2019 for Beijing, China" do
       {:ok, date} = Date.new(2019, 12, unquote(day))
       {:ok, sunset} = Astro.sunset(@beijing, date)

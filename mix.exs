@@ -88,10 +88,9 @@ defmodule Astro.MixProject do
       {:tz_world, "~> 0.7"},
       {:geo, "~> 3.0"},
       {:jason, "~> 1.0"},
-      # {:calcalc, path: "deps/calcalc"},
       {:ex_cldr_calendars, "~> 1.15"},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
-      {:dialyxir, "~> 1.0.0-rc", only: [:dev], runtime: false, optional: true}
+      {:dialyxir, "~> 1.0", only: [:dev], runtime: false, optional: true}
     ]
   end
 

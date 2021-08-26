@@ -9,10 +9,9 @@ defmodule Astro.Time do
 
   """
 
-  alias Astro.Math
   alias Cldr.Calendar.Gregorian
 
-  import Astro.Math, only: [poly: 2, hr: 1]
+  import Astro.Math, only: [poly: 2]
 
   @type hours() :: number()
 
@@ -21,8 +20,8 @@ defmodule Astro.Time do
   days (the mantissa) and fraction of a day (the
   fraction). Days is since a known epoch.
   """
-  @type moment() :: float()
-  @type season() :: Math.angle()
+  @type moment() :: number()
+  @type season() :: Astro.angle()
 
   @julian_day_jan_1_2000 2_451_545
   @julian_days_per_century 36_525.0
@@ -36,36 +35,44 @@ defmodule Astro.Time do
   @minutes_per_hour 60.0
   @hours_per_day 24.0
 
+  def hr(x), do: x / hours_per_day()
+  # def mn(x), do: x / hours_per_day() / minutes_per_hour()
+  # def sec(x), do: x / hours_per_day() / minutes_per_hour() / seconds_per_minute()
+  # def secs(x), do: x / seconds_per_hour()
+  # def mins(x), do: x / minutes_per_hour()
+
   @doc false
+  def seconds_per_day, do: @seconds_per_day
   def minutes_per_day, do: @minutes_per_day
   def hours_per_day, do: @hours_per_day
-  def minutes_per_hour, do: @minutes_per_hour
-  def days_from_minutes(minutes), do: minutes / @minutes_per_day
   def seconds_per_hour, do: @seconds_per_hour
   def seconds_per_minute, do: @seconds_per_minute
 
-  @spec universal_from_local(moment(), Math.location()) :: moment()
-  def universal_from_local(t, %{longitude: longitude}) do
-    t - zone_from_longitude(longitude)
-  end
+  def minutes_per_hour, do: @minutes_per_hour
+  def days_from_minutes(minutes), do: minutes / @minutes_per_day
 
-  def local_from_universal(t, %{longitude: longitude}) do
-    t + zone_from_longitude(longitude)
-  end
-
-  def standard_from_universal(t, %{zone: zone}) do
-    t + zone
-  end
-
-  def universal_from_standard(t, %{zone: zone}) do
-    t - zone
-  end
-
-  def standard_from_local(t, locale) do
-    t
-    |> universal_from_local(locale)
-    |> standard_from_universal(locale)
-  end
+  # @spec universal_from_local(moment(), GeoPointZ.t()) :: moment()
+  # def universal_from_local(t, %Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
+  #   t - zone_from_longitude(longitude)
+  # end
+  #
+  # def local_from_universal(t, %Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
+  #   t + zone_from_longitude(longitude)
+  # end
+  #
+  # def standard_from_universal(t, zone) do
+  #   t + offset_for_zone(t, zone)
+  # end
+  #
+  # def universal_from_standard(t, zone) do
+  #   t - offset_for_zone(t, zone)
+  # end
+  #
+  # def standard_from_local(t, locale) do
+  #   t
+  #   |> universal_from_local(locale)
+  #   |> standard_from_universal(locale)
+  # end
 
   def dynamical_from_universal(t) do
     t + ephemeris_correction(t)
@@ -75,23 +82,22 @@ defmodule Astro.Time do
     t - ephemeris_correction(t)
   end
 
-  def sidereal_from_moment(t) do
-    c =  (t - j2000()) / @julian_days_per_century
-    Math.mod(
-      Math.poly(c,
-        Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
-      ),
-      360
-    )
-  end
+  # def sidereal_from_moment(t) do
+  #   c = (t - j2000()) / @julian_days_per_century
+  #
+  #   terms =
+  #     Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
+  #
+  #   mod(Math.poly(c, terms), 360)
+  # end
 
-  def zone_from_longitude(%{longitude: angle}) do
-    zone_from_longitude(angle)
-  end
-
-  def zone_from_longitude(angle) when is_number(angle) do
-    angle / Math.deg(360.0)
-  end
+  # def zone_from_longitude(%Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
+  #   zone_from_longitude(longitude)
+  # end
+  #
+  # def zone_from_longitude(longitude) when is_number(longitude) do
+  #   longitude / Math.deg(360.0)
+  # end
 
   @doc """
   Returns the astronomical Julian day for a given
@@ -369,8 +375,10 @@ defmodule Astro.Time do
 
     iex> Astro.Time.hours_to_hms 0.0
     {0, 0, 0}
+
     iex> Astro.Time.hours_to_hms 23.999
     {23, 59, 56}
+
     iex> Astro.Time.hours_to_hms 15.456
     {15, 27, 21}
 
@@ -399,8 +407,10 @@ defmodule Astro.Time do
 
     iex> Astro.Time.seconds_to_hms 0.0
     {0, 0, 0}
+
     iex> Astro.Time.seconds_to_hms 3214
     {0, 53, 34}
+
     iex> Astro.Time.seconds_to_hms 10_000
     {2, 46, 39}
 
@@ -445,7 +455,9 @@ defmodule Astro.Time do
   * An integer number of seconds since `0001-01-01`
 
   """
-  def datetime_to_gregorian_seconds(%DateTime{} = datetime) do
+  def datetime_to_gregorian_seconds(unquote(Cldr.Calendar.datetime()) = datetime) do
+    _ = calendar
+
     %{year: year, month: month, day: day, hour: hour, minute: minute, second: second} = datetime
     :calendar.datetime_to_gregorian_seconds({{year, month, day}, {hour, minute, second}})
   end
@@ -503,16 +515,41 @@ defmodule Astro.Time do
 
   @doc false
   def local_mean_time_offset(%Geo.PointZ{} = location, gregorian_seconds, time_zone) do
-    %Geo.PointZ{coordinates: {lng, _, _}} = location
-
-    lng * @minutes_per_degree * @seconds_per_minute -
-      offset_for_zone(gregorian_seconds, time_zone)
+    %Geo.PointZ{coordinates: {longitude, _, _}} = location
+    local_mean_time = longitude * @minutes_per_degree * @seconds_per_minute
+    local_mean_time - offset_for_zone(gregorian_seconds, time_zone) * seconds_per_day()
   end
 
-  @doc false
-  def offset_for_zone(gregorian_seconds, time_zone) when is_integer(gregorian_seconds) do
-    [period | _] = Tzdata.periods_for_time(time_zone, gregorian_seconds, :wall)
-    period.utc_off + period.std_off
+  def offset_from_location(%Geo.PointZ{} = location, t) do
+    {:ok, time_zone} = timezone_at(location)
+    offset_for_zone(t, time_zone)
+  end
+
+  @doc """
+  Returns the offset in float days
+  for a given `moment` and time zone.
+
+  ## Example
+
+      # Returns a 1 hour offset as a fraction of day
+      iex> t = Cldr.Calendar.date_to_iso_days(~D[2021-08-01])
+      iex> Astro.Time.offset_for_zone t, "Europe/London"
+      0.041666666666666664
+
+  """
+  def offset_for_zone(t, time_zone) do
+    gregorian_seconds = t * seconds_per_day()
+
+    case Tzdata.periods_for_time(time_zone, gregorian_seconds, :wall) do
+      [period] ->
+        ((period.utc_off + period.std_off) / seconds_per_day())
+
+      [_period_a | _period_b] ->
+        :ambiguous_time
+
+      [] ->
+        :no_such_time_or_zone
+    end
   end
 
   @doc false
@@ -536,22 +573,17 @@ defmodule Astro.Time do
   @doc false
   def timezone_at(%Geo.PointZ{} = location) do
     location = %Geo.Point{coordinates: Tuple.delete_at(location.coordinates, 2)}
-    timezone_at(location)
-  end
-
-  @doc false
-  def timezone_at(%Geo.Point{} = location) do
     TzWorld.timezone_at(location)
   end
 
   def ephemeris_correction(t) do
     %{year: year} = Cldr.Calendar.date_from_iso_days(floor(t), Cldr.Calendar.Gregorian)
-    c = (1.0 / @julian_days_per_century) * Date.diff(Date.new!(1900, 1, 1), Date.new!(year, 7, 1))
+    c = Date.diff(Date.new!(1900, 1, 1), Date.new!(year, 7, 1)) / @julian_days_per_century
     x = hr(12) + Date.diff(Date.new!(1810, 1, 1), Date.new!(year, 1, 1))
 
     cond do
-      year in [1988..2019] ->
-        (1.0 / @seconds_per_day) * (year - 1933)
+      year in 1988..2019 ->
+        (year - 1933) / @seconds_per_day
 
       year in [1900, 1987] ->
         poly(c, [
@@ -569,23 +601,20 @@ defmodule Astro.Time do
         ])
 
       year in [1700, 1799] ->
-        (1.0 / @seconds_per_day) *
-        poly(year - 1700, [
-          8.118780842, -0.005092142,
-          0.003336121, -0.0000266484
-        ])
+        poly(year - 1700, [8.118780842, -0.005092142, 0.003336121, -0.0000266484]) /
+          @seconds_per_day
 
-       year in [1600..1699] ->
-          (1.0 / @seconds_per_day) *
-          poly(year - 1600, [196.58333, -4.0675, 0.0219167])
+      year in 1600..1699 ->
+         poly(year - 1600, [196.58333, -4.0675, 0.0219167]) /
+           @seconds_per_day
 
        true ->
-        (1.0 / @seconds_per_day) * ((x * x) / 41048480.0 - 15)
+         ((x * x) / 41_048_480.0 - 15) / @seconds_per_day
     end
   end
 
   @doc false
-  @spec date_time_from_iso_days(moment()) :: Calendar.date_time()
+  @spec date_time_from_iso_days(moment()) :: Calendar.datetime()
 
   def date_time_from_iso_days(t) do
     days = trunc(t)
@@ -600,13 +629,13 @@ defmodule Astro.Time do
   end
 
   @doc false
-  @spec date_time_to_iso_days(Calendar.date_time()) :: moment()
+  @spec date_time_to_iso_days(Calendar.datetime()) :: moment()
 
   def date_time_to_iso_days(unquote(Cldr.Calendar.datetime()) = date_time) do
     _ = calendar
     date_time =
       date_time
-      |> DateTime.shift_zone!("Etc/UTC")
+      |> DateTime.shift_zone!(@utc_zone)
       |> DateTime.convert!(Gregorian)
       |> DateTime.to_naive()
 

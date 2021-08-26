@@ -2,7 +2,7 @@
 
 ## Astro version 0.5.0
 
-This is the changelog for Astro version 0.5.0 released on August 22nd, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 0.5.0 released on August 26th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Bug Fixes
 
@@ -14,7 +14,17 @@ This is the changelog for Astro version 0.5.0 released on August 22nd, 2021.  Fo
 
 ### Enhancements
 
-This primary focus of this release is to add lunar calculations including moon phase.
+This primary focus of this release is to add lunar calculations for moon phase.
+
+* Adds `Astro.date_time_new_moon_before/1`
+
+* Adds `Astro.date_time_new_moon_at_or_after/1`
+
+* Adds `Astro.lunar_phase_at/1`
+
+* Adds `Astro.date_time_lunar_phase_at_or_before/2`
+
+* Adds `Astro.date_time_lunar_phase_at_or_after/2`
 
 ## Astro version 0.4.0
 

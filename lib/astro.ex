@@ -6,14 +6,244 @@ defmodule Astro do
 
   """
 
-  alias Astro.{Solar, Utils}
+  alias Astro.{Solar, Lunar, Location, Time}
+
+  import Astro.Time, only: [
+    date_time_from_iso_days: 1,
+    date_time_to_iso_days: 1
+  ]
 
   @type longitude :: float()
   @type latitude :: float()
+  @type altitude :: float()
   @type degrees :: float()
+
+  @type angle() :: number()
+  @type meters() :: number()
+  @type phase() :: angle()
+
   @type location :: {longitude, latitude} | Geo.Point.t() | Geo.PointZ.t()
-  @type date :: Calendar.date() | Calendar.naive_datetime() | Calendar.datetime()
+  @type date :: map() # Calendar.date() | Calendar.datetime()
   @type options :: keyword()
+
+  @doc """
+  Returns the date time of the new
+  moon before a given date or date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime` or a `Date` or
+    any struct that meets the requirements of
+    `t:Calendar.date` or `t:Calendar.datetime`
+
+  ## Returns
+
+  * a `DateTime` at which the new moon occurs.
+
+  ## Example
+
+      iex> Astro.date_time_new_moon_before ~D[2021-08-23]
+      ~U[2021-08-08 13:51:29.920452Z]
+
+  """
+  @doc since: "0.5.0"
+  @spec date_time_new_moon_before(date()) :: Calendar.datetime()
+
+  def date_time_new_moon_before(unquote(Cldr.Calendar.datetime()) = date_time) do
+    date_time
+    |> date_time_to_iso_days()
+    |> Lunar.date_time_new_moon_before()
+    |> date_time_from_iso_days()
+    |> DateTime.convert!(calendar)
+  end
+
+  def date_time_new_moon_before(unquote(Cldr.Calendar.date()) = date) do
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> Lunar.date_time_new_moon_before()
+    |> date_time_from_iso_days()
+    |> DateTime.convert!(calendar)
+  end
+
+  @doc """
+  Returns the date time of the new
+  moon at or after a given date or
+  date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime` or a `Date` or
+    any struct that meets the requirements of
+    `t:Calendar.date` or `t:Calendar.datetime`
+
+  ## Returns
+
+  * a `DateTime` at which the new moon occurs.
+
+  ## Example
+
+      iex> Astro.date_time_new_moon_at_or_after ~D[2021-08-23]
+      ~U[2021-09-07 00:52:05.476972Z]
+
+  """
+  @doc since: "0.5.0"
+  @spec date_time_new_moon_at_or_after(date) :: Calendar.datetime()
+
+  def date_time_new_moon_at_or_after(unquote(Cldr.Calendar.datetime()) = datetime) do
+    datetime
+    |> date_time_to_iso_days()
+    |> Lunar.date_time_new_moon_at_or_after()
+    |> date_time_from_iso_days()
+    |> DateTime.convert!(calendar)
+  end
+
+  def date_time_new_moon_at_or_after(unquote(Cldr.Calendar.date()) = date) do
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> Lunar.date_time_new_moon_at_or_after()
+    |> date_time_from_iso_days()
+    |> DateTime.convert!(calendar)
+  end
+
+  @doc """
+  Returns the lunar phase as a
+  float number of degrees at a given
+  date or date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime`, `Date` or
+    a `moment` which is a float number of days
+    since `0000-01-01`
+
+  ## Returns
+
+  * the lunar phase as a float number of
+    degrees.
+
+  ## Example
+
+      iex> Astro.lunar_phase_at ~U[2021-08-22 12:01:02.170362Z]
+      180.00001443052076
+
+      iex> Astro.lunar_phase_at(~U[2021-07-10 01:18:25.422335Z])
+      359.9999929267571
+
+  """
+
+  @doc since: "0.5.0"
+  @spec lunar_phase_at(date()) :: phase()
+
+  def lunar_phase_at(unquote(Cldr.Calendar.datetime()) = date_time) do
+    _ = calendar
+
+    date_time
+    |> date_time_to_iso_days()
+    |> Lunar.lunar_phase_at()
+  end
+
+  def lunar_phase_at(unquote(Cldr.Calendar.date()) = date) do
+    _ = calendar
+
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> Lunar.lunar_phase_at()
+  end
+
+  @doc """
+  Returns the date time of a given
+  lunar phase at or before a given
+  date time or date.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime` or a `Date` or
+    any struct that meets the requirements of
+    `t:Calendar.date` or `t:Calendar.datetime`
+
+  * `phase` is the required lunar phase expressed
+    as a float number of degrees between `0` and
+    `3660`
+
+  ## Returns
+
+  * a `DateTime` at which the phase occurse.
+
+  ## Example
+
+      iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon())
+      ~U[2021-07-10 01:18:25.422335Z]
+
+  """
+
+  @doc since: "0.5.0"
+  @spec date_time_lunar_phase_at_or_before(date(), Astro.phase()) ::
+    Calendar.datetime()
+
+  def date_time_lunar_phase_at_or_before(unquote(Cldr.Calendar.datetime()) = date_time, phase) do
+    _ = calendar
+
+    date_time
+    |> date_time_to_iso_days()
+    |> Lunar.date_time_lunar_phase_at_or_before(phase)
+    |> date_time_from_iso_days()
+  end
+
+  def date_time_lunar_phase_at_or_before(unquote(Cldr.Calendar.date()) = date, phase) do
+    _ = calendar
+
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> Lunar.date_time_lunar_phase_at_or_before(phase)
+    |> date_time_from_iso_days()
+  end
+
+  @doc """
+  Returns the date time of a given
+  lunar phase at or after a given
+  date time or date.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime` or a `Date` or
+    any struct that meets the requirements of
+    `t:Calendar.date` or `t:Calendar.datetime`
+
+  * `phase` is the required lunar phase expressed
+    as a float number of degrees between `0.0` and
+    `360.0`
+
+  ## Returns
+
+  * a `DateTime` at which the phase occurse.
+
+  ## Example
+
+      iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon())
+      ~U[2021-08-22 12:01:02.170362Z]
+
+  """
+
+  @doc since: "0.5.0"
+  @spec date_time_lunar_phase_at_or_after(date(), Astro.phase()) :: Calendar.datetime()
+
+  def date_time_lunar_phase_at_or_after(unquote(Cldr.Calendar.datetime()) = date_time, phase) do
+    _ = calendar
+
+    date_time
+    |> date_time_to_iso_days()
+    |> Lunar.date_time_lunar_phase_at_or_after(phase)
+    |> date_time_from_iso_days()
+  end
+
+  def date_time_lunar_phase_at_or_after(unquote(Cldr.Calendar.date()) = date, phase) do
+    _ = calendar
+
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> Lunar.date_time_lunar_phase_at_or_after(phase)
+    |> date_time_from_iso_days()
+  end
 
   @doc """
   Calculates the sunrise for a given location and date.
@@ -33,7 +263,7 @@ defmodule Astro do
     * a `Geo.Point.t` struct to represent a location without elevation
     * a `Geo.PointZ.t` struct to represent a location and elevation
 
-  * `date` is a `Date.t`, `NaiveDateTime.t` or `DateTime.t`
+  * `date` is a `t:Date`, `t:NaiveDateTime` or `t:DateTime`
     to indicate the date of the year in which
     the sunrise time is required.
 
@@ -124,7 +354,7 @@ defmodule Astro do
     * a `Geo.Point.t` struct to represent a location without elevation
     * a `Geo.PointZ.t` struct to represent a location and elevation
 
-  * `date` is a `Date.t`, `NaiveDateTime.t` or `DateTime.t`
+  * `date` is a `t:Date`, `t:NaiveDateTime` or `t:DateTime`
     to indicate the date of the year in which
     the sunset time is required.
 
@@ -168,7 +398,7 @@ defmodule Astro do
 
   ## Returns
 
-  * a `DateTime.t` representing the time of sunset in the
+  * a `t:DateTime` representing the time of sunset in the
     requested time zone at the requested location or
 
   * `{:error, :time_zone_not_found}` if the requested
@@ -339,14 +569,14 @@ defmodule Astro do
   """
   @spec solar_noon(Astro.location(), Calendar.date()) :: {:ok, DateTime.t()}
   def solar_noon(location, date) do
-    %Geo.PointZ{coordinates: {longitude, _, _}} = Utils.normalize_location(location)
+    %Geo.PointZ{coordinates: {longitude, _, _}} = Location.normalize_location(location)
 
-    julian_day = Astro.Time.julian_day_from_date(date)
-    julian_centuries = Astro.Time.julian_centuries_from_julian_day(julian_day)
+    julian_day = Time.julian_day_from_date(date)
+    julian_centuries = Time.julian_centuries_from_julian_day(julian_day)
 
     julian_centuries
     |> Solar.solar_noon_utc(-longitude)
-    |> Astro.Time.datetime_from_date_and_minutes(date)
+    |> Time.datetime_from_date_and_minutes(date)
   end
 
   @doc """
@@ -394,8 +624,8 @@ defmodule Astro do
   @spec sun_apparent_longitude(Calendar.date()) :: degrees()
   def sun_apparent_longitude(date) do
     date
-    |> Astro.Time.julian_day_from_date()
-    |> Astro.Time.julian_centuries_from_julian_day()
+    |> Time.julian_day_from_date()
+    |> Time.julian_centuries_from_julian_day()
     |> Solar.sun_apparent_longitude()
   end
 
@@ -442,19 +672,19 @@ defmodule Astro do
   in winter and 24 hours of daylight in summer.
 
   """
-  @spec hours_of_daylight(Astro.location(), Calendar.date()) :: {:ok, Time.t()}
+  @spec hours_of_daylight(Astro.location(), Calendar.date()) :: {:ok, Elixir.Time.t()}
   def hours_of_daylight(location, date) do
     with {:ok, sunrise} <- sunrise(location, date),
          {:ok, sunset} <- sunset(location, date) do
       seconds_of_sunlight = DateTime.diff(sunset, sunrise)
-      {hours, minutes, seconds} = Astro.Time.seconds_to_hms(seconds_of_sunlight)
-      Time.new(hours, minutes, seconds)
+      {hours, minutes, seconds} = Time.seconds_to_hms(seconds_of_sunlight)
+      Elixir.Time.new(hours, minutes, seconds)
     else
       {:error, :no_time} ->
         if no_daylight_hours?(location, date) do
-          Time.new(0, 0, 0)
+          Elixir.Time.new(0, 0, 0)
         else
-          Time.new(23, 59, 59)
+          Elixir.Time.new(23, 59, 59)
         end
     end
   end
@@ -462,7 +692,7 @@ defmodule Astro do
   @polar_circle_latitude 66.5631
   defp no_daylight_hours?(location, date) do
     %Geo.PointZ{coordinates: {_longitude, latitude, _elevation}} =
-      Utils.normalize_location(location)
+      Location.normalize_location(location)
 
     cond do
       (latitude >= @polar_circle_latitude and date.month in 10..12) or date.month in 1..3 -> true

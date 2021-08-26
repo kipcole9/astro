@@ -7,7 +7,7 @@ defmodule Astro.Solar do
 
   """
 
-  alias Astro.{Math, Earth, Time, Utils}
+  alias Astro.{Math, Earth, Time, Location}
   import Time, only: [minutes_per_day: 0, hours_per_day: 0, minutes_per_hour: 0]
 
   @minutes_per_degree 4.0
@@ -71,7 +71,7 @@ defmodule Astro.Solar do
 
   @doc false
   def sun_rise_or_set(location, datetime, options) do
-    Utils.normalize_location(location)
+    Location.normalize_location(location)
     |> sun_rise_or_set(datetime, options)
   end
 

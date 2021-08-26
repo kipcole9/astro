@@ -12,7 +12,7 @@ defmodule Astro.Earth do
   @solar_radius 16.0 / 60.0
   @meters_per_kilometer 1000.0
   @obliquity to_radians(23.4397)
-  @earth_radius 6356.9
+  @earth_radius 6_371.0072  # was 6356.9
 
   @doc """
   Returns an estimate of the effect of refraction

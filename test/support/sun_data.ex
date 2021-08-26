@@ -1,6 +1,6 @@
-defmodule Astro.TestData do
+defmodule Astro.Sun.TestData do
   def sunrise(file) do
-    File.read!("./test/support/#{file}.csv")
+    File.read!("./test/data/#{file}.csv")
     |> String.replace(~r/#.*\n/, "")
     |> String.replace(~r/\t/, "")
     |> String.split("\n")
@@ -16,7 +16,7 @@ defmodule Astro.TestData do
   end
 
   def solstice do
-    File.read!("./test/support/solstice.csv")
+    File.read!("./test/data/solstice.csv")
     |> String.replace(~r/#.*\n/, "")
     |> String.replace(~r/\t/, "")
     |> String.split("\n")

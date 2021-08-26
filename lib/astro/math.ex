@@ -1,5 +1,6 @@
 defmodule Astro.Math do
   @moduledoc false
+
   import Kernel, except: [min: 2, max: 2, ceil: 1, floor: 1]
   alias Astro.Time
 
@@ -13,12 +14,11 @@ defmodule Astro.Math do
     degrees / @radians_to_degrees
   end
 
+  @compile {:inline, mt: 1}
   def mt(x), do: x
-  def deg(x), do: x
 
-  def hr(x), do: x / Time.hours_per_day()
-  def sec(x), do: x / Time.hours_per_day() / Time.seconds_per_minute() / Time.minutes_per_hour()
-  def secs(x), do: x / Time.seconds_per_hour()
+  @compile {:inline, deg: 1}
+  def deg(x), do: x
   def angle(d, m, s), do: d + (m + s / Time.seconds_per_minute()) / Time.minutes_per_hour()
   def degrees_minutes_seconds(d, m, s), do: {d, m, s}
 
