@@ -19,7 +19,7 @@ defmodule Astro.Lunar do
 
   """
 
-  alias Astro.{Math, Time}
+  alias Astro.{Math, Time, Solar}
 
   import Astro.Math, only: [
     deg: 1,
@@ -218,6 +218,36 @@ defmodule Astro.Lunar do
     invert_angular(&lunar_phase_at/1, phase, a, b)
   end
 
+  @doc since: "0.6.0"
+  @spec lunar_position(Time.moment()) :: {Astro.angle(), Astro.angle(), Astro.meters()}
+
+  def lunar_position(t) do
+    lambda = lunar_longitude(t)
+    beta = lunar_latitude(t)
+    distance = lunar_distance(t)
+
+    {Astro.right_ascension(t, beta, lambda), Astro.declination(t, beta, lambda), distance}
+  end
+
+  @doc """
+  Returns the fractional illumination of the moon
+  at a given time as a fraction between 0.0 and 1.0.
+
+  """
+  @doc since: "0.6.0"
+  @spec illuminated_fraction_of_moon(Time.time()) :: float()
+
+  def illuminated_fraction_of_moon(t) do
+    {a0, d0, r0} = lunar_position(t)
+    {a, d, r} = Solar.solar_position(t)
+    r = Math.au_to_m(r)
+
+    phi = :math.acos(sin(d0) * sin(d) + cos(d0) * cos(d) * cos(a0 - a))
+    i = Math.atan_r(r * :math.sin(phi), r0 - r * :math.cos(phi))
+
+    0.5 * (1 + :math.cos(i))
+  end
+
   @doc """
   Returns the new moon lunar
   phase expressed as a float number
@@ -265,112 +295,6 @@ defmodule Astro.Lunar do
 
   def last_quarter() do
     deg(270.0)
-  end
-
-  @doc false
-  def mean_synodic_month do
-    @mean_synodic_month
-  end
-
-  @doc false
-  @doc since: "0.4.0"
-  @spec nth_new_moon(number()) :: Time.moment()
-
-  defp nth_new_moon(n) do
-    k = n - @months_epoch_to_j2000 # months since j2000
-    c = k / 1_236.85
-
-    approx =
-      j2000() +
-      poly(c, [5.09766, mean_synodic_month() * 1236.85, 0.0001437, -0.000000150, 0.00000000073])
-
-    e =
-      poly(c, [1.0, -0.002516, -0.0000074])
-
-    solar_anomaly = poly(c,
-      Enum.map([2.5534, 1236.85 * 29.10535670, -0.000 - 0014, -0.00000011], &deg/1))
-
-    lunar_anomaly = poly(c,
-      Enum.map([201.5643, 385.81693528 * 1236.85, 0.0107582, 0.00001238, -0.000000058], &deg/1))
-
-    moon_argument = poly(c,
-      Enum.map([160.7108, 390.67050284 * 1236.85, -0.0016118, -0.00000227, 0.000000011], &deg/1))
-
-    omega = poly(c,
-      Enum.map([124.7746, -1.56375588 * 1236.85, 0.0020672, 0.00000215], &deg/1))
-
-    sine_coeff = [
-      -0.40720, 0.17241, 0.01608, 0.01039, 0.00739,
-      -0.00514, 0.00208, -0.00111, -0.00057, 0.00056,
-      -0.00042, 0.00042, 0.00038, -0.00024, -0.00007,
-      0.00004, 0.00004, 0.00003, 0.00003, -0.00003,
-      0.00003, -0.00002, -0.00002, 0.00002
-    ]
-
-    e_factor = [
-      0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 2.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-      1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-    ]
-
-    solar_coeff = [
-      0.0, 1.0, 0.0, 0.0, -1.0, 1.0, 2.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-      1.0, -1.0, 2.0, 0.0, 3, 1.0, 0.0, 1.0, -1.0, -1.0, 1.0, 0.0
-    ]
-
-    lunar_coeff = [
-      1.0, 0.0, 2.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 2.0, 3.0, 0.0,
-      0.0, 2.0, 1.0, 2.0, 0.0, 1.0, 2.0, 1.0, 1.0, 1.0, 3.0, 4.0
-    ]
-
-    moon_coeff = [
-      0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, -2.0, 2.0, 0.0, 0.0, 2.0,
-      -2.0, 0.0, 0.0, -2.0, 0.0, -2.0, 2.0, 2.0, 2.0, -2.0, 0.0, 0.0
-    ]
-
-    correction =
-      deg(-0.00017) * sin(omega) +
-      sigma(
-        [sine_coeff, e_factor, solar_coeff, lunar_coeff, moon_coeff],
-        fn [v,w,x,y,z] ->
-          v * :math.pow(e, w) *
-          sin(x * solar_anomaly + y * lunar_anomaly + z * moon_argument)
-       end
-      )
-
-    extra =
-      deg(0.000325) *
-      sin(poly(c, Enum.map([299.77, 132.8475848, -0.009173], &deg/1)))
-
-    add_const = [
-      251.88, 251.83, 349.42, 84.66, 141.74, 207.14, 154.84,
-      34.52, 207.19, 291.34, 161.72, 239.56, 331.55
-    ]
-
-    add_coeff = [
-      0.016321, 26.651886, 36.412478, 18.206239, 53.303771,
-      2.453732, 7.306860, 27.261239, 0.121824, 1.844379,
-      24.198154, 25.513099, 3.592518
-    ]
-
-    add_factor = [
-      0.000165, 0.000164, 0.000126, 0.000110, 0.000062, 0.000060,
-      0.000056, 0.000047, 0.000042, 0.000040, 0.000037, 0.000035,
-      0.000023
-    ]
-
-    additional = sigma([add_const, add_coeff, add_factor], fn [i,j,l] -> l * sin(i + j * k) end)
-    Time.universal_from_dynamical(approx + correction + extra + additional)
-  end
-
-  @doc since: "0.6.0"
-  @spec lunar_position(Time.moment()) :: {Astro.angle(), Astro.angle(), Astro.meters()}
-
-  def lunar_position(t) do
-    lambda = lunar_longitude(t)
-    beta = lunar_latitude(t)
-    distance = lunar_distance(t)
-
-    {Astro.right_ascension(t, beta, lambda), Astro.declination(t, beta, lambda), distance}
   end
 
   @doc false
@@ -572,6 +496,101 @@ defmodule Astro.Lunar do
     )
 
     mt(@average_distance_earth_to_moon) + correction
+  end
+
+  @doc false
+  def mean_synodic_month do
+    @mean_synodic_month
+  end
+
+  @doc false
+  @doc since: "0.4.0"
+  @spec nth_new_moon(number()) :: Time.moment()
+
+  defp nth_new_moon(n) do
+    k = n - @months_epoch_to_j2000 # months since j2000
+    c = k / 1_236.85
+
+    approx =
+      j2000() +
+      poly(c, [5.09766, mean_synodic_month() * 1236.85, 0.0001437, -0.000000150, 0.00000000073])
+
+    e =
+      poly(c, [1.0, -0.002516, -0.0000074])
+
+    solar_anomaly = poly(c,
+      Enum.map([2.5534, 1236.85 * 29.10535670, -0.000 - 0014, -0.00000011], &deg/1))
+
+    lunar_anomaly = poly(c,
+      Enum.map([201.5643, 385.81693528 * 1236.85, 0.0107582, 0.00001238, -0.000000058], &deg/1))
+
+    moon_argument = poly(c,
+      Enum.map([160.7108, 390.67050284 * 1236.85, -0.0016118, -0.00000227, 0.000000011], &deg/1))
+
+    omega = poly(c,
+      Enum.map([124.7746, -1.56375588 * 1236.85, 0.0020672, 0.00000215], &deg/1))
+
+    sine_coeff = [
+      -0.40720, 0.17241, 0.01608, 0.01039, 0.00739,
+      -0.00514, 0.00208, -0.00111, -0.00057, 0.00056,
+      -0.00042, 0.00042, 0.00038, -0.00024, -0.00007,
+      0.00004, 0.00004, 0.00003, 0.00003, -0.00003,
+      0.00003, -0.00002, -0.00002, 0.00002
+    ]
+
+    e_factor = [
+      0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 2.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+      1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+    ]
+
+    solar_coeff = [
+      0.0, 1.0, 0.0, 0.0, -1.0, 1.0, 2.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+      1.0, -1.0, 2.0, 0.0, 3, 1.0, 0.0, 1.0, -1.0, -1.0, 1.0, 0.0
+    ]
+
+    lunar_coeff = [
+      1.0, 0.0, 2.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 2.0, 3.0, 0.0,
+      0.0, 2.0, 1.0, 2.0, 0.0, 1.0, 2.0, 1.0, 1.0, 1.0, 3.0, 4.0
+    ]
+
+    moon_coeff = [
+      0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, -2.0, 2.0, 0.0, 0.0, 2.0,
+      -2.0, 0.0, 0.0, -2.0, 0.0, -2.0, 2.0, 2.0, 2.0, -2.0, 0.0, 0.0
+    ]
+
+    correction =
+      deg(-0.00017) * sin(omega) +
+      sigma(
+        [sine_coeff, e_factor, solar_coeff, lunar_coeff, moon_coeff],
+        fn [v,w,x,y,z] ->
+          v * :math.pow(e, w) *
+          sin(x * solar_anomaly + y * lunar_anomaly + z * moon_argument)
+       end
+      )
+
+    extra =
+      deg(0.000325) *
+      sin(poly(c, Enum.map([299.77, 132.8475848, -0.009173], &deg/1)))
+
+    add_const = [
+      251.88, 251.83, 349.42, 84.66, 141.74, 207.14, 154.84,
+      34.52, 207.19, 291.34, 161.72, 239.56, 331.55
+    ]
+
+    add_coeff = [
+      0.016321, 26.651886, 36.412478, 18.206239, 53.303771,
+      2.453732, 7.306860, 27.261239, 0.121824, 1.844379,
+      24.198154, 25.513099, 3.592518
+    ]
+
+    add_factor = [
+      0.000165, 0.000164, 0.000126, 0.000110, 0.000062, 0.000060,
+      0.000056, 0.000047, 0.000042, 0.000040, 0.000037, 0.000035,
+      0.000023
+    ]
+
+    additional = sigma([add_const, add_coeff, add_factor], fn [i,j,l] -> l * sin(i + j * k) end)
+    Time.universal_from_dynamical(approx + correction + extra + additional)
   end
 
   def lunar_parallax(t, location) do

@@ -24,6 +24,10 @@ defmodule Astro.Math do
     au * @au_to_m
   end
 
+  def m_to_au(m) do
+    m / @au_to_m
+  end
+
   def degrees(degrees) do
     mod(degrees, 360.0)
   end

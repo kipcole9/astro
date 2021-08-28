@@ -14,7 +14,9 @@ This is the changelog for Astro version 0.6.0 released on ______, 2021.  For old
 
 * Add `Astro.sun_position_at/1`
 
-* Add `Astro.moon_postion_at/1`
+* Add `Astro.moon_position_at/1`
+
+* Add `Astro.illuminated_fraction_of_moon_at/1`
 
 ## Astro version 0.5.0
 

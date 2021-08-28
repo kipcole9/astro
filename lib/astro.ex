@@ -149,6 +149,53 @@ defmodule Astro do
   end
 
   @doc """
+  Returns the illumination of the moon
+  as a fraction for a given date or date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime` or a `Date` or
+    any struct that meets the requirements of
+    `t:Calendar.date` or `t:Calendar.datetime`
+
+  ## Returns
+
+  * a `float` value between `0.0` and `1.0`
+    representing the fractional illumination of
+    the moon.
+
+  ## Example
+
+      iex> Astro.illuminated_fraction_of_moon_at(~D[2017-03-16])
+      0.8884442367681415
+
+      iex> Astro.illuminated_fraction_of_moon_at(~D[1992-04-12])
+      0.6786428237168787
+
+      iex> Astro.illuminated_fraction_of_moon_at(~U[2017-03-16 19:55:11.0Z])
+      0.8334019164562495
+
+  """
+  @doc since: "0.6.0"
+  @spec illuminated_fraction_of_moon_at(date()) :: number()
+
+  def illuminated_fraction_of_moon_at(unquote(Cldr.Calendar.datetime()) = date_time) do
+    _ = calendar
+
+    date_time
+    |> Time.date_time_to_iso_days()
+    |> Lunar.illuminated_fraction_of_moon()
+  end
+
+  def illuminated_fraction_of_moon_at(unquote(Cldr.Calendar.date()) = date) do
+    _ = calendar
+
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> Lunar.illuminated_fraction_of_moon()
+  end
+
+  @doc """
   Returns the date time of the new
   moon before a given date or date time.
 
