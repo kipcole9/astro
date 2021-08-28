@@ -25,6 +25,8 @@ defmodule Astro.Lunar do
     deg: 1,
     sin: 1,
     cos: 1,
+    mt: 1,
+    asin: 1,
     sigma: 2,
     mod: 2,
     degrees: 1,
@@ -37,9 +39,13 @@ defmodule Astro.Lunar do
     julian_centuries_from_moment: 1
   ]
 
+  import Astro.Earth, only: [
+    nutation: 1
+  ]
+
   @mean_synodic_month 29.530588861
   @months_epoch_to_j2000 24_724.0
-  # @average_distance_earth_to_moon 385_000_560.0
+  @average_distance_earth_to_moon 385_000_560.0
 
   @doc """
   Returns the date time of the new
@@ -167,7 +173,6 @@ defmodule Astro.Lunar do
       738346.0544609067
 
   """
-
   @doc since: "0.5.0"
   @spec date_time_lunar_phase_at_or_before(Time.moment(), Astro.phase()) :: Time.moment()
 
@@ -203,7 +208,6 @@ defmodule Astro.Lunar do
       738389.5007195644
 
   """
-
   @doc since: "0.5.0"
   @spec date_time_lunar_phase_at_or_after(Time.moment(), Astro.phase()) :: Time.moment()
 
@@ -258,6 +262,7 @@ defmodule Astro.Lunar do
   """
   @doc since: "0.5.0"
   @spec last_quarter() :: Astro.phase()
+
   def last_quarter() do
     deg(270.0)
   end
@@ -268,7 +273,9 @@ defmodule Astro.Lunar do
   end
 
   @doc false
+  @doc since: "0.4.0"
   @spec nth_new_moon(number()) :: Time.moment()
+
   defp nth_new_moon(n) do
     k = n - @months_epoch_to_j2000 # months since j2000
     c = k / 1_236.85
@@ -355,8 +362,21 @@ defmodule Astro.Lunar do
     Time.universal_from_dynamical(approx + correction + extra + additional)
   end
 
+  @doc since: "0.6.0"
+  @spec lunar_position(Time.moment()) :: {Astro.angle(), Astro.angle(), Astro.meters()}
+
+  def lunar_position(t) do
+    lambda = lunar_longitude(t)
+    beta = lunar_latitude(t)
+    distance = lunar_distance(t)
+
+    {Astro.right_ascension(t, beta, lambda), Astro.declination(t, beta, lambda), distance}
+  end
+
   @doc false
+  @doc since: "0.5.0"
   @spec lunar_longitude(Time.moment()) :: Astro.phase()
+
   def lunar_longitude(t) do
     c = julian_centuries_from_moment(t)
     l = mean_lunar_longitude(c)
@@ -411,7 +431,159 @@ defmodule Astro.Lunar do
     venus = deg(3958.0 / 1000000.0) * sin(deg(119.75) + c * deg(131.849))
     jupiter = deg(318.0 / 1000000.0) * sin(deg(53.09) + c * deg(479264.29))
     flat_earth = deg(1962.0 / 1000000.0) * sin(l - f)
-    mod(l + correction + venus + jupiter + flat_earth + nutation(t), 360.0)
+    mod(l + correction + venus + jupiter + flat_earth + nutation(c), 360.0)
+  end
+
+  @doc since: "0.6.0"
+  @spec lunar_latitude(Time.moment()) :: Astro.angle()
+
+  def lunar_latitude(t) do
+    c = julian_centuries_from_moment(t)
+    l = mean_lunar_longitude(c)
+    d = lunar_elongation(c)
+    m = solar_anomaly(c)
+    m_prime = lunar_anomaly(c)
+    f = moon_node(c)
+    e = poly(c, [1.0, -0.002516, -0.0000074])
+
+    lunar_elongation = [
+      0,0,0,2,2,2,2,0,2,0,2,2,2,2,2,2,2,0,4,0,0,0,
+      1,0,0,0,1,0,4,4,0,4,2,2,2,2,0,2,2,2,2,4,2,2,
+      0,2,1,1,0,2,1,2,0,4,4,1,4,1,4,2
+    ]
+
+    solar_anomaly = [
+      0,0,0,0,0,0,0,0,0,0,-1,0,0,1,-1,-1,-1,1,0,1,
+      0,1,0,1,1,1,0,0,0,0,0,0,0,0,-1,0,0,0,0,1,1,
+      0,-1,-2,0,1,1,1,1,1,0,-1,1,0,-1,0,0,0,-1,-2]
+
+    lunar_anomaly = [
+      0,1,1,0,-1,-1,0,2,1,2,0,-2,1,0,-1,0,-1,-1,-1,
+      0,0,-1,0,1,1,0,0,3,0,-1,1,-2,0,2,1,-2,3,2,-3,
+      -1,0,0,1,0,1,1,0,0,-2,-1,1,-2,2,-2,-1,1,1,-2,
+      0,0
+    ]
+
+    moon_node = [
+      1,1,-1,-1,1,-1,1,1,-1,-1,-1,-1,1,-1,1,1,-1,-1,
+      -1,1,3,1,1,1,-1,-1,-1,1,-1,1,-3,1,-3,-1,-1,1,
+      -1,1,-1,1,1,1,1,-1,3,-1,-1,1,-1,-1,1,-1,1,-1,
+      -1,-1,-1,-1,-1,1
+    ]
+
+    sine_coeff = [
+      5128122, 280602, 277693, 173237, 55413, 46271, 32573,
+      17198, 9266, 8822, 8216, 4324, 4200, -3359, 2463, 2211,
+      2065, -1870, 1828, -1794, -1749, -1565, -1491, -1475,
+      -1410, -1344, -1335, 1107, 1021, 833, 777, 671, 607,
+      596, 491, -451, 439, 422, 421, -366, -351, 331, 315,
+      302, -283, -229, 223, 223, -220, -220, -185, 181,
+      -177, 176, 166, -164, 132, -119, 115, 107
+    ]
+
+    beta = deg(1.0 / 1000000.0) * sigma(
+        [sine_coeff, lunar_elongation, solar_anomaly, lunar_anomaly, moon_node],
+        fn [v, w, x, y, z] ->
+            v * :math.pow(e, abs(x)) * sin(w*d + x*m + y*m_prime + z*f)
+        end
+    )
+
+    venus =
+      deg(175.0 / 1000000.0) *
+      sin(deg(119.75) + c * deg(131.849) + f) *
+      sin(deg(119.75) + c * deg(131.849) - f)
+
+    flat_earth =
+      deg(-2235.0 / 1000000.0) * sin(l) +
+      deg(127.0 / 1000000.0) * sin(l - m_prime) +
+      deg(-115.0 / 1000000.0) * sin(l + m_prime)
+
+    extra = deg(382.0 / 1000000.0) * sin(deg(313.45) + (c * deg(481266.484)))
+
+    beta + venus + flat_earth + extra
+  end
+
+  @doc since: "0.4.0"
+  @spec lunar_altitude(Time.moment(), Geo.PointZ.t()) :: Astro.angle()
+
+  def lunar_altitude(t, %Geo.PointZ{coordinates: {psi, phi, _alt}}) do
+    lambda = lunar_longitude(t)
+    beta = lunar_latitude(t)
+    alpha = Astro.right_ascension(t, beta, lambda)
+    delta = Astro.declination(t, beta, lambda)
+    theta = Time.sidereal_from_moment(t)
+    h = mod(theta + psi - alpha, 360)
+    altitude = asin(sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h))
+    mod(altitude + deg(180), 360) - deg(180)
+  end
+
+  @doc since: "0.6.0"
+  @spec lunar_distance(Time.moment()) :: Astro.meters()
+
+  def lunar_distance(t) do
+    c = Time.julian_centuries_from_moment(t)
+    d = lunar_elongation(c)
+    m = solar_anomaly(c)
+    m_prime = lunar_anomaly(c)
+    f = moon_node(c)
+    e = poly(c, [1, -0.002516, -0.0000074])
+
+    lunar_elongation = [
+      0,2,2,0,0,0,2,2,2,2,0,1,0,2,0,0,4,0,4,2,2,1,
+      1,2,2,4,2,0,2,2,1,2,0,0,2,2,2,4,0,3,2,4,0,2,
+      2,2,4,0,4,1,2,0,1,3,4,2,0,1,2,2
+    ]
+
+    solar_anomaly = [
+      0,0,0,0,1,0,0,-1,0,-1,1,0,1,0,0,0,0,0,0,1,1,
+      0,1,-1,0,0,0,1,0,-1,0,-2,1,2,-2,0,0,-1,0,0,1,
+      -1,2,2,1,-1,0,0,-1,0,1,0,1,0,0,-1,2,1,0,0
+    ]
+
+    lunar_anomaly = [
+      1,-1,0,2,0,0,-2,-1,1,0,-1,0,1,0,1,1,-1,3,-2,
+      -1,0,-1,0,1,2,0,-3,-2,-1,-2,1,0,2,0,-1,1,0,
+      -1,2,-1,1,-2,-1,-1,-2,0,1,4,0,-2,0,2,1,-2,-3,
+      2,1,-1,3,-1
+    ]
+
+    moon_node = [
+      0,0,0,0,0,2,0,0,0,0,0,0,0,-2,2,-2,0,0,0,0,0,
+      0,0,0,0,0,0,0,2,0,0,0,0,0,0,-2,2,0,2,0,0,0,0,
+      0,0,-2,0,0,0,0,-2,-2,0,0,0,0,0,0,0,-2
+    ]
+
+    cos_coeff = [
+      -20905355,-3699111,-2955968,-569925,48888,-3149,
+      246158,-152138,-170733,-204586,-129620,108743,
+      104755,10321,0,79661,-34782,-23210,-21636,24208,
+      30824,-8379,-16675,-12831,-10445,-11650,14403,
+      -7003,0,10056,6322,-9884,5751,0,-4950,4130,0,
+      -3958,0,3258,2616,-1897,-2117,2354,0,0,-1423,
+      -1117,-1571,-1739,0,-4421,0,0,0,0,1165,0,0,
+      8752
+    ]
+
+    correction = sigma(
+      [cos_coeff, lunar_elongation, solar_anomaly, lunar_anomaly, moon_node],
+      fn [v, w, x, y, z] ->
+          v * :math.pow(e, abs(x)) * cos(w*d + x*m + y*m_prime + z*f)
+      end
+    )
+
+    mt(@average_distance_earth_to_moon) + correction
+  end
+
+  def lunar_parallax(t, location) do
+    geo = lunar_altitude(t, location)
+    delta = lunar_distance(t)
+    alt = mt(6738140) / delta
+    arg = alt * cos(geo)
+    asin(arg)
+  end
+
+  def topocentric_lunar_altitude(t, location) do
+    lunar_altitude(t, location) - lunar_parallax(t, location)
   end
 
   @doc false
@@ -438,7 +610,7 @@ defmodule Astro.Lunar do
   @doc false
   def lunar_anomaly(c) do
     degrees(poly(c,
-      Enum.map([134.9633964, 477198.8675055, 0.0087414, 1/69699, -1/14712000], &deg/1)
+      Enum.map([134.9633964, 477198.8675055, 0.0087414, 1 / 69699.0, -1 / 14712000.0], &deg/1)
     ))
   end
 
@@ -449,78 +621,9 @@ defmodule Astro.Lunar do
     ))
   end
 
-  @doc false
-  @spec nutation(Time.moment()) :: Astro.angle()
-  def nutation(t) do
+  defp solar_longitude(t) do
     c = julian_centuries_from_moment(t)
-    a = poly(c, Enum.map([124.90, -1934.134, 0.002063], &deg/1))
-    b = poly(c, Enum.map([201.11, 72001.5377, 0.00057], &deg/1))
-    deg(-0.004778) * sin(a) + deg(-0.0003667) * sin(b)
-  end
-
-  # This should be replacable with the functions in Astro.Solar but
-  # need to work out which one is is: mean, apparent or true
-
-  @doc false
-  @spec solar_longitude(Time.moment()) :: Time.season()
-  def solar_longitude(t) do
-    c = julian_centuries_from_moment(t)
-
-    coefficients = [
-      403406.0, 195207.0, 119433.0, 112392.0, 3891.0, 2819.0, 1721.0,
-      660.0, 350.0, 334.0, 314.0, 268.0, 242.0, 234.0, 158.0, 132.0, 129.0, 114.0,
-      99.0, 93.0, 86.0, 78.0, 72.0, 68.0, 64.0, 46.0, 38.0, 37.0, 32.0, 29.0, 28.0, 27.0, 27.0,
-      25.0, 24.0, 21.0, 21.0, 20.0, 18.0, 17.0, 14.0, 13.0, 13.0, 13.0, 12.0, 10.0, 10.0, 10.0,
-      10.0
-    ]
-
-    multipliers = [
-      0.9287892, 35999.1376958, 35999.4089666,
-      35998.7287385, 71998.20261, 71998.4403,
-      36000.35726, 71997.4812, 32964.4678,
-      -19.4410, 445267.1117, 45036.8840, 3.1008,
-      22518.4434, -19.9739, 65928.9345,
-      9038.0293, 3034.7684, 33718.148, 3034.448,
-      -2280.773, 29929.992, 31556.493, 149.588,
-      9037.750, 107997.405, -4444.176, 151.771,
-      67555.316, 31556.080, -4561.540,
-      107996.706, 1221.655, 62894.167,
-      31437.369, 14578.298, -31931.757,
-      34777.243, 1221.999, 62894.511,
-      -4442.039, 107997.909, 119.066, 16859.071,
-      -4.578, 26895.292, -39.127, 12297.536,
-      90073.778
-    ]
-
-    addends = [
-      270.54861, 340.19128, 63.91854, 331.26220,
-      317.843, 86.631, 240.052, 310.26, 247.23,
-      260.87, 297.82, 343.14, 166.79, 81.53,
-      3.50, 132.75, 182.95, 162.03, 29.8,
-      266.4, 249.2, 157.6, 257.8, 185.1, 69.9,
-      8.0, 197.1, 250.4, 65.3, 162.7, 341.5,
-      291.6, 98.5, 146.7, 110.0, 5.2, 342.6,
-      230.9, 256.1, 45.3, 242.9, 115.2, 151.8,
-      285.3, 53.3, 126.6, 205.7, 85.9,
-      146.1
-    ]
-
-    lambda =
-      deg(282.7771834) + deg(36000.76953744) * c +
-      deg(0.000005729577951308232) *
-      sigma(
-        [coefficients, addends, multipliers],
-        fn [x, y, z] -> x * sin(y + z * c) end
-      )
-
-    mod(lambda + aberration(t) + nutation(t), 360.0)
-  end
-
-  @doc false
-  @spec aberration(Time.moment()) :: Astro.angle()
-  def aberration(t) do
-    c = julian_centuries_from_moment(t)
-    deg(0.0000974) * cos(deg(177.63) + deg(35999.01848) * c) - deg(0.005575)
+    Astro.Solar.sun_apparent_longitude_alt(c)
   end
 
 end

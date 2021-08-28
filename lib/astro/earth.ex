@@ -4,8 +4,9 @@ defmodule Astro.Earth do
   related to the earth.
 
   """
+  alias Astro.Time
 
-  import Astro.Math, only: [to_radians: 1, to_degrees: 1]
+  import Astro.Math, only: [to_radians: 1, to_degrees: 1, poly: 2, deg: 1, sin: 1]
 
   @geometric_solar_elevation 90.0
   @refraction 34.0 / 60.0
@@ -64,6 +65,13 @@ defmodule Astro.Earth do
   """
   def obliquity do
     @obliquity
+  end
+
+  @spec nutation(Time.julian_centuries()) :: Astro.angle()
+  def nutation(julian_centuries) do
+    a = poly(julian_centuries, Enum.map([124.90, -1934.134, 0.002063], &deg/1))
+    b = poly(julian_centuries, Enum.map([201.11, 72001.5377, 0.00057], &deg/1))
+    deg(-0.004778) * sin(a) + deg(-0.0003667) * sin(b)
   end
 
   @doc """

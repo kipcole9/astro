@@ -1,5 +1,21 @@
 # Changelog
 
+## Astro version 0.6.0
+
+This is the changelog for Astro version 0.6.0 released on ______, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+**Please note that Elixir 1.11 or later is required.**
+
+### Bug Fixes
+
+* Fix `Astro.Math.atan_r/2`
+
+### Enhancements
+
+* Add `Astro.sun_position_at/1`
+
+* Add `Astro.moon_postion_at/1`
+
 ## Astro version 0.5.0
 
 This is the changelog for Astro version 0.5.0 released on August 26th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

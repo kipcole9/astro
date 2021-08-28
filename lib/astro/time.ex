@@ -11,17 +11,36 @@ defmodule Astro.Time do
 
   alias Cldr.Calendar.Gregorian
 
-  import Astro.Math, only: [poly: 2]
+  alias Astro.Math
+  import Astro.Math, only: [poly: 2, deg: 1, mod: 2]
 
   @type hours() :: number()
 
   @typedoc """
+  A time is a floating point number of
+  days since 0000-01-01 including the fractional
+  part of a day.
+  """
+  @type time() :: number()
+
+  @typedoc """
+  The current Julian epoch is defined to have been
+  noon on January 1, 2000. This epoch is
+  denoted J2000 and has the exact Julian day
+  number 2,451,545.0.
+
+  Since there are 365.25 days in a Julian year,
+  a Julian century has 36,525 days.
+  """
+  @type julian_centuries() :: number()
+
+  @typedoc """
   A moment is a floating point representations of
-  days (the mantissa) and fraction of a day (the
-  fraction). Days is since a known epoch.
+  the fraction of a day.
   """
   @type moment() :: number()
   @type season() :: Astro.angle()
+  @type zone_name() :: String.t
 
   @julian_day_jan_1_2000 2_451_545
   @julian_days_per_century 36_525.0
@@ -51,53 +70,147 @@ defmodule Astro.Time do
   def minutes_per_hour, do: @minutes_per_hour
   def days_from_minutes(minutes), do: minutes / @minutes_per_day
 
-  # @spec universal_from_local(moment(), GeoPointZ.t()) :: moment()
-  # def universal_from_local(t, %Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
-  #   t - zone_from_longitude(longitude)
-  # end
-  #
-  # def local_from_universal(t, %Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
-  #   t + zone_from_longitude(longitude)
-  # end
-  #
-  # def standard_from_universal(t, zone) do
-  #   t + offset_for_zone(t, zone)
-  # end
-  #
-  # def universal_from_standard(t, zone) do
-  #   t - offset_for_zone(t, zone)
-  # end
-  #
-  # def standard_from_local(t, locale) do
-  #   t
-  #   |> universal_from_local(locale)
-  #   |> standard_from_universal(locale)
-  # end
+  @doc """
+  Returns the dynamical time for a given
+  universal time.
 
+  Dynamical time is the time-scale that is used in
+  calculating orbital motions within the Solar
+  System. The underlying physical law governing
+  such motions is the law of gravitation.
+
+
+  """
+  @spec dynamical_from_universal(time()) :: time()
   def dynamical_from_universal(t) do
     t + ephemeris_correction(t)
   end
 
+  @doc """
+  Returns the universal (UTC) time
+  for a given dynamical time.
+
+  Coordinated Universal Time or UTC is
+  the primary time standard by which the
+  world regulates clocks and time.
+
+  It is within about 1 second of mean solar
+  time at 0° longitude and is not adjusted
+  for daylight saving time.
+
+  It is effectively a successor to Greenwich
+  Mean Time (GMT).
+
+  """
+  @spec universal_from_dynamical(time()) :: time()
   def universal_from_dynamical(t) do
     t - ephemeris_correction(t)
   end
 
-  # def sidereal_from_moment(t) do
-  #   c = (t - j2000()) / @julian_days_per_century
+  @doc """
+  Returns the local time from the
+  universal time at a given location.
+
+  Locale time is UTC time plus the number
+  of hours offset calculated from the longitude
+  of a location.
+
+  This is different to standard time which
+  is UTC time adjusted for a specific time
+  zone name.
+
+  """
+  @spec local_from_universal(time(), Geo.PointZ.t()) :: time()
+  def local_from_universal(t, %Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
+    t + offset_from_longitude(longitude)
+  end
+
+  @doc """
+  Returns the universal time (UTC) from
+  the local time at a given location.
+
+  Locale time is UTC time plus the number
+  of hours offset calculated from the longitude
+  of a location.
+
+  This is different to standard time which
+  is UTC time adjusted for a specific time
+  zone name.
+
+  """
+  @spec universal_from_local(time(), Geo.PointZ.t()) :: time()
+  def universal_from_local(t, %Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
+    t - offset_from_longitude(longitude)
+  end
+
+  @doc """
+  Returns the standard time for a
+  universal time in a given
+  time zone.
+
+  """
+  @spec standard_from_universal(time(), zone_name()) :: time()
+  def standard_from_universal(t, zone_name) do
+    t + offset_for_zone(t, zone_name)
+  end
+
+  @doc """
+  Returns the universal (UTC) time for
+  a standard time in a given time
+  zone.
+
+  """
+  @spec universal_from_standard(time(), zone_name()) :: time()
+  def universal_from_standard(t, zone_name) do
+    t - offset_for_zone(t, zone_name)
+  end
+
+  # @doc """
+  # Returns the standard time from
+  # a local time at a given location.
   #
-  #   terms =
-  #     Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
+  # """
+  # @spec standard_from_local(time(), zone_name()) :: time()
+  # def standard_from_local(t, zone_name) do
+  #   t
+  #   |> universal_from_local(zone_name)
+  #   |> standard_from_universal(zone_name)
+  # end
   #
-  #   mod(Math.poly(c, terms), 360)
+  # @doc """
+  # Returns the local time from
+  # a standard time at a given location.
+  #
+  # """
+  # @spec local_from_standard(time(), zone_name()) :: time()
+  # def local_from_standard(t, zone_name) do
+  #   t
+  #   |> universal_from_standard(zone_name)
+  #   |> local_from_universal(zone_name)
   # end
 
-  # def zone_from_longitude(%Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
-  #   zone_from_longitude(longitude)
-  # end
-  #
-  # def zone_from_longitude(longitude) when is_number(longitude) do
-  #   longitude / Math.deg(360.0)
-  # end
+  def sidereal_from_moment(t) do
+    c = (t - j2000()) / @julian_days_per_century
+
+    terms =
+      Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
+
+    mod(Math.poly(c, terms), 360)
+  end
+
+  @doc """
+  Returns the zone difference in hours between
+  a given location and UTC.
+
+  """
+  @spec offset_from_longitude(Geo.PointZ.t() | Astro.longitude()) :: moment()
+  def offset_from_longitude(%Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
+    offset_from_longitude(longitude)
+  end
+
+  def offset_from_longitude(longitude) when is_number(longitude) do
+    longitude / deg(360.0)
+  end
 
   @doc """
   Returns the astronomical Julian day for a given

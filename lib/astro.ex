@@ -6,11 +6,23 @@ defmodule Astro do
 
   """
 
-  alias Astro.{Solar, Lunar, Location, Time}
+  alias Astro.{Solar, Lunar, Location, Time, Math}
 
   import Astro.Time, only: [
     date_time_from_iso_days: 1,
     date_time_to_iso_days: 1
+  ]
+
+  import Astro.Math, only: [
+    sin: 1,
+    cos: 1,
+    atan_r: 2,
+    tan: 1,
+    mod: 2
+  ]
+
+  import Astro.Solar, only: [
+    obliquity_correction: 1
   ]
 
   @type longitude :: float()
@@ -23,8 +35,118 @@ defmodule Astro do
   @type phase() :: angle()
 
   @type location :: {longitude, latitude} | Geo.Point.t() | Geo.PointZ.t()
-  @type date :: map() # Calendar.date() | Calendar.datetime()
+  @type date :: Calendar.date() | Calendar.datetime()
   @type options :: keyword()
+
+  @doc """
+  Returns a `t:Geo.PointZ` containing
+  the right ascension and declination of
+  the moon at a given date or date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime` or a `Date` or
+    any struct that meets the requirements of
+    `t:Calendar.date` or `t:Calendar.datetime`
+
+  ## Returns
+
+  * a `t:Geo.PointZ` struct with coordinates
+    `{right_ascension, declination, distance}` with properties
+    `%{reference: :celestial, object: :sun}`.
+    `distance` is in meters.
+
+  ## Example
+
+      iex> Astro.sun_position_at(~D[1992-10-13])
+      %Geo.PointZ{
+        coordinates: {-161.6185428539835, -7.785325031528879, 149169604711.3518},
+        properties: %{object: :sun, reference: :celestial},
+        srid: nil
+      }
+
+  """
+  @doc since: "0.6.0"
+  @spec sun_position_at(date()) :: Geo.PointZ.t()
+
+  def sun_position_at(unquote(Cldr.Calendar.datetime()) = date_time) do
+    _ = calendar
+
+    date_time
+    |> date_time_to_iso_days()
+    |> Solar.solar_position()
+    |> convert_distance_to_m()
+    |> Location.normalize_location()
+    |> Map.put(:properties, %{reference: :celestial, object: :moon})
+  end
+
+  def sun_position_at(unquote(Cldr.Calendar.date()) = date) do
+    _ = calendar
+
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> Solar.solar_position()
+    |> convert_distance_to_m()
+    |> Location.normalize_location()
+    |> Map.put(:properties, %{reference: :celestial, object: :sun})
+  end
+
+  defp convert_distance_to_m({lng, lat, alt}) do
+    {lng, lat, Math.au_to_m(alt)}
+  end
+
+  @doc """
+  Returns a `t:Geo.PointZ` containing
+  the right ascension and declination of
+  the moon at a given date or date time.
+
+  ## Arguments
+
+  * `date_time` is a `DateTime` or a `Date` or
+    any struct that meets the requirements of
+    `t:Calendar.date` or `t:Calendar.datetime`
+
+  ## Returns
+
+  * a `t:Geo.PointZ` struct with coordinates
+    `{right_ascension, declination, distance}` with properties
+    `%{reference: :celestial, object: :moon}`
+    `distance` is in meters.
+
+  ## Example
+
+      iex> Astro.moon_position_at(~D[1992-04-12])
+      %Geo.PointZ{
+        coordinates: {134.6978882151538, 13.765242742787006, 5.511320224169038e19},
+        properties: %{object: :moon, reference: :celestial},
+        srid: nil
+      }
+
+  """
+  @doc since: "0.6.0"
+  @spec moon_position_at(date()) :: Geo.PointZ.t()
+
+  def moon_position_at(unquote(Cldr.Calendar.datetime()) = date_time) do
+    _ = calendar
+
+    date_time
+    |> date_time_to_iso_days()
+    |> Lunar.lunar_position()
+    |> convert_distance_to_m()
+    |> Location.normalize_location()
+    |> Map.put(:properties, %{reference: :celestial, object: :moon})
+  end
+
+  def moon_position_at(unquote(Cldr.Calendar.date()) = date) do
+    _ = calendar
+
+    date
+    |> Cldr.Calendar.date_to_iso_days()
+    |> Lunar.lunar_position()
+    |> convert_distance_to_m()
+    |> Location.normalize_location()
+    |> Map.put(:properties, %{reference: :celestial, object: :moon})
+  end
 
   @doc """
   Returns the date time of the new
@@ -714,6 +836,35 @@ defmodule Astro do
       latitude <= -@polar_circle_latitude and date.month in 4..9 -> true
       true -> false
     end
+  end
+
+  @doc """
+
+  beta and lambda in degrees
+  """
+  @spec declination(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
+  def declination(t, beta, lambda) do
+    julian_centuries = Time.julian_centuries_from_moment(t)
+    epsilon = obliquity_correction(julian_centuries)
+
+    :math.asin(sin(beta) * cos(epsilon) + cos(beta) * sin(epsilon) * sin(lambda))
+    |> Math.to_degrees
+    |> mod(360.0)
+  end
+
+  @doc """
+  beta and lambda in degrees
+  """
+  @spec right_ascension(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
+  def right_ascension(t, beta, lambda) do
+    julian_centuries = Time.julian_centuries_from_moment(t)
+
+    epsilon = obliquity_correction(julian_centuries)
+    # omega = (125.04 - (1_934.136 * julian_centuries))
+    # adjusted_epsilon = (epsilon + 0.00256 * cos(omega))
+
+    atan_r(sin(lambda) * cos(epsilon) - tan(beta) * sin(epsilon), cos(lambda))
+    |> Math.to_degrees()
   end
 
   @doc false

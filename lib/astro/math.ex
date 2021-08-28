@@ -5,6 +5,8 @@ defmodule Astro.Math do
   alias Astro.Time
 
   @radians_to_degrees 180.0 / :math.pi()
+  @au_to_km 149_597_870.7
+  @au_to_m 149_597_870.7 * 1_000
 
   def to_degrees(radians) do
     radians * @radians_to_degrees
@@ -12,6 +14,18 @@ defmodule Astro.Math do
 
   def to_radians(degrees) do
     degrees / @radians_to_degrees
+  end
+
+  def au_to_km(au) do
+    au * @au_to_km
+  end
+
+  def au_to_m(au) do
+    au * @au_to_m
+  end
+
+  def degrees(degrees) do
+    mod(degrees, 360.0)
   end
 
   @compile {:inline, mt: 1}
@@ -60,9 +74,21 @@ defmodule Astro.Math do
     cond do
       x == 0 && y != 0 -> signum(y) * deg(90.0)
       x >= 0 -> to_degrees(:math.atan(y / x))
-      x < 0 -> to_degrees(:math.atan(y / x)) + deg(180.0)
+      x < 0 -> to_degrees(:math.atan(y / x)) + signum(y) * deg(180.0)
     end
     |> mod(360.0)
+  end
+
+  def atan_r(0, 0) do
+    :undefined
+  end
+
+  def atan_r(y, x) do
+    cond do
+      x == 0 && y != 0 -> signum(y) * :math.pi() / 2.0
+      x >= 0 -> :math.atan(y / x)
+      x < 0 -> :math.atan(y / x) + signum(y) * :math.pi()
+    end
   end
 
   def floor(x) when x >= 0 do
@@ -170,10 +196,6 @@ defmodule Astro.Math do
       |> Kernel.*(modulus)
 
     number - modulo
-  end
-
-  def degrees(degrees) do
-    mod(degrees, 360)
   end
 
   @doc """
