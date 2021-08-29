@@ -745,7 +745,6 @@ defmodule Astro.Time do
   @spec date_time_to_iso_days(Calendar.datetime()) :: moment()
 
   def date_time_to_iso_days(unquote(Cldr.Calendar.datetime()) = date_time) do
-    _ = calendar
     date_time =
       date_time
       |> DateTime.shift_zone!(@utc_zone)
@@ -756,7 +755,7 @@ defmodule Astro.Time do
       date_time
 
     {days, {numerator, denominator}} =
-      Gregorian.naive_datetime_to_iso_days(year, month, day, hour, minute, second, microsecond)
+      calendar.naive_datetime_to_iso_days(year, month, day, hour, minute, second, microsecond)
 
     days + numerator / denominator
   end
