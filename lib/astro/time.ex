@@ -54,6 +54,12 @@ defmodule Astro.Time do
   @minutes_per_hour 60.0
   @hours_per_day 24.0
 
+  # Mean synodic month in days
+  @mean_synodic_month 29.530588861
+
+  # Mean tropical year in days
+  @mean_tropical_year 365.242189
+
   def hr(x), do: x / hours_per_day()
   # def mn(x), do: x / hours_per_day() / minutes_per_hour()
   # def sec(x), do: x / hours_per_day() / minutes_per_hour() / seconds_per_minute()
@@ -69,6 +75,9 @@ defmodule Astro.Time do
 
   def minutes_per_hour, do: @minutes_per_hour
   def days_from_minutes(minutes), do: minutes / @minutes_per_day
+
+  def mean_synodic_month, do: @mean_synodic_month
+  def mean_tropical_year, do: @mean_tropical_year
 
   @doc """
   Returns the dynamical time for a given
@@ -150,8 +159,12 @@ defmodule Astro.Time do
 
   """
   @spec standard_from_universal(time(), zone_name()) :: time()
-  def standard_from_universal(t, zone_name) do
+  def standard_from_universal(t, zone_name) when is_binary(zone_name) do
     t + offset_for_zone(t, zone_name)
+  end
+
+  def standard_from_universal(t, offset) when is_number(offset) do
+    t + offset
   end
 
   @doc """
@@ -161,8 +174,12 @@ defmodule Astro.Time do
 
   """
   @spec universal_from_standard(time(), zone_name()) :: time()
-  def universal_from_standard(t, zone_name) do
+  def universal_from_standard(t, zone_name) when is_binary(zone_name) do
     t - offset_for_zone(t, zone_name)
+  end
+
+  def universal_from_standard(t, offset) when is_number(offset) do
+    t - offset
   end
 
   # @doc """
@@ -505,6 +522,21 @@ defmodule Astro.Time do
   end
 
   @doc """
+  Converts a number of hourse into
+  days.
+
+  ## Arguments
+
+  ## Returns
+
+  ## Examples
+
+  """
+  def hours_to_days(hours) do
+    hours / @hours_per_day
+  end
+
+  @doc """
   Converts a number of seconds
   since midnight into `{hours, minutes, seconds}`.
 
@@ -689,10 +721,11 @@ defmodule Astro.Time do
     TzWorld.timezone_at(location)
   end
 
+  @jan_1_1900  Date.new!(1900, 1, 1)
+
   def ephemeris_correction(t) do
     %{year: year} = Cldr.Calendar.date_from_iso_days(floor(t), Cldr.Calendar.Gregorian)
-    c = Date.diff(Date.new!(1900, 1, 1), Date.new!(year, 7, 1)) / @julian_days_per_century
-    x = hr(12) + Date.diff(Date.new!(1810, 1, 1), Date.new!(year, 1, 1))
+    c = Date.diff(Date.new!(year, 7, 1), @jan_1_1900) / @julian_days_per_century
 
     cond do
       year in 1988..2019 ->
@@ -722,14 +755,15 @@ defmodule Astro.Time do
            @seconds_per_day
 
        true ->
+         x = hr(12) + Date.diff(Date.new!(year, 1, 1), Date.new!(1810, 1, 1))
          ((x * x) / 41_048_480.0 - 15) / @seconds_per_day
     end
   end
 
   @doc false
-  @spec date_time_from_iso_days(moment()) :: Calendar.datetime()
+  @spec date_time_from_moment(moment()) :: Calendar.datetime()
 
-  def date_time_from_iso_days(t) do
+  def date_time_from_moment(t) do
     days = trunc(t)
     fraction = Float.ratio(t - days)
 
@@ -742,17 +776,11 @@ defmodule Astro.Time do
   end
 
   @doc false
-  @spec date_time_to_iso_days(Calendar.datetime()) :: moment()
+  @spec date_time_to_moment(Calendar.datetime()) :: moment()
 
-  def date_time_to_iso_days(unquote(Cldr.Calendar.datetime()) = date_time) do
-    date_time =
-      date_time
-      |> DateTime.shift_zone!(@utc_zone)
-      |> DateTime.convert!(Gregorian)
-      |> DateTime.to_naive()
-
-    %{year: year, month: month, day: day, hour: hour, minute: minute, second: second, microsecond: microsecond} =
-      date_time
+  def date_time_to_moment(unquote(Cldr.Calendar.datetime()) = date_time) do
+    %{year: year, month: month, day: day, hour: hour} = date_time
+    %{minute: minute, second: second, microsecond: microsecond} = date_time
 
     {days, {numerator, denominator}} =
       calendar.naive_datetime_to_iso_days(year, month, day, hour, minute, second, microsecond)

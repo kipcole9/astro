@@ -10,6 +10,12 @@ This is the changelog for Astro version 0.6.0 released on ______, 2021.  For old
 
 * Fix `Astro.Math.atan_r/2`
 
+* Fix ephemeris calculation
+
+### Breaking changes
+
+* Change `Time.date_time_{from, to}_iso_days/1` to `Time.date_time_{from, to}_moment/1`
+
 ### Enhancements
 
 * Add `Astro.sun_position_at/1`

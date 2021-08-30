@@ -36,14 +36,14 @@ defmodule Astro.Lunar do
 
   import Astro.Time, only: [
     j2000: 0,
-    julian_centuries_from_moment: 1
+    julian_centuries_from_moment: 1,
+    mean_synodic_month: 0
   ]
 
   import Astro.Earth, only: [
     nutation: 1
   ]
 
-  @mean_synodic_month 29.530588861
   @months_epoch_to_j2000 24_724.0
   @average_distance_earth_to_moon 385_000_560.0
 
@@ -64,17 +64,17 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.date_time_new_moon_before 738390
-      738375.5774296349
+      738375.5774295913
 
   """
   @doc since: "0.5.0"
   @spec date_time_new_moon_before(Time.moment()) :: Time.moment()
 
   def date_time_new_moon_before(t) when is_number(t) do
-    t0 = nth_new_moon(0.0)
+    t0 = nth_new_moon(0)
     phi = lunar_phase_at(t)
-    n = round((t - t0) / mean_synodic_month() - phi / deg(360.0))
-    nth_new_moon(Math.final(1.0 - n, &(nth_new_moon(&1) < t)))
+    n = round((t - t0) / mean_synodic_month() - phi / deg(360)) |> trunc()
+    nth_new_moon(Math.final(n - 1, &(nth_new_moon(&1) < t)))
   end
 
   @doc """
@@ -95,14 +95,14 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.date_time_new_moon_at_or_after 738390
-      738405.036174502
+      738405.0361744585
 
   """
   @doc since: "0.5.0"
   @spec date_time_new_moon_at_or_after(Time.moment()) :: Time.moment()
 
   def date_time_new_moon_at_or_after(t) when is_number(t) do
-    t0 = nth_new_moon(0.0)
+    t0 = nth_new_moon(0)
     phi = lunar_phase_at(t)
     n = round((t - t0) / mean_synodic_month() - phi / deg(360.0))
     nth_new_moon(Math.next(n, &(nth_new_moon(&1) >= t)))
@@ -126,10 +126,10 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.lunar_phase_at 738389.5007195644
-      180.00001443052076
+      180.00001498208536
 
       iex> Astro.Lunar.lunar_phase_at 738346.0544609067
-      359.9999929267571
+      359.9999934575342
 
   """
   @doc since: "0.5.0"
@@ -170,7 +170,7 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_before(738368, Astro.Lunar.new_moon())
-      738346.0544609067
+      738346.0544608677
 
   """
   @doc since: "0.5.0"
@@ -205,7 +205,7 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_after(738368, Astro.Lunar.full_moon())
-      738389.5007195644
+      738389.5007195254
 
   """
   @doc since: "0.5.0"
@@ -346,22 +346,22 @@ defmodule Astro.Lunar do
       327, -323, 299, 294
     ]
 
-    correction = deg(1.0 / 1000000.0) * sigma(
+    correction = deg(1 / 1000000) * sigma(
         [sine_coeff, args_lunar_elong, args_solar_anom, args_lunar_anom, args_moon_node],
         fn [v,w,x,y,z] ->
             v * :math.pow(e, abs(x)) * sin(w * d + x * m + y * m_prime + z * f)
         end
     )
     venus =
-      deg(3958.0 / 1000000.0) *
+      deg(3958 / 1000000) *
       sin(deg(119.75) + c * deg(131.849))
 
     jupiter =
-      deg(318.0 / 1000000.0) *
-      sin(deg(53.09) + c * deg(479264.29))
+      deg(318 / 1000000) *
+      sin(deg(53.09) + c * deg(479_264.29))
 
     flat_earth =
-      deg(1962.0 / 1000000.0) *
+      deg(1962 / 1000000) *
       sin(l - f)
 
     mod(l + correction + venus + jupiter + flat_earth + nutation(c), 360)
@@ -500,7 +500,7 @@ defmodule Astro.Lunar do
     correction = sigma(
       [cos_coeff, lunar_elongation, solar_anomaly, lunar_anomaly, moon_node],
       fn [v, w, x, y, z] ->
-          v * :math.pow(e, abs(x)) * cos(w*d + x*m + y*m_prime + z*f)
+          v * :math.pow(e, abs(x)) * cos((w * d) + (x * m) + (y * m_prime) + (z * f))
       end
     )
 
@@ -508,16 +508,11 @@ defmodule Astro.Lunar do
   end
 
   @doc false
-  def mean_synodic_month do
-    @mean_synodic_month
-  end
-
-  @doc false
   @doc since: "0.4.0"
   @spec nth_new_moon(number()) :: Time.moment()
 
-  defp nth_new_moon(n) do
-    k = n - @months_epoch_to_j2000 # months since j2000
+  def nth_new_moon(n) do
+    k = n - @months_epoch_to_j2000
     c = k / 1_236.85
 
     approx =
@@ -527,17 +522,17 @@ defmodule Astro.Lunar do
     e =
       poly(c, [1.0, -0.002516, -0.0000074])
 
-    solar_anomaly = poly(c,
-      Enum.map([2.5534, 1236.85 * 29.10535670, -0.000 - 0014, -0.00000011], &deg/1))
+    solar_anomaly =
+      poly(c, [2.5534, 1236.85 * 29.10535670, -0.000 - 0014, -0.00000011])
 
-    lunar_anomaly = poly(c,
-      Enum.map([201.5643, 385.81693528 * 1236.85, 0.0107582, 0.00001238, -0.000000058], &deg/1))
+    lunar_anomaly =
+      poly(c, [201.5643, 385.81693528 * 1236.85, 0.0107582, 0.00001238, -0.000000058])
 
-    moon_argument = poly(c,
-      Enum.map([160.7108, 390.67050284 * 1236.85, -0.0016118, -0.00000227, 0.000000011], &deg/1))
+    moon_argument =
+      poly(c,[160.7108, 390.67050284 * 1236.85, -0.0016118, -0.00000227, 0.000000011])
 
-    omega = poly(c,
-      Enum.map([124.7746, -1.56375588 * 1236.85, 0.0020672, 0.00000215], &deg/1))
+    omega =
+      poly(c, [124.7746, -1.56375588 * 1236.85, 0.0020672, 0.00000215])
 
     sine_coeff = [
       -0.40720, 0.17241, 0.01608, 0.01039, 0.00739,
@@ -573,13 +568,13 @@ defmodule Astro.Lunar do
         [sine_coeff, e_factor, solar_coeff, lunar_coeff, moon_coeff],
         fn [v,w,x,y,z] ->
           v * :math.pow(e, w) *
-          sin(x * solar_anomaly + y * lunar_anomaly + z * moon_argument)
+          sin((x * solar_anomaly) + (y * lunar_anomaly) + (z * moon_argument))
        end
       )
 
     extra =
       deg(0.000325) *
-      sin(poly(c, Enum.map([299.77, 132.8475848, -0.009173], &deg/1)))
+      sin(poly(c, [299.77, 132.8475848, -0.009173]))
 
     add_const = [
       251.88, 251.83, 349.42, 84.66, 141.74, 207.14, 154.84,
@@ -616,42 +611,51 @@ defmodule Astro.Lunar do
 
   @doc false
   def mean_lunar_longitude(c) do
-    degrees(poly(c,
-      Enum.map([218.3164477, 481267.88123421, -0.0015786, 1 / 538841.0, -1 /65194000.0], &deg/1)
-    ))
+    c
+    |> poly([218.3164477, 481267.88123421, -0.0015786, 1 / 538841.0, -1 /65194000.0])
+    |> degrees()
   end
 
   @doc false
   def lunar_elongation(c) do
-    degrees(poly(c,
-      Enum.map([297.8501921, 445267.1114034, -0.0018819, 1/545868, -1 / 113065000.0], &deg/1)
-    ))
+    c
+    |> poly([297.8501921, 445267.1114034, -0.0018819, 1/545868, -1 / 113065000.0])
+    |> degrees()
   end
 
   @doc false
   def solar_anomaly(c) do
-    degrees(poly(c,
-      Enum.map([357.5291092, 35999.0502909, -0.0001536, 1 / 24490000.0], &deg/1)
-    ))
+    c
+    |> poly([357.5291092, 35999.0502909, -0.0001536, 1 / 24490000.0])
+    |> degrees()
   end
 
   @doc false
   def lunar_anomaly(c) do
-    degrees(poly(c,
-      Enum.map([134.9633964, 477198.8675055, 0.0087414, 1 / 69699.0, -1 / 14712000.0], &deg/1)
-    ))
-  end
-
-  @doc false
-  defp moon_node(x) do
-    degrees(poly(x,
-      Enum.map([93.2720950, 483202.0175233, -0.0036539, -1 / 3526000.0, 1 / 863310000.0], &deg/1)
-    ))
+    c
+    |> poly([134.9633964, 477198.8675055, 0.0087414, 1 / 69699.0, -1 / 14712000.0])
+    |> degrees()
   end
 
   defp solar_longitude(t) do
     c = julian_centuries_from_moment(t)
     Astro.Solar.sun_apparent_longitude_alt(c)
+  end
+
+  @doc false
+  def lunar_node(t) do
+    c = julian_centuries_from_moment(t)
+
+    moon_node(c + deg(90.0))
+    |> mod(180.0)
+    |> Kernel.-(90.0)
+  end
+
+  @doc false
+  def moon_node(c) do
+    c
+    |> poly([93.2720950, 483202.0175233, -0.0036539, -1 / 3526000.0, 1 / 863310000.0])
+    |> degrees()
   end
 
 end

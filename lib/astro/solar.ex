@@ -288,6 +288,39 @@ defmodule Astro.Solar do
   end
 
   @doc """
+
+  """
+  def solar_longitude(t) do
+    c = Time.julian_centuries_from_moment(t)
+    sun_apparent_longitude(c)
+  end
+
+  @doc """
+  Return the moment UT of the first time at or after moment, tee,
+  when the solar longitude will be lamda degrees.
+
+  """
+  def solar_longitude_after(lambda, t) do
+    rate = Time.mean_tropical_year() / deg(360)
+    tau = t + rate * mod(lambda - solar_longitude(t), 360)
+    a = max(t, tau - 5)
+    b = tau + 5
+
+    Math.invert_angular(&solar_longitude/1, lambda, a, b)
+  end
+
+  @doc """
+  Return approximate moment at or before tee
+  when solar longitude just exceeded lam degrees.
+  """
+	def estimate_prior_solar_longitude(lambda, t) do
+    rate = (Time.mean_tropical_year() / deg(360))
+    tau = t - (rate * mod(solar_longitude(t) - lambda, 360))
+    cap_delta = mod(solar_longitude(tau) - lambda + deg(180), 360) - deg(180)
+    min(t, tau - (rate * cap_delta))
+  end
+
+  @doc """
   Returns the suns apparent longitude in degrees
 
   ## Arguments

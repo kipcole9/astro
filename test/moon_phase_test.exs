@@ -1,6 +1,13 @@
 defmodule Astro.Moon.Phase.Test do
   use ExUnit.Case, async: true
 
+  # Most of these tests pass with a variation of 2 minutes,
+  # there are 3 tests that fail with variation at 3 minutes
+  # and one additional test fails unless variation if 3 minutes.
+
+  # It is unknown if that is an issue with these calculations
+  # of the test data.
+
   @minute_variation 4
 
   for [phase, date, time] <- Astro.Moon.TestData.moon_phase() do
