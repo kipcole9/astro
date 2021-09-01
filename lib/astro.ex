@@ -214,7 +214,7 @@ defmodule Astro do
   ## Example
 
       iex> Astro.date_time_new_moon_before ~D[2021-08-23]
-      {:ok, ~U[2021-08-08 13:51:29.916690Z]}
+      {:ok, ~U[2021-08-08 13:49:07.193556Z]}
 
   """
   @doc since: "0.5.0"
@@ -257,7 +257,7 @@ defmodule Astro do
   ## Example
 
       iex> Astro.date_time_new_moon_at_or_after ~D[2021-08-23]
-      {:ok, ~U[2021-09-07 00:52:05.473210Z]}
+      {:ok, ~U[2021-09-07 00:50:43.811492Z]}
 
   """
   @doc since: "0.5.0"
@@ -302,7 +302,7 @@ defmodule Astro do
       180.00001498208536
 
       iex> Astro.lunar_phase_at(~U[2021-07-10 01:18:25.422335Z])
-      359.9999934575342
+      0.021567106773019873
 
   """
 
@@ -349,7 +349,7 @@ defmodule Astro do
   ## Example
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon())
-      {:ok, ~U[2021-07-10 01:18:25.418965Z]}
+      {:ok, ~U[2021-07-10 01:15:33.373067Z]}
 
   """
 

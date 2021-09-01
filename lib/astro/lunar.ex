@@ -64,7 +64,7 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.date_time_new_moon_before 738390
-      738375.5774295913
+      738375.5757777032
 
   """
   @doc since: "0.5.0"
@@ -95,7 +95,7 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.date_time_new_moon_at_or_after 738390
-      738405.0361744585
+      738405.0352292997
 
   """
   @doc since: "0.5.0"
@@ -129,7 +129,7 @@ defmodule Astro.Lunar do
       180.00001498208536
 
       iex> Astro.Lunar.lunar_phase_at 738346.0544609067
-      359.9999934575342
+      0.021567106773019873
 
   """
   @doc since: "0.5.0"
@@ -170,7 +170,7 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_before(738368, Astro.Lunar.new_moon())
-      738346.0544608677
+      738346.0524695957
 
   """
   @doc since: "0.5.0"
