@@ -584,27 +584,6 @@ defmodule Astro.Time do
     {:ok, DateTime.add(datetime, trunc(minutes * @seconds_per_minute), :second)}
   end
 
-  # @doc """
-  # Returns the number of seconds since `0001-01-01`
-  # in the Gregorian calendar.
-  #
-  # ## Arguments
-  #
-  # * `datetime` is any `DateTime.t` since `0001-01-01`in the `Calendar.ISO`
-  #   calendar
-  #
-  # ## Returns
-  #
-  # * An integer number of seconds since `0001-01-01`
-  #
-  # """
-  # def datetime_to_gregorian_seconds(unquote(Cldr.Calendar.datetime()) = datetime) do
-  #   _ = calendar
-  #
-  #   %{year: year, month: month, day: day, hour: hour, minute: minute, second: second} = datetime
-  #   :calendar.datetime_to_gregorian_seconds({{year, month, day}, {hour, minute, second}})
-  # end
-
   @doc false
   def adjust_for_wraparound(unquote(Guards.datetime()) = datetime, location, %{rise_or_set: :rise}) do
     _ = calendar
@@ -629,7 +608,7 @@ defmodule Astro.Time do
   end
 
   defp local_hour_offset(datetime, location) do
-    gregorian_seconds = to_gregorian_seconds(datetime)
+    gregorian_seconds = date_time_to_gregorian_seconds(datetime)
 
     local_mean_time_offset =
       local_mean_time_offset(location, gregorian_seconds, datetime.time_zone)
@@ -640,7 +619,7 @@ defmodule Astro.Time do
   @doc false
   def antimeridian_adjustment(location, %{time_zone: time_zone} = datetime, options) do
     %{time_zone_database: time_zone_database} = options
-    gregorian_seconds = to_gregorian_seconds(datetime)
+    gregorian_seconds = date_time_to_gregorian_seconds(datetime)
 
     local_hours_offset =
       local_mean_time_offset(location, gregorian_seconds, time_zone) / @seconds_per_hour
@@ -763,7 +742,11 @@ defmodule Astro.Time do
   end
 
   @doc false
-  @spec date_time_from_moment(moment()) :: Calendar.datetime()
+  @spec date_time_from_moment(moment()) ::
+    {:ok, DateTime.t()} |
+    {:error, atom()} |
+    {:ambiguous, DateTime.t(), DateTime.t()} |
+    {:gap, DateTime.t(), DateTime.t()}
 
   def date_time_from_moment(t) do
     days = trunc(t)
@@ -786,7 +769,7 @@ defmodule Astro.Time do
     days + numerator / denominator
   end
 
-  defp to_gregorian_seconds(datetime) do
+  defp date_time_to_gregorian_seconds(datetime) do
     {numerator, denominator} = DateTime.to_gregorian_seconds(datetime)
 
     if denominator == 0 do
