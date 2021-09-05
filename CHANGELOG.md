@@ -2,7 +2,7 @@
 
 ## Astro version 0.6.0
 
-This is the changelog for Astro version 0.6.0 released on ______, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 0.6.0 released on September 5th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 **Please note that Elixir 1.11 or later is required.**
 
@@ -17,6 +17,8 @@ This is the changelog for Astro version 0.6.0 released on ______, 2021.  For old
 * Change `Time.date_time_{from, to}_iso_days/1` to `Time.date_time_{from, to}_moment/1`
 
 ### Enhancements
+
+* Remove dependency on `ex_cldr_calendar` and `jason`
 
 * Add `Astro.sun_position_at/1`
 

@@ -585,9 +585,7 @@ defmodule Astro.Time do
   end
 
   @doc false
-  def adjust_for_wraparound(unquote(Guards.datetime()) = datetime, location, %{rise_or_set: :rise}) do
-    _ = calendar
-
+  def adjust_for_wraparound(datetime, location, %{rise_or_set: :rise}) do
     # sunrise after 6pm indicates the UTC date has occurred earlier
     if datetime.hour + local_hour_offset(datetime, location) > 18 do
       {:ok, DateTime.add(datetime, -@seconds_per_day, :second)}
@@ -596,9 +594,7 @@ defmodule Astro.Time do
     end
   end
 
-  def adjust_for_wraparound(unquote(Guards.datetime()) = datetime, location, %{rise_or_set: :set}) do
-    _ = calendar
-
+  def adjust_for_wraparound(datetime, location, %{rise_or_set: :set}) do
     # sunset before 6am indicates the UTC date has occurred later
     if datetime.hour + local_hour_offset(datetime, location) < 6 do
       {:ok, DateTime.add(datetime, @seconds_per_day, :second)}
