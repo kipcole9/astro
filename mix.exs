@@ -87,8 +87,6 @@ defmodule Astro.MixProject do
       {:tzdata, "~> 1.0"},
       {:tz_world, "~> 0.7"},
       {:geo, "~> 3.0"},
-      {:jason, "~> 1.0"},
-      {:ex_cldr_calendars, "~> 1.15"},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false, optional: true}
     ]

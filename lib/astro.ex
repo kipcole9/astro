@@ -6,12 +6,7 @@ defmodule Astro do
 
   """
 
-  alias Astro.{Solar, Lunar, Location, Time, Math}
-
-  import Astro.Time, only: [
-    date_time_from_moment: 1,
-    date_time_to_moment: 1
-  ]
+  alias Astro.{Solar, Lunar, Location, Time, Math, Guards}
 
   import Astro.Math, only: [
     sin: 1,
@@ -69,22 +64,22 @@ defmodule Astro do
   @doc since: "0.6.0"
   @spec sun_position_at(date()) :: Geo.PointZ.t()
 
-  def sun_position_at(unquote(Cldr.Calendar.datetime()) = date_time) do
+  def sun_position_at(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time
-    |> date_time_to_moment()
+    |> Time.date_time_to_moment()
     |> Solar.solar_position()
     |> convert_distance_to_m()
     |> Location.normalize_location()
     |> Map.put(:properties, %{reference: :celestial, object: :moon})
   end
 
-  def sun_position_at(unquote(Cldr.Calendar.date()) = date) do
+  def sun_position_at(unquote(Guards.date()) = date) do
     _ = calendar
 
     date
-    |> Cldr.Calendar.date_to_iso_days()
+    |> Date.to_gregorian_days()
     |> Solar.solar_position()
     |> convert_distance_to_m()
     |> Location.normalize_location()
@@ -126,22 +121,22 @@ defmodule Astro do
   @doc since: "0.6.0"
   @spec moon_position_at(date()) :: Geo.PointZ.t()
 
-  def moon_position_at(unquote(Cldr.Calendar.datetime()) = date_time) do
+  def moon_position_at(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time
-    |> date_time_to_moment()
+    |> Time.date_time_to_moment()
     |> Lunar.lunar_position()
     |> convert_distance_to_m()
     |> Location.normalize_location()
     |> Map.put(:properties, %{reference: :celestial, object: :moon})
   end
 
-  def moon_position_at(unquote(Cldr.Calendar.date()) = date) do
+  def moon_position_at(unquote(Guards.date()) = date) do
     _ = calendar
 
     date
-    |> Cldr.Calendar.date_to_iso_days()
+    |> Date.to_gregorian_days()
     |> Lunar.lunar_position()
     |> convert_distance_to_m()
     |> Location.normalize_location()
@@ -179,7 +174,7 @@ defmodule Astro do
   @doc since: "0.6.0"
   @spec illuminated_fraction_of_moon_at(date()) :: number()
 
-  def illuminated_fraction_of_moon_at(unquote(Cldr.Calendar.datetime()) = date_time) do
+  def illuminated_fraction_of_moon_at(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time
@@ -187,11 +182,11 @@ defmodule Astro do
     |> Lunar.illuminated_fraction_of_moon()
   end
 
-  def illuminated_fraction_of_moon_at(unquote(Cldr.Calendar.date()) = date) do
+  def illuminated_fraction_of_moon_at(unquote(Guards.date()) = date) do
     _ = calendar
 
     date
-    |> Cldr.Calendar.date_to_iso_days()
+    |> Date.to_gregorian_days()
     |> Lunar.illuminated_fraction_of_moon()
   end
 
@@ -214,27 +209,29 @@ defmodule Astro do
   ## Example
 
       iex> Astro.date_time_new_moon_before ~D[2021-08-23]
-      {:ok, ~U[2021-08-08 13:49:07.193556Z]}
+      {:ok, ~U[2021-08-08 13:49:07.000000Z]}
 
   """
   @doc since: "0.5.0"
   @spec date_time_new_moon_before(date()) ::
     {:ok, Calendar.datetime()}, {:error, {module(), String.t}}
 
-  def date_time_new_moon_before(unquote(Cldr.Calendar.datetime()) = date_time) do
+  def date_time_new_moon_before(unquote(Guards.datetime()) = date_time) do
+    _ = calendar
+
     date_time
-    |> date_time_to_moment()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_new_moon_before()
-    |> date_time_from_moment()
-    |> DateTime.convert(calendar)
+    |> Time.date_time_from_moment()
   end
 
-  def date_time_new_moon_before(unquote(Cldr.Calendar.date()) = date) do
+  def date_time_new_moon_before(unquote(Guards.date()) = date) do
+    _ = calendar
+
     date
-    |> Cldr.Calendar.date_to_iso_days()
+    |> Date.to_gregorian_days()
     |> Lunar.date_time_new_moon_before()
-    |> date_time_from_moment()
-    |> DateTime.convert(calendar)
+    |> Time.date_time_from_moment()
   end
 
   @doc """
@@ -257,27 +254,29 @@ defmodule Astro do
   ## Example
 
       iex> Astro.date_time_new_moon_at_or_after ~D[2021-08-23]
-      {:ok, ~U[2021-09-07 00:50:43.811492Z]}
+      {:ok, ~U[2021-09-07 00:50:43.000000Z]}
 
   """
   @doc since: "0.5.0"
   @spec date_time_new_moon_at_or_after(date) ::
     {:ok, Calendar.datetime()}, {:error, {module(), String.t}}
 
-  def date_time_new_moon_at_or_after(unquote(Cldr.Calendar.datetime()) = datetime) do
+  def date_time_new_moon_at_or_after(unquote(Guards.datetime()) = datetime) do
+    _ = calendar
+
     datetime
-    |> date_time_to_moment()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_new_moon_at_or_after()
-    |> date_time_from_moment()
-    |> DateTime.convert(calendar)
+    |> Time.date_time_from_moment()
   end
 
-  def date_time_new_moon_at_or_after(unquote(Cldr.Calendar.date()) = date) do
+  def date_time_new_moon_at_or_after(unquote(Guards.date()) = date) do
+    _ = calendar
+
     date
-    |> Cldr.Calendar.date_to_iso_days()
+    |> Date.to_gregorian_days()
     |> Lunar.date_time_new_moon_at_or_after()
-    |> date_time_from_moment()
-    |> DateTime.convert(calendar)
+    |> Time.date_time_from_moment()
   end
 
   @doc """
@@ -309,19 +308,19 @@ defmodule Astro do
   @doc since: "0.5.0"
   @spec lunar_phase_at(date()) :: phase()
 
-  def lunar_phase_at(unquote(Cldr.Calendar.datetime()) = date_time) do
+  def lunar_phase_at(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time
-    |> date_time_to_moment()
+    |> Time.date_time_to_moment()
     |> Lunar.lunar_phase_at()
   end
 
-  def lunar_phase_at(unquote(Cldr.Calendar.date()) = date) do
+  def lunar_phase_at(unquote(Guards.date()) = date) do
     _ = calendar
 
     date
-    |> Cldr.Calendar.date_to_iso_days()
+    |> Date.to_gregorian_days()
     |> Lunar.lunar_phase_at()
   end
 
@@ -349,7 +348,7 @@ defmodule Astro do
   ## Example
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon())
-      {:ok, ~U[2021-07-10 01:15:33.373067Z]}
+      {:ok, ~U[2021-07-10 01:15:33.000000Z]}
 
   """
 
@@ -357,24 +356,22 @@ defmodule Astro do
   @spec date_time_lunar_phase_at_or_before(date(), Astro.phase()) ::
       {:ok, Calendar.datetime()}, {:error, {module(), String.t}}
 
-  def date_time_lunar_phase_at_or_before(unquote(Cldr.Calendar.datetime()) = date_time, phase) do
+  def date_time_lunar_phase_at_or_before(unquote(Guards.datetime()) = date_time, phase) do
     _ = calendar
 
     date_time
-    |> date_time_to_moment()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_lunar_phase_at_or_before(phase)
-    |> date_time_from_moment()
-    |> wrap(:ok)
+    |> Time.date_time_from_moment()
   end
 
-  def date_time_lunar_phase_at_or_before(unquote(Cldr.Calendar.date()) = date, phase) do
+  def date_time_lunar_phase_at_or_before(unquote(Guards.date()) = date, phase) do
     _ = calendar
 
     date
-    |> Cldr.Calendar.date_to_iso_days()
+    |> Date.to_gregorian_days()
     |> Lunar.date_time_lunar_phase_at_or_before(phase)
-    |> date_time_from_moment()
-    |> wrap(:ok)
+    |> Time.date_time_from_moment()
   end
 
   @doc """
@@ -401,7 +398,7 @@ defmodule Astro do
   ## Example
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon())
-      {:ok, ~U[2021-08-22 12:01:02.166993Z]}
+      {:ok, ~U[2021-08-22 12:01:02.000000Z]}
 
   """
 
@@ -409,24 +406,22 @@ defmodule Astro do
   @spec date_time_lunar_phase_at_or_after(date(), Astro.phase()) ::
     {:ok, Calendar.datetime()}, {:error, {module(), String.t}}
 
-  def date_time_lunar_phase_at_or_after(unquote(Cldr.Calendar.datetime()) = date_time, phase) do
+  def date_time_lunar_phase_at_or_after(unquote(Guards.datetime()) = date_time, phase) do
     _ = calendar
 
     date_time
-    |> date_time_to_moment()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_lunar_phase_at_or_after(phase)
-    |> date_time_from_moment()
-    |> wrap(:ok)
+    |> Time.date_time_from_moment()
   end
 
-  def date_time_lunar_phase_at_or_after(unquote(Cldr.Calendar.date()) = date, phase) do
+  def date_time_lunar_phase_at_or_after(unquote(Guards.date()) = date, phase) do
     _ = calendar
 
     date
-    |> Cldr.Calendar.date_to_iso_days()
+    |> Date.to_gregorian_days()
     |> Lunar.date_time_lunar_phase_at_or_after(phase)
-    |> date_time_from_moment()
-    |> wrap(:ok)
+    |> Time.date_time_from_moment()
   end
 
   @doc """
@@ -923,7 +918,4 @@ defmodule Astro do
     ]
   end
 
-  defp wrap(term, atom) do
-    {atom, term}
-  end
 end

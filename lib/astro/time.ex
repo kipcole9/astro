@@ -9,9 +9,7 @@ defmodule Astro.Time do
 
   """
 
-  alias Cldr.Calendar.Gregorian
-
-  alias Astro.Math
+  alias Astro.{Math, Guards}
   import Astro.Math, only: [poly: 2, deg: 1, mod: 2]
 
   @type hours() :: number()
@@ -289,7 +287,7 @@ defmodule Astro.Time do
 
   """
   @new_year_2000 Date.new!(2000, 1, 1)
-  @j2000 Cldr.Calendar.date_to_iso_days(@new_year_2000) + 0.5
+  @j2000 Date.to_gregorian_days(@new_year_2000) + 0.5
 
   def j2000 do
     @j2000
@@ -586,29 +584,31 @@ defmodule Astro.Time do
     {:ok, DateTime.add(datetime, trunc(minutes * @seconds_per_minute), :second)}
   end
 
-  @doc """
-  Returns the number of seconds since `0001-01-01`
-  in the Gregorian calendar.
-
-  ## Arguments
-
-  * `datetime` is any `DateTime.t` since `0001-01-01`in the `Calendar.ISO`
-    calendar
-
-  ## Returns
-
-  * An integer number of seconds since `0001-01-01`
-
-  """
-  def datetime_to_gregorian_seconds(unquote(Cldr.Calendar.datetime()) = datetime) do
-    _ = calendar
-
-    %{year: year, month: month, day: day, hour: hour, minute: minute, second: second} = datetime
-    :calendar.datetime_to_gregorian_seconds({{year, month, day}, {hour, minute, second}})
-  end
+  # @doc """
+  # Returns the number of seconds since `0001-01-01`
+  # in the Gregorian calendar.
+  #
+  # ## Arguments
+  #
+  # * `datetime` is any `DateTime.t` since `0001-01-01`in the `Calendar.ISO`
+  #   calendar
+  #
+  # ## Returns
+  #
+  # * An integer number of seconds since `0001-01-01`
+  #
+  # """
+  # def datetime_to_gregorian_seconds(unquote(Cldr.Calendar.datetime()) = datetime) do
+  #   _ = calendar
+  #
+  #   %{year: year, month: month, day: day, hour: hour, minute: minute, second: second} = datetime
+  #   :calendar.datetime_to_gregorian_seconds({{year, month, day}, {hour, minute, second}})
+  # end
 
   @doc false
-  def adjust_for_wraparound(%DateTime{} = datetime, location, %{rise_or_set: :rise}) do
+  def adjust_for_wraparound(unquote(Guards.datetime()) = datetime, location, %{rise_or_set: :rise}) do
+    _ = calendar
+
     # sunrise after 6pm indicates the UTC date has occurred earlier
     if datetime.hour + local_hour_offset(datetime, location) > 18 do
       {:ok, DateTime.add(datetime, -@seconds_per_day, :second)}
@@ -617,7 +617,9 @@ defmodule Astro.Time do
     end
   end
 
-  def adjust_for_wraparound(%DateTime{} = datetime, location, %{rise_or_set: :set}) do
+  def adjust_for_wraparound(unquote(Guards.datetime()) = datetime, location, %{rise_or_set: :set}) do
+    _ = calendar
+
     # sunset before 6am indicates the UTC date has occurred later
     if datetime.hour + local_hour_offset(datetime, location) < 6 do
       {:ok, DateTime.add(datetime, @seconds_per_day, :second)}
@@ -627,7 +629,7 @@ defmodule Astro.Time do
   end
 
   defp local_hour_offset(datetime, location) do
-    gregorian_seconds = datetime_to_gregorian_seconds(datetime)
+    gregorian_seconds = to_gregorian_seconds(datetime)
 
     local_mean_time_offset =
       local_mean_time_offset(location, gregorian_seconds, datetime.time_zone)
@@ -638,7 +640,7 @@ defmodule Astro.Time do
   @doc false
   def antimeridian_adjustment(location, %{time_zone: time_zone} = datetime, options) do
     %{time_zone_database: time_zone_database} = options
-    gregorian_seconds = datetime_to_gregorian_seconds(datetime)
+    gregorian_seconds = to_gregorian_seconds(datetime)
 
     local_hours_offset =
       local_mean_time_offset(location, gregorian_seconds, time_zone) / @seconds_per_hour
@@ -677,7 +679,7 @@ defmodule Astro.Time do
   ## Example
 
       # Returns a 1 hour offset as a fraction of day
-      iex> t = Cldr.Calendar.date_to_iso_days(~D[2021-08-01])
+      iex> t = Date.to_gregorian_days(~D[2021-08-01])
       iex> Astro.Time.offset_for_zone t, "Europe/London"
       0.041666666666666664
 
@@ -724,7 +726,7 @@ defmodule Astro.Time do
   @jan_1_1900  Date.new!(1900, 1, 1)
 
   def ephemeris_correction(t) do
-    %{year: year} = Cldr.Calendar.date_from_iso_days(floor(t), Cldr.Calendar.Gregorian)
+    %{year: year} = Date.from_gregorian_days(floor(t))
     c = Date.diff(Date.new!(year, 7, 1), @jan_1_1900) / @julian_days_per_century
 
     cond do
@@ -765,20 +767,16 @@ defmodule Astro.Time do
 
   def date_time_from_moment(t) do
     days = trunc(t)
-    fraction = Float.ratio(t - days)
+    hours = (t - days) * @hours_per_day
 
-    {year, month, day, hour, minute, second, fraction} =
-      Gregorian.naive_datetime_from_iso_days({days, fraction})
-
-    {:ok, date} = Elixir.Date.new(year, month, day)
-    {:ok, time} = Elixir.Time.new(hour, minute, second, fraction)
-    DateTime.new!(date, time)
+    date = Elixir.Date.from_gregorian_days(days)
+    moment_to_datetime(hours, date)
   end
 
   @doc false
   @spec date_time_to_moment(Calendar.datetime()) :: moment()
 
-  def date_time_to_moment(unquote(Cldr.Calendar.datetime()) = date_time) do
+  def date_time_to_moment(unquote(Guards.datetime()) = date_time) do
     %{year: year, month: month, day: day, hour: hour} = date_time
     %{minute: minute, second: second, microsecond: microsecond} = date_time
 
@@ -786,5 +784,15 @@ defmodule Astro.Time do
       calendar.naive_datetime_to_iso_days(year, month, day, hour, minute, second, microsecond)
 
     days + numerator / denominator
+  end
+
+  defp to_gregorian_seconds(datetime) do
+    {numerator, denominator} = DateTime.to_gregorian_seconds(datetime)
+
+    if denominator == 0 do
+      numerator
+    else
+      numerator / denominator
+    end
   end
 end
