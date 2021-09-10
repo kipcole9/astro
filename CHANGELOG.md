@@ -1,6 +1,6 @@
 # Changelog
 
-## Astro version 0.6.0
+## Astro version 0.7.0
 
 This is the changelog for Astro version 0.7.0 released on September 10th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
