@@ -1,7 +1,5 @@
-defmodule Astro.Application do
-  use Application
-
-  def start(_type, _args) do
+defmodule Astro.Supervisor do
+  def start(_type \\ [], _args \\ []) do
     children = [
       TzWorld.Backend.DetsWithIndexCache
     ]

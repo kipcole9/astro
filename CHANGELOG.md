@@ -2,6 +2,16 @@
 
 ## Astro version 0.6.0
 
+This is the changelog for Astro version 0.7.0 released on September 10th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+**Please note that Elixir 1.11 or later is required.**
+
+### Bug Fixes
+
+* Revert `Astro` back to a pure library application. The supervisor for `TzWorld` still needs to be started. This fix brings the code back into line with the [README](/readme.html). Thanks to @dvic for the report. Closes #1.
+
+## Astro version 0.6.0
+
 This is the changelog for Astro version 0.6.0 released on September 5th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 **Please note that Elixir 1.11 or later is required.**
