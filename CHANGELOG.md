@@ -1,5 +1,17 @@
 # Changelog
 
+## Astro version 0.8.0
+
+This is the changelog for Astro version 0.8.0 released on ______, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+**Please note that Elixir 1.11 or later is required.**
+
+### Enhancements
+
+* Convert some identity functions to macros which improves runtime performance
+
+* Add additional specs and docs to `Astro.Math` module
+
 ## Astro version 0.7.0
 
 This is the changelog for Astro version 0.7.0 released on September 10th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

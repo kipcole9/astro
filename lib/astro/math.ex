@@ -121,32 +121,15 @@ defmodule Astro.Math do
     end
   end
 
-  def floor(x) when x >= 0 do
-    trunc(x)
-  end
+  @doc """
+  Returns the minimum number for which
+  the given function returns a `truthy`
+  value.
 
-  def floor(x) when x < 0 do
-    t = trunc(x)
-    if x - t == 0 do
-      t
-    else
-      t - 1
-    end
-  end
-
-  def ceil(x) do
-    -floor(-x)
-  end
-
-  # `min(I, Pred)' returns the first `I' value for which
-  # `Pred(I)' returns `true', and searches by increments of `+1'.
-  # @spec min(i :: number(), pred :: fn((i) -> boolean())) :: number() when i :: number()
-  def min(i, p) when is_number(i) and is_function(p) do
-    if p.(i) do
-      i
-    else
-      min(i + 1, p)
-    end
+  """
+  @spec min(number(), function()) :: number()
+  def min(i, fun) when is_number(i) and is_function(fun) do
+    if fun.(i), do: i, else: min(i + 1, fun)
   end
 
   @doc """
@@ -157,11 +140,7 @@ defmodule Astro.Math do
   """
   @spec max(number(), function()) :: number()
   def max(i, fun) when is_number(i) and is_function(fun) do
-    if fun.(i) do
-      max(i + 1, fun)
-    else
-      i - 1
-    end
+    if fun.(i), do: max(i + 1, fun), else: i - 1
   end
 
   @spec poly(number(), [number()]) :: number()
@@ -177,7 +156,7 @@ defmodule Astro.Math do
   def signum(x) when x < 0, do: -1
   def signum(_), do: 0
 
-  # @spec sigma([[number(), ...]], () -> number()
+  @spec sigma([[number(), ...]], function()) :: number()
   def sigma(list_of_lists, fun) do
     if Enum.all?(list_of_lists, &(&1 == [])) do
       0
