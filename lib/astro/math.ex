@@ -8,12 +8,20 @@ defmodule Astro.Math do
   @au_to_km 149_597_870.7
   @au_to_m 149_597_870.7 * 1_000
 
-  def to_degrees(radians) do
-    radians * @radians_to_degrees
+  defmacro to_degrees(radians) do
+    radians_to_degrees = @radians_to_degrees
+
+    quote do
+      unquote(radians) * unquote(radians_to_degrees)
+    end
   end
 
-  def to_radians(degrees) do
-    degrees / @radians_to_degrees
+  defmacro to_radians(degrees) do
+    radians_to_degrees = @radians_to_degrees
+
+    quote do
+      unquote(degrees) / unquote(radians_to_degrees)
+    end
   end
 
   def au_to_km(au) do
@@ -32,13 +40,31 @@ defmodule Astro.Math do
     mod(degrees, 360.0)
   end
 
-  @compile {:inline, mt: 1}
-  def mt(x), do: x
+  defmacro mt(x) do
+    quote do
+      unquote(x)
+    end
+  end
 
-  @compile {:inline, deg: 1}
-  def deg(x), do: x
-  def angle(d, m, s), do: d + (m + s / Time.seconds_per_minute()) / Time.minutes_per_hour()
-  def degrees_minutes_seconds(d, m, s), do: {d, m, s}
+  defmacro deg(x) do
+    quote do
+      unquote(x)
+    end
+  end
+
+  defmacro angle(d, m, s) do
+    angle = d + (m + s / Time.seconds_per_minute()) / Time.minutes_per_hour()
+
+    quote do
+      unquote(angle)
+    end
+  end
+
+  defmacro degrees_minutes_seconds(d, m, s) do
+    quote do
+      {unquote(d), unquote(m), unquote(s)}
+    end
+  end
 
   def cos(degrees) do
     degrees
@@ -84,7 +110,7 @@ defmodule Astro.Math do
   end
 
   def atan_r(0, 0) do
-    :undefined
+    :NaN
   end
 
   def atan_r(y, x) do
@@ -123,13 +149,16 @@ defmodule Astro.Math do
     end
   end
 
-  # @doc `max(I, Pred)' returns the last `I' value for which
-  # `Pred(I)' returns `true', and searches by increments of `+1'.
-  # As soon as `Pred(I)' returns `false', `I-1' is returned.
-  # @spec max(i, pred :: fn((i) -> boolean())) :: number() when i :: number()
-  def max(i, p) when is_number(i) and is_function(p) do
-    if p.(i) do
-      max(i + 1, P);
+  @doc """
+  Returns the maximum number for which
+  the given function returns a `truthy`
+  value.
+
+  """
+  @spec max(number(), function()) :: number()
+  def max(i, fun) when is_number(i) and is_function(fun) do
+    if fun.(i) do
+      max(i + 1, fun)
     else
       i - 1
     end
