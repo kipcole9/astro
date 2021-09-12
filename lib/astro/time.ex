@@ -171,7 +171,7 @@ defmodule Astro.Time do
   zone.
 
   """
-  @spec universal_from_standard(time(), zone_name()) :: time()
+  @spec universal_from_standard(time(), zone_name() | number()) :: time()
   def universal_from_standard(t, zone_name) when is_binary(zone_name) do
     t - offset_for_zone(t, zone_name)
   end
