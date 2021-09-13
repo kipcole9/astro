@@ -245,7 +245,7 @@ defmodule Astro.Math do
     end
   end
 
-  # @spec invert_angular(number() -> angle(), number(), number(), number()) :: number()
+  @spec invert_angular(function(), number(), number(), number()) :: number()
   def invert_angular(f, y, a, b) do
     # returns X such that A =< X =< B for which f(X) = Y
     # where |X-X0| < Tolerance
@@ -255,6 +255,7 @@ defmodule Astro.Math do
     bisection_search(a, b, phi, psi)
   end
 
+  @spec bisection_search(number(), number(), function(), function()) :: number()
   def bisection_search(u, v, phi, psi) do
     x = (v + u) / 2.0
 

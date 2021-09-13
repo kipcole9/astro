@@ -300,6 +300,8 @@ defmodule Astro.Solar do
   when the solar longitude will be lamda degrees.
 
   """
+  @spec solar_longitude_after(number(), Time.time()) :: Time.time()
+
   def solar_longitude_after(lambda, t) do
     rate = Time.mean_tropical_year() / deg(360)
     tau = t + rate * mod(lambda - solar_longitude(t), 360)

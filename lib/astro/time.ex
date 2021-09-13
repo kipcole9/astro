@@ -38,7 +38,7 @@ defmodule Astro.Time do
   """
   @type moment() :: number()
   @type season() :: Astro.angle()
-  @type zone_name() :: String.t
+  @type zone_name() :: binary()
 
   @julian_day_jan_1_2000 2_451_545
   @julian_days_per_century 36_525.0
@@ -156,7 +156,8 @@ defmodule Astro.Time do
   time zone.
 
   """
-  @spec standard_from_universal(time(), zone_name()) :: time()
+  @spec standard_from_universal(time(), zone_name() | number()) :: time()
+
   def standard_from_universal(t, zone_name) when is_binary(zone_name) do
     t + offset_for_zone(t, zone_name)
   end
@@ -172,6 +173,7 @@ defmodule Astro.Time do
 
   """
   @spec universal_from_standard(time(), zone_name() | number()) :: time()
+
   def universal_from_standard(t, zone_name) when is_binary(zone_name) do
     t - offset_for_zone(t, zone_name)
   end
