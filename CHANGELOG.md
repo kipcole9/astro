@@ -2,7 +2,7 @@
 
 ## Astro version 0.8.0
 
-This is the changelog for Astro version 0.8.0 released on ______, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 0.8.0 released on October 3rd, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 **Please note that Elixir 1.11 or later is required.**
 
