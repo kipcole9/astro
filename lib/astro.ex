@@ -336,8 +336,8 @@ defmodule Astro do
 
   ## Returns
 
-  * A single grapheme string representing the Unicode
-    moon phase emoji
+  * A single grapheme string representing the [Unicode
+    moon phase emoji](https://unicode-table.com/en/sets/moon/)
 
   ## Examples
 
