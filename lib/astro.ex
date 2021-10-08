@@ -33,6 +33,8 @@ defmodule Astro do
   @type date :: Calendar.date() | Calendar.datetime()
   @type options :: keyword()
 
+  defguard is_lunar_phase(phase) when phase >= 0.0 and phase <= 360.0
+
   @doc """
   Returns a `t:Geo.PointZ` containing
   the right ascension and declination of
@@ -322,6 +324,60 @@ defmodule Astro do
     date
     |> Date.to_gregorian_days()
     |> Lunar.lunar_phase_at()
+  end
+
+  @doc """
+  Returns the moon phase as a UTF8 binary
+  representing an emoji of the moon phase.
+
+  ## Arguments
+
+  * `phase` is a moon phase between `0.0` and `360.0`
+
+  ## Returns
+
+  * A single grapheme string representing the Unicode
+    moon phase emoji
+
+  ## Examples
+
+      iex> Astro.lunar_phase_emoji 0
+      "🌑"
+      iex> Astro.lunar_phase_emoji 45
+      "🌒"
+      iex> Astro.lunar_phase_emoji 90
+      "🌓"
+      iex> Astro.lunar_phase_emoji 135
+      "🌔"
+      iex> Astro.lunar_phase_emoji 180
+      "🌕"
+      iex> Astro.lunar_phase_emoji 245
+      "🌖"
+      iex> Astro.lunar_phase_emoji 270
+      "🌗"
+      iex> Astro.lunar_phase_emoji 320
+      "🌘"
+      iex> Astro.lunar_phase_emoji 360
+      "🌑"
+
+      iex> ~U[2021-08-22 12:01:02.170362Z]
+      ...> |> Astro.lunar_phase_at()
+      ...> |> Astro.lunar_phase_emoji()
+      "🌕"
+
+  """
+  @emoji_base 0x1f310
+  @emoji_phase_count 8
+  @emoji_phase (360.0 / @emoji_phase_count)
+
+  @spec lunar_phase_emoji(phase()) :: String.t()
+  def lunar_phase_emoji(360) do
+    lunar_phase_emoji(0)
+  end
+
+  def lunar_phase_emoji(phase) when is_lunar_phase(phase) do
+    offset = ceil(phase / @emoji_phase + 0.5)
+    :unicode.characters_to_binary([offset + @emoji_base])
   end
 
   @doc """

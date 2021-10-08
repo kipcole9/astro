@@ -1,5 +1,15 @@
 # Changelog
 
+## Astro version 0.9.0
+
+This is the changelog for Astro version 0.9.0 released on October 8th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+**Please note that Elixir 1.11 or later is required.**
+
+### Enhancements
+
+* Adds `Astro.lunar_phase_emoji/1` to produce a single grapheme string representing the image of the moon phase for a given lunar angle.
+
 ## Astro version 0.8.0
 
 This is the changelog for Astro version 0.8.0 released on October 3rd, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
