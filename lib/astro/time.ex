@@ -661,8 +661,8 @@ defmodule Astro.Time do
       0.041666666666666664
 
   """
-  def offset_for_zone(t, time_zone) do
-    gregorian_seconds = t * seconds_per_day()
+  def offset_for_zone(t, time_zone) when is_number(t) and is_binary(time_zone) do
+    gregorian_seconds = round(t * seconds_per_day())
 
     case Tzdata.periods_for_time(time_zone, gregorian_seconds, :wall) do
       [period] ->

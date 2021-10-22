@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 0.9.1
+
+This is the changelog for Astro version 0.9.1 released on October 23rd, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Ensure that `gregorian_seconds` is an integer before passing it to `Tzdata.periods_for_time/3`. Thanks to @dvic for the report. Fixes #2.
+
 ## Astro version 0.9.0
 
 This is the changelog for Astro version 0.9.0 released on October 8th, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
