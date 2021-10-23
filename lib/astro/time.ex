@@ -12,8 +12,6 @@ defmodule Astro.Time do
   alias Astro.{Math, Guards}
   import Astro.Math, only: [poly: 2, deg: 1, mod: 2]
 
-  @type hours() :: number()
-
   @typedoc """
   A time is a floating point number of
   days since 0000-01-01 including the fractional
@@ -21,11 +19,37 @@ defmodule Astro.Time do
   """
   @type time() :: number()
 
+  @typedoc "A number of days as a float"
+  @type days() :: number()
+
+  @typedoc "A number of hours as a float"
+  @type hours() :: number()
+
+  @typedoc "A number of minutes as a float"
+  @type minutes() :: number()
+
+  @typedoc "A number of seconds as a float"
+  @type seconds() :: number()
+
+  @typedoc "A time of day as a float fraction of a day"
+  @type fraction_of_day() :: number()
+
+  @typedoc "A tuple of integer hours, integer minutes and integer seconds"
+  @type hms() :: {Calendar.hour(), Calendar.minute(), Calendar.second()}
+
   @typedoc """
+  A float number of days since the Julian epoch.
+
   The current Julian epoch is defined to have been
   noon on January 1, 2000. This epoch is
   denoted J2000 and has the exact Julian day
-  number 2,451,545.0.
+  number `2,451,545.0`.
+
+  """
+  @type julian_days() :: number()
+
+  @typedoc """
+  The float number of Julian centuries.
 
   Since there are 365.25 days in a Julian year,
   a Julian century has 36,525 days.
@@ -33,11 +57,19 @@ defmodule Astro.Time do
   @type julian_centuries() :: number()
 
   @typedoc """
-  A moment is a floating point representations of
+  A moment is a floating point representation of
   the fraction of a day.
   """
   @type moment() :: number()
+
+  @typedoc """
+  Season expressed as a non-negative number
+  that is <= 360 representing the sun angle of incidence
+  (the angle at which the sun hits the earth).
+  """
   @type season() :: Astro.angle()
+
+  @typedoc "A time zone name as a string"
   @type zone_name() :: binary()
 
   @julian_day_jan_1_2000 2_451_545
@@ -58,6 +90,7 @@ defmodule Astro.Time do
   # Mean tropical year in days
   @mean_tropical_year 365.242189
 
+  @doc false
   def hr(x), do: x / hours_per_day()
   # def mn(x), do: x / hours_per_day() / minutes_per_hour()
   # def sec(x), do: x / hours_per_day() / minutes_per_hour() / seconds_per_minute()
@@ -66,15 +99,29 @@ defmodule Astro.Time do
 
   @doc false
   def seconds_per_day, do: @seconds_per_day
+
+  @doc false
   def minutes_per_day, do: @minutes_per_day
+
+  @doc false
   def hours_per_day, do: @hours_per_day
+
+  @doc false
   def seconds_per_hour, do: @seconds_per_hour
+
+  @doc false
   def seconds_per_minute, do: @seconds_per_minute
 
+  @doc false
   def minutes_per_hour, do: @minutes_per_hour
+
+  @doc false
   def days_from_minutes(minutes), do: minutes / @minutes_per_day
 
+  @doc false
   def mean_synodic_month, do: @mean_synodic_month
+
+  @doc false
   def mean_tropical_year, do: @mean_tropical_year
 
   @doc """
@@ -85,7 +132,6 @@ defmodule Astro.Time do
   calculating orbital motions within the Solar
   System. The underlying physical law governing
   such motions is the law of gravitation.
-
 
   """
   @spec dynamical_from_universal(time()) :: time()
@@ -151,13 +197,11 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the standard time for a
-  universal time in a given
+  Returns the standard time for a universal time in a given
   time zone.
 
   """
   @spec standard_from_universal(time(), zone_name() | number()) :: time()
-
   def standard_from_universal(t, zone_name) when is_binary(zone_name) do
     t + offset_for_zone(t, zone_name)
   end
@@ -167,13 +211,11 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the universal (UTC) time for
-  a standard time in a given time
+  Returns the universal (UTC) time for a standard time in a given time
   zone.
 
   """
   @spec universal_from_standard(time(), zone_name() | number()) :: time()
-
   def universal_from_standard(t, zone_name) when is_binary(zone_name) do
     t - offset_for_zone(t, zone_name)
   end
@@ -247,6 +289,7 @@ defmodule Astro.Time do
     2458822.5
 
   """
+  @spec julian_day_from_date(Calendar.date()) :: julian_days()
   def julian_day_from_date(%{year: year, month: month, day: day, calendar: Calendar.ISO}) do
     div(1461 * (year + 4800 + div(month - 14, 12)), 4) +
       div(367 * (month - 2 - 12 * div(month - 14, 12)), 12) -
@@ -309,6 +352,7 @@ defmodule Astro.Time do
   * the astronomical Julian day as a `float`
 
   """
+  @spec julian_day_from_julian_centuries(julian_centuries()) :: julian_days()
   def julian_day_from_julian_centuries(julian_centuries) do
     julian_centuries * @julian_days_per_century + @julian_day_jan_1_2000
   end
@@ -331,6 +375,7 @@ defmodule Astro.Time do
       {:ok, ~U[2019-12-05 00:00:00Z]}
 
   """
+  @spec datetime_from_julian_days(julian_days()) :: {:ok, Calendar.datetime()}
   def datetime_from_julian_days(julian_days) when is_float(julian_days) do
     z = trunc(julian_days + 0.5)
     f = julian_days + 0.5 - z
@@ -393,6 +438,7 @@ defmodule Astro.Time do
   Terrestrial Dynamical Time (TDT).
 
   """
+  @spec utc_datetime_from_terrestrial_datetime(Calendar.datetime()) :: {:ok, Calendar.datetime()}
   def utc_datetime_from_terrestrial_datetime(%{year: year} = datetime) do
     t = (year - 2000) / 100.0
     delta_seconds = trunc(delta_seconds_for_year(year, t))
@@ -460,6 +506,7 @@ defmodule Astro.Time do
   to `2400000.5` days after day 0 of the Julian calendar.
 
   """
+  @spec mjd(Calendar.date()) :: julian_days()
   def mjd(date) do
     ajd(date) - 2_400_000.5
   end
@@ -481,6 +528,7 @@ defmodule Astro.Time do
   in the UTC timezone.
 
   """
+  @spec moment_to_datetime(fraction_of_day(), Calendar.date()) :: {:ok, Calendar.datetime()}
   def moment_to_datetime(time_of_day, %{year: year, month: month, day: day}) do
     with {hours, minutes, seconds} <- hours_to_hms(time_of_day),
          {:ok, naive_datetime} <- NaiveDateTime.new(year, month, day, hours, minutes, seconds, 0) do
@@ -513,6 +561,7 @@ defmodule Astro.Time do
     {15, 27, 21}
 
   """
+  @spec hours_to_hms(fraction_of_day()) :: hms()
   def hours_to_hms(time_of_day) when is_float(time_of_day) do
     hours = trunc(time_of_day)
     minutes = (time_of_day - hours) * @minutes_per_hour
@@ -522,16 +571,23 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a number of hourse into
-  days.
+  Converts a number of hours into days.
 
   ## Arguments
 
+  * a float number of `hours`
+
   ## Returns
+
+  * a float number of `days`
 
   ## Examples
 
+      iex> Astro.Time.hours_to_days(48)
+      2.0
+
   """
+  @spec hours_to_days(hours()) :: days()
   def hours_to_days(hours) do
     hours / @hours_per_day
   end
@@ -560,6 +616,7 @@ defmodule Astro.Time do
     {2, 46, 39}
 
   """
+  @spec seconds_to_hms(fraction_of_day()) :: hms()
   def seconds_to_hms(time_of_day) when is_number(time_of_day) do
     (time_of_day / @seconds_per_minute / @minutes_per_hour)
     |> hours_to_hms
@@ -577,9 +634,10 @@ defmodule Astro.Time do
 
   ## Returns
 
-  * a datetime in the UTC time zone
+  * `{:ok, datetime in the UTC time zone}`
 
   """
+  @spec datetime_from_date_and_minutes(minutes(), Calendar.date()) :: {:ok, Calendar.datetime()}
   def datetime_from_date_and_minutes(minutes, date) do
     {:ok, naive_datetime} = NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0)
     {:ok, datetime} = DateTime.from_naive(naive_datetime, @utc_zone)
@@ -644,6 +702,7 @@ defmodule Astro.Time do
     local_mean_time - offset_for_zone(gregorian_seconds, time_zone) * seconds_per_day()
   end
 
+  @doc false
   def offset_from_location(%Geo.PointZ{} = location, t) do
     {:ok, time_zone} = timezone_at(location)
     offset_for_zone(t, time_zone)
@@ -661,12 +720,13 @@ defmodule Astro.Time do
       0.041666666666666664
 
   """
+  @spec offset_for_zone(moment(), zone_name()) :: fraction_of_day()
   def offset_for_zone(t, time_zone) when is_number(t) and is_binary(time_zone) do
-    gregorian_seconds = round(t * seconds_per_day())
+    gregorian_seconds = round(t * @seconds_per_day)
 
     case Tzdata.periods_for_time(time_zone, gregorian_seconds, :wall) do
       [period] ->
-        ((period.utc_off + period.std_off) / seconds_per_day())
+        ((period.utc_off + period.std_off) / @seconds_per_day)
 
       [_period_a | _period_b] ->
         :ambiguous_time
@@ -702,6 +762,15 @@ defmodule Astro.Time do
 
   @jan_1_1900  Date.new!(1900, 1, 1)
 
+  @doc """
+  Returns the adjustment necessary to various celestial
+  calculations at a given time.
+
+  The ajustment is required since the earth's orbit
+  of the sun is not completely uniform.
+
+  """
+  @spec ephemeris_correction(moment()) :: seconds()
   def ephemeris_correction(t) do
     %{year: year} = Date.from_gregorian_days(floor(t))
     c = Date.diff(Date.new!(year, 7, 1), @jan_1_1900) / @julian_days_per_century
@@ -756,7 +825,6 @@ defmodule Astro.Time do
 
   @doc false
   @spec date_time_to_moment(Calendar.datetime()) :: moment()
-
   def date_time_to_moment(unquote(Guards.datetime()) = date_time) do
     %{year: year, month: month, day: day, hour: hour} = date_time
     %{minute: minute, second: second, microsecond: microsecond} = date_time
