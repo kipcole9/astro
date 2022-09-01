@@ -60,7 +60,7 @@ defmodule Astro.MixProject do
   defp package do
     [
       maintainers: ["Kip Cole"],
-      licenses: ["Apache 2.0"],
+      licenses: ["Apache-2.0"],
       links: links(),
       files: [
         "lib",
