@@ -85,7 +85,7 @@ defmodule Astro.MixProject do
   defp deps do
     [
       {:tzdata, "~> 1.0"},
-      {:tz_world, "~> 0.7"},
+      {:tz_world, "~> 1.0"},
       {:geo, "~> 3.0"},
       {:jason, "~> 1.0"},
       # {:calcalc, path: "deps/calcalc"},
