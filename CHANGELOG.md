@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 0.9.2
+
+This is the changelog for Astro version 0.9.2 released on September 1st, 2022.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Update `:tz_world` to "~> 1.0" which will also remove Elixir 1.14 warnings
+
 ## Astro version 0.9.1
 
 This is the changelog for Astro version 0.9.1 released on October 23rd, 2021.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
