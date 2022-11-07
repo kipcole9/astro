@@ -121,6 +121,23 @@ defmodule Astro.Math do
     end
   end
 
+  def floor(x) when x >= 0 do
+    trunc(x)
+  end
+
+  def floor(x) when x < 0 do
+    t = trunc(x)
+    if x - t == 0 do
+      t
+    else
+      t - 1
+    end
+  end
+
+  def ceil(x) do
+    -floor(-x)
+  end
+
   @doc """
   Returns the minimum number for which
   the given function returns a `truthy`
