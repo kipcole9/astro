@@ -9,7 +9,7 @@ defmodule Astro.Time do
 
   """
 
-  alias Astro.{Math, Guards}
+  alias Astro.{Math, Guards, Location}
   import Astro.Math, only: [poly: 2, deg: 1, mod: 2]
 
   @typedoc """
@@ -255,6 +255,41 @@ defmodule Astro.Time do
       Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
 
     mod(Math.poly(c, terms), 360)
+  end
+
+  @doc """
+  Returns the Greenwich mean sidereal time for a given date time.
+
+  """
+  @doc since: "0.11.0"
+  @spec greenwich_mean_sidereal_time(Calendar.datetime()) :: moment()
+
+  def greenwich_mean_sidereal_time(date_time) do
+    date_time_utc =
+      date_time
+      |> DateTime.convert!(Calendar.ISO)
+      |> DateTime.shift_zone!("UTC")
+
+    date_time_utc
+    |> date_time_to_moment()
+    |> sidereal_from_moment()
+  end
+
+  @doc """
+  Returns the local sidereal time for a given location
+  and date time.
+
+  """
+  @doc since: "0.11.0"
+  @spec local_sidereal_time(Astro.location(), Calendar.datetime()) :: moment()
+
+  def local_sidereal_time(location, date_time) do
+    %Geo.PointZ{coordinates: {longitude, _latitude, _altitude}} =
+      Location.normalize_location(location)
+
+    date_time
+    |> greenwich_mean_sidereal_time()
+    |> Kernel.+(longitude)
   end
 
   @doc """

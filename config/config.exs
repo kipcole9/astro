@@ -1,5 +1,11 @@
 import Config
 
 config :logger,
-  level: :warning,
+  level: :debug,
   truncate: 4096
+
+config :elixir,
+  :time_zone_database, Tzdata.TimeZoneDatabase
+
+# config :elixir,
+#   :time_zone_database, Tz.TimeZoneDatabase

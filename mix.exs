@@ -1,7 +1,7 @@
 defmodule Astro.MixProject do
   use Mix.Project
 
-  @version "0.10.0"
+  @version "0.11.0-dev"
 
   def project do
     [
@@ -83,9 +83,12 @@ defmodule Astro.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:tzdata, "~> 1.0"},
       {:tz_world, "~> 1.0"},
       {:geo, "~> 3.0"},
+
+      # If using tzdata
+      {:tzdata, "~> 1.1", optional: true},
+
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false, optional: true}
     ]

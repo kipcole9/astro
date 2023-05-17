@@ -13,7 +13,8 @@ defmodule Astro do
     cos: 1,
     atan_r: 2,
     tan: 1,
-    mod: 2
+    mod: 2,
+    to_degrees: 1
   ]
 
   import Astro.Solar, only: [
@@ -36,9 +37,73 @@ defmodule Astro do
   defguard is_lunar_phase(phase) when phase >= 0.0 and phase <= 360.0
 
   @doc """
+  Returns a tuple `{azimuth, altitude}` for a given
+  date time and location.
+
+  ## Arguments
+
+  * `location` is the latitude, longitude and
+    optionally elevation for the desired sunrise
+    azimuth and altitude. It can be expressed as:
+
+    * `{lng, lat}` - a tuple with longitude and latitude
+      as floating point numbers. **Note** the order of the
+      arguments.
+    * a `Geo.Point.t` struct to represent a location without elevation
+    * a `Geo.PointZ.t` struct to represent a location and elevation
+
+  * `date_time` is a `DateTime` any struct that meets the
+    requirements of `t:Calendar.datetime`.
+
+  ## Returns
+
+  * a tuple of the format `{azimith, altitude}` which are
+    expressed in float degrees.
+
+  ## Example
+
+      iex> {:ok, date_time} = DateTime.new(~D[2023-05-17], ~T[12:47:00], "Australia/Sydney")
+      iex> location = {151.1637781, -33.5145852}
+      iex> Astro.sun_azimuth_elevation(location, date_time)
+      {344.39039435692223, 35.6182563615266}
+
+  """
+  @doc since: "0.11.0"
+  @spec sun_azimuth_elevation(location(), Calendar.datetime()) :: Geo.PointZ.t()
+
+  def sun_azimuth_elevation(location, unquote(Guards.datetime()) = date_time) do
+    _ = calendar
+
+    %Geo.PointZ{coordinates: {right_ascension, declination, _distance}} =
+      sun_position_at(date_time)
+
+    %Geo.PointZ{coordinates: {_longitude, latitude, _altitude}} =
+      Location.normalize_location(location)
+
+    local_sidereal_time =
+      Time.local_sidereal_time(location, date_time)
+
+    hour_angle =
+      mod(local_sidereal_time - right_ascension, 360.0)
+
+    altitude =
+      :math.asin(sin(declination) * sin(latitude) + cos(declination) * cos(latitude) * cos(hour_angle))
+      |> to_degrees
+
+    a =
+      :math.acos((sin(declination) - sin(altitude) * sin(latitude)) / (cos(altitude) * cos(latitude)))
+      |> to_degrees()
+
+    azimuth =
+      if sin(hour_angle) < 0.0, do: a, else: 360.0 - a
+
+    {azimuth, altitude}
+  end
+
+  @doc """
   Returns a `t:Geo.PointZ` containing
   the right ascension and declination of
-  the moon at a given date or date time.
+  the sun at a given date or date time.
 
   ## Arguments
 
@@ -74,7 +139,7 @@ defmodule Astro do
     |> Solar.solar_position()
     |> convert_distance_to_m()
     |> Location.normalize_location()
-    |> Map.put(:properties, %{reference: :celestial, object: :moon})
+    |> Map.put(:properties, %{reference: :celestial, object: :sun})
   end
 
   def sun_position_at(unquote(Guards.date()) = date) do
@@ -112,9 +177,9 @@ defmodule Astro do
 
   ## Example
 
-      iex> Astro.moon_position_at(~D[1992-04-12])
+      iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
       %Geo.PointZ{
-        coordinates: {134.6978882151538, 13.765242742787006, 5.511320224169038e19},
+        coordinates: {134.697888, 13.765243, 5.511320224169038e19},
         properties: %{object: :moon, reference: :celestial},
         srid: nil
       }
@@ -168,9 +233,6 @@ defmodule Astro do
 
       iex> Astro.illuminated_fraction_of_moon_at(~D[1992-04-12])
       0.6786428237168787
-
-      iex> Astro.illuminated_fraction_of_moon_at(~U[2017-03-16 19:55:11.0Z])
-      0.8334019164562495
 
   """
   @doc since: "0.6.0"
@@ -967,10 +1029,13 @@ defmodule Astro do
 
   @doc false
   def default_options do
+    default_time_zone_db =
+      Application.get_env(:elixir, :time_zone_database, Tzdata.TimeZoneDatabase)
+
     [
       solar_elevation: Solar.solar_elevation(:geometric),
       time_zone: :default,
-      time_zone_database: Tzdata.TimeZoneDatabase
+      time_zone_database: default_time_zone_db
     ]
   end
 

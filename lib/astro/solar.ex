@@ -154,16 +154,16 @@ defmodule Astro.Solar do
   ## Arguments
 
   * `date` is a `DateTime.t()` in the UTC
-    time zone
+    time zone.
 
   * `location` is any `Geo.PointZ.t()`
-    location
+    location.
 
   * `solar_elevation` is the required solar
     elevation in degrees (90 degrees for sunrise
-    and sunset)
+    and sunset).
 
-  * `mode` is `:sunrise` or `:sunset`
+  * `mode` is `:sunrise` or `:sunset`.
 
   ## Returns
 
@@ -256,24 +256,24 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the solar declination in degrees
+  Returns the solar declination in degrees.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
   * the solar declination in degrees as
-    a `float`
+    a `float`.
 
   ## Notes
 
   The solar declination is the angle between
   the direction of the center of the solar
   disk measured from Earth's center and the
-  equatorial plane
+  equatorial plane.
 
   """
   @spec solar_declination(float) :: float()
@@ -288,6 +288,32 @@ defmodule Astro.Solar do
   end
 
   @doc """
+  Returns the solar longitude in degrees.
+
+  ## Arguments
+
+  * `julian_centuries` is the any moment
+    in time expressed as julian centuries.
+
+  ## Returns
+
+  * the solar longitude in degrees as
+    a `float`.
+
+  ## Notes
+
+  The solar longitude is the position of the sun on the celestial
+  sphere along the ecliptic.
+
+  It is also an effective measure of the position of the earth
+  (or any other sun-orbiting body) in its orbit around the sun,
+  usually taken as zero at the moment of the vernal equinox.
+
+  Since it is based on how far the earth has moved in its orbit
+  since the equinox, it is a measure of what time of the tropical
+  year (the year of seasons) the planet is in, but without the
+  inaccuracies of a calendar date, which is perturbed by leap years
+  and calendar imperfections.
 
   """
   def solar_longitude(t) do
@@ -297,7 +323,7 @@ defmodule Astro.Solar do
 
   @doc """
   Return the moment UT of the first time at or after moment, tee,
-  when the solar longitude will be lamda degrees.
+  when the solar longitude will be lambda degrees.
 
   """
   @spec solar_longitude_after(number(), Time.time()) :: Time.time()
@@ -313,7 +339,8 @@ defmodule Astro.Solar do
 
   @doc """
   Return approximate moment at or before tee
-  when solar longitude just exceeded lam degrees.
+  when solar longitude just exceeded lambda degrees.
+
   """
 	def estimate_prior_solar_longitude(lambda, t) do
     rate = (Time.mean_tropical_year() / deg(360))
@@ -339,7 +366,7 @@ defmodule Astro.Solar do
 
   The apparent longitude is the sun's celestial
   longitude corrected for aberration and nutation
-  as opposed to mean longitude
+  as opposed to mean longitude.
 
   An equinox is the instant when the Sun's
   apparent geocentric longitude is 0° (northward

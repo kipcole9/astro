@@ -14,11 +14,21 @@ Astro is a library to provide basic astromonomical functions with a focus on fun
 
 The primary functions are:
 
+### Solar function
+
 * `Astro.sunrise/3`
 * `Astro.sunset/3`
 * `Astro.solstice/2`
 * `Astro.equinox/2`
 * `Astro.hours_of_daylight/2`
+
+### Lunar functions
+
+* `Astro.moon_position_at/1`
+* `Astro.illuminated_fraction_of_moon_at/1`
+* `Astro.date_time_new_moon_at_or_after/1`
+* `Astro.lunar_phase_at/1`
+* `Astro.lunar_phase_emoji/1`
 
 ### Examples
 ```elixir
@@ -98,14 +108,29 @@ For this implementation, the latitude and longitude of the functions in `Astro` 
 ## Installation
 
 ### Configure Astro
+
 Astro can be installed by adding `astro` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:astro, "~> 0.7.0"}
+    {:astro, "~> 0.11.0"}
   ]
 end
+```
+
+### Install a time zone database
+
+A time zone database is required in order to support time zone conversions. Two popular options are [tzdata](https://hex.pm/packages/tzdata) and [tz](https://hex.pm/packages/tz). Then the appropriate database must be configured in `config.exs` or `runtime.exs` as the default time zone database.  For example:
+
+```elixir
+# If using tzdata
+config :elixir,
+  :time_zone_database, Tzdata.TimeZoneDatabase
+  
+# If using tz
+config :elixir, 
+  :time_zone_database, Tz.TimeZoneDatabase
 ```
 
 ### Install TzWorld Data
