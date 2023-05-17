@@ -1,6 +1,5 @@
 # Astro
 
-![Build Status](http://sweatbox.noexpectations.com.au:8080/buildStatus/icon?job=astro)
 [![Hex.pm](https://img.shields.io/hexpm/v/astro.svg)](https://hex.pm/packages/astro)
 [![Hex.pm](https://img.shields.io/hexpm/dw/astro.svg?)](https://hex.pm/packages/astro)
 [![Hex.pm](https://img.shields.io/hexpm/dt/astro.svg?)](https://hex.pm/packages/astro)
