@@ -68,6 +68,11 @@ defmodule Astro do
       {344.39039435692223, 35.6182563615266}
 
   """
+
+  # Use https://midcdmz.nrel.gov/solpos/spa.html for validation
+  # current implementation is approx 1 degree at variance with
+  # that calculator.
+
   @doc since: "0.11.0"
   @spec sun_azimuth_elevation(location(), Calendar.datetime()) :: Geo.PointZ.t()
 
