@@ -113,7 +113,7 @@ Astro can be installed by adding `astro` to your list of dependencies in `mix.ex
 ```elixir
 def deps do
   [
-    {:astro, "~> 1.11"}
+    {:astro, "~> 1.0"}
   ]
 end
 ```
