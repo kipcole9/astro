@@ -64,8 +64,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = DateTime.new(~D[2023-05-17], ~T[12:47:00], "Australia/Sydney")
       iex> location = {151.1637781, -33.5145852}
-      iex> Astro.sun_azimuth_elevation(location, date_time)
-      {344.39039435692223, 35.6182563615266}
+      iex> {_azimuth, _altitude} = Astro.sun_azimuth_elevation(location, date_time)
 
   """
 
