@@ -1,10 +1,12 @@
 # Changelog
 
-## Astro version 0.11.0
+## Astro version 1.0.0
 
-This is the changelog for Astro version 0.11.0 released on ______, 2022.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 0.11.0 released on December 29th, 2022.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Enhancements
+
+* Release 1.0.  This library was started four years ago and the public API has been stable for at least three of those years.
 
 * Adds `Astro.sun_azimuth_altitude/2`. Thanks to @kimlai for the suggestion. Closes #3.
 

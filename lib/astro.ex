@@ -73,7 +73,7 @@ defmodule Astro do
   # that calculator.
 
   @doc since: "0.11.0"
-  @spec sun_azimuth_elevation(location(), Calendar.datetime()) :: Geo.PointZ.t()
+  @spec sun_azimuth_elevation(location(), Calendar.datetime()) :: {azimuth :: float, altitude :: float}
 
   def sun_azimuth_elevation(location, unquote(Guards.datetime()) = date_time) do
     _ = calendar
