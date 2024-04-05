@@ -56,7 +56,7 @@ defmodule AstroTest do
   end
 
   test "Time zone offset for float t" do
-    assert Astro.Time.offset_for_zone(165421401943.96832, "Europe/London") ==
+    assert Astro.Time.offset_for_zone(63794995200.96832, "Europe/London") ==
       0.041666666666666664
   end
 end

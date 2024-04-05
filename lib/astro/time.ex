@@ -582,7 +582,8 @@ defmodule Astro.Time do
 
   ## Returns
 
-  * A `{hour, minute, second}` tuple.
+  * A `{hour, minute, second}` tuple. Fractions of
+    seconds are truncated.
 
   ## Examples
 
@@ -654,7 +655,7 @@ defmodule Astro.Time do
   @spec seconds_to_hms(fraction_of_day()) :: hms()
   def seconds_to_hms(time_of_day) when is_number(time_of_day) do
     (time_of_day / @seconds_per_minute / @minutes_per_hour)
-    |> hours_to_hms
+    |> hours_to_hms()
   end
 
   @doc """
@@ -749,8 +750,7 @@ defmodule Astro.Time do
 
   ## Example
 
-      # Returns a 1 hour offset as a fraction of day
-      iex> t = Date.to_gregorian_days(~D[2021-08-01])
+      iex> t = Date.to_gregorian_days(~D[2021-08-01]) * (60 * 60 * 24)
       iex> Astro.Time.offset_for_zone t, "Europe/London"
       0.041666666666666664
 
@@ -887,16 +887,4 @@ defmodule Astro.Time do
     end
   end
 
-  # def periods_for_time2(time_zone, t, _time_zone_database) do
-  #   case Tzdata.periods_for_time(time_zone, round(t), :wall) do
-  #     [period] ->
-  #       period
-  #       |> Map.put(:utc_offset, period.utc_off)
-  #       |> Map.put(:std_offset, period.std_off)
-  #       |> List.wrap()
-  #
-  #     other ->
-  #       other
-  #   end
-  # end
 end
