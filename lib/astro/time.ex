@@ -756,12 +756,11 @@ defmodule Astro.Time do
 
   """
   @spec offset_for_zone(moment(), zone_name()) :: fraction_of_day()
-  def offset_for_zone(t, time_zone) when is_number(t) and is_binary(time_zone) do
-    gregorian_seconds = round(t * @seconds_per_day)
-
-    case Tzdata.periods_for_time(time_zone, gregorian_seconds, :wall) do
+  def offset_for_zone(t, time_zone, time_zone_database \\ Calendar.get_time_zone_database())
+      when is_number(t) and is_binary(time_zone) do
+    case periods_for_time(time_zone, t, time_zone_database) do
       [period] ->
-        ((period.utc_off + period.std_off) / @seconds_per_day)
+        ((period.utc_offset + period.std_offset) / @seconds_per_day)
 
       [_period_a | _period_b] ->
         :ambiguous_time
@@ -879,4 +878,25 @@ defmodule Astro.Time do
       numerator / denominator
     end
   end
+
+  def periods_for_time(time_zone, t, time_zone_database) do
+    {:ok, date_time} = date_time_from_moment(t / @seconds_per_day)
+    case time_zone_database.time_zone_periods_from_wall_datetime(date_time, time_zone) do
+      {:ok, zone} -> [zone]
+      other -> other
+    end
+  end
+
+  # def periods_for_time2(time_zone, t, _time_zone_database) do
+  #   case Tzdata.periods_for_time(time_zone, round(t), :wall) do
+  #     [period] ->
+  #       period
+  #       |> Map.put(:utc_offset, period.utc_off)
+  #       |> Map.put(:std_offset, period.std_off)
+  #       |> List.wrap()
+  #
+  #     other ->
+  #       other
+  #   end
+  # end
 end

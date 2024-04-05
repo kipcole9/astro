@@ -89,6 +89,9 @@ defmodule Astro.MixProject do
       # If using tzdata
       {:tzdata, "~> 1.1", optional: true},
 
+      # If usuing tz
+      {:tz, "~> 0.26", optional: true},
+
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false, optional: true}
     ]
