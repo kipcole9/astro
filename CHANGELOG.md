@@ -1,8 +1,14 @@
 # Changelog
 
+## Astro version 1.0.1
+
+This is the changelog for Astro version 1.0.1 released on ________.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Enhancements
+
 ## Astro version 1.0.0
 
-This is the changelog for Astro version 0.11.0 released on December 29th, 2022.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 1.0.0 released on December 29th, 2022.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Enhancements
 
