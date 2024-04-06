@@ -746,7 +746,7 @@ defmodule Astro.Time do
 
   @doc """
   Returns the offset in float days
-  for a given `moment` and time zone.
+  for a given number of gregorian seconds and time zone.
 
   ## Example
 
@@ -756,9 +756,9 @@ defmodule Astro.Time do
 
   """
   @spec offset_for_zone(moment(), zone_name()) :: fraction_of_day()
-  def offset_for_zone(t, time_zone, time_zone_database \\ Calendar.get_time_zone_database())
-      when is_number(t) and is_binary(time_zone) do
-    case periods_for_time(time_zone, t, time_zone_database) do
+  def offset_for_zone(gregorian_seconds, time_zone, time_zone_database \\ Calendar.get_time_zone_database())
+      when is_number(gregorian_seconds) and is_binary(time_zone) do
+    case periods_for_time(time_zone, gregorian_seconds, time_zone_database) do
       [period] ->
         ((period.utc_offset + period.std_offset) / @seconds_per_day)
 
@@ -879,8 +879,9 @@ defmodule Astro.Time do
     end
   end
 
-  def periods_for_time(time_zone, t, time_zone_database) do
-    {:ok, date_time} = date_time_from_moment(t / @seconds_per_day)
+  def periods_for_time(time_zone, gregorian_seconds, time_zone_database) do
+    {:ok, date_time} = date_time_from_moment(gregorian_seconds / @seconds_per_day)
+
     case time_zone_database.time_zone_periods_from_wall_datetime(date_time, time_zone) do
       {:ok, zone} -> [zone]
       other -> other
