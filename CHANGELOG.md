@@ -2,9 +2,11 @@
 
 ## Astro version 1.0.1
 
-This is the changelog for Astro version 1.0.1 released on ________.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 1.0.1 released on April 6th, 2024.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Enhancements
+
+* Use only the configured time zone database to resolve time zone information. Therefore any module that implements the `Calendar.TimeZoneDatabase` behaviour can be used. This also makes the code align with the README so that either `Tzdata` or `Tz` can be configured as the systems time zone database (or any future library).  Thanks to @@ericlathrop for the issue. Closes #4.
 
 ## Astro version 1.0.0
 
