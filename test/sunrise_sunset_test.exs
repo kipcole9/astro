@@ -110,4 +110,22 @@ defmodule Astro.SunriseSunsetTest do
       assert_in_delta sunset.minute, unquote(sunset_minute), 1
     end
   end
+
+  describe "Sunrise/sunset for solar elevation != 90 degrees" do
+    test "Crouch End dawn" do
+      crouch_end_z = %Geo.PointZ{coordinates: {-0.1062, 51.5171, 41.0}}
+      {:ok, expected_date_time} = DateTime.new(~D[2024-05-26], ~T[04:09:50.000000], "Europe/London")
+
+      assert {:ok, ^expected_date_time} =
+        Astro.sunrise(crouch_end_z, ~D[2024-05-26], solar_elevation: :civil)
+    end
+
+    test "London dawn" do
+      london_z = %Geo.PointZ{coordinates: {-0.1276, 51.5072, 11.0}}
+      {:ok, expected_date_time} = DateTime.new(~D[2024-05-26], ~T[04:09:59.000000], "Europe/London")
+
+      assert {:ok, ^expected_date_time} =
+        Astro.sunrise(london_z, ~D[2024-05-26], solar_elevation: :civil)
+    end
+  end
 end

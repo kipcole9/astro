@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 1.0.2
+
+This is the changelog for Astro version 1.0.2 released on ______, 2024.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Fix sunrise/sunset calculations when the solar elevation isn't 90 degrees. Thanks to @cloud8421 for the issue. Closes #5.
+
 ## Astro version 1.0.1
 
 This is the changelog for Astro version 1.0.1 released on April 6th, 2024.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

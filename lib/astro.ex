@@ -579,6 +579,7 @@ defmodule Astro do
     result which accords with the eyes perception. Other
     solar elevations are:
 
+
     * `:civil` representing a solar elevation of 96.0°. At this
       point the sun is just below the horizon so there is
       generally enough natural light to carry out most

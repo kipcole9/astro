@@ -106,7 +106,8 @@ defmodule Astro.Earth do
 
   ## Returns
 
-  * The solar elevation angle adjusted for refraction,
+  * The solar elevation angle which, if solar elevation is
+    exactly 90.0 degrees, is adjusted for refraction,
     elevation and solar radius.
 
   """
@@ -114,8 +115,8 @@ defmodule Astro.Earth do
     solar_elevation + solar_radius() + refraction() + elevation_adjustment(elevation)
   end
 
-  def adjusted_solar_elevation(_solar_elevation, _elevation) do
-    @geometric_solar_elevation
+  def adjusted_solar_elevation(solar_elevation, _elevation) do
+    solar_elevation
   end
 
 end
