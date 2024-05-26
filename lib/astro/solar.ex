@@ -36,6 +36,7 @@ defmodule Astro.Solar do
     astronomical: 108.0
   }
 
+  @doc false
   def solar_position(t) do
     julian_centuries = julian_centuries_from_moment(t)
     apparent_longitude = sun_apparent_longitude(julian_centuries)
@@ -46,6 +47,7 @@ defmodule Astro.Solar do
     {right_ascension, declination, distance}
   end
 
+  @doc false
   def solar_distance(julian_centuries) do
     eccentricity = earth_orbit_eccentricity(julian_centuries)
     mean_solar_anomaly = sun_geometric_mean_anomaly(julian_centuries)
@@ -156,7 +158,7 @@ defmodule Astro.Solar do
   * `date` is a `DateTime.t()` in the UTC
     time zone.
 
-  * `location` is any `Geo.PointZ.t()`
+  * `location` is any `t:Geo.PointZ.t/0`
     location.
 
   * `solar_elevation` is the required solar
@@ -350,17 +352,17 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the suns apparent longitude in degrees
+  Returns the suns apparent longitude in degrees.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
   * equation of the center in degrees
-    as a `float`
+    as a `float`.
 
   ## Notes
 
@@ -446,17 +448,17 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the suns true longitude in degrees
+  Returns the suns true longitude in degrees.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
   * the suns true longitude in degrees
-    as a `float`
+    as a `float`.
 
   ## Notes
 
@@ -477,17 +479,17 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Return the sun's equation of the center in degrees
+  Return the sun's equation of the center in degrees.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
   * equation of the center in degrees
-    as a `float`
+    as a `float`.
 
   ## Notes
 
@@ -516,21 +518,21 @@ defmodule Astro.Solar do
 
   @doc """
   Returns solar noon as minutes since
-  midnight UTC
+  midnight UTC.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   * `longitude` is the longitude in degrees
     of the location from which solar noon
-    is to be measured
+    is to be measured.
 
   ## Returns
 
   * solar noon as a `float` number of
-    minutes since midnight UTC
+    minutes since midnight UTC.
 
   ## Notes
 
@@ -559,12 +561,12 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the euation of time in minutes
+  Returns the equation of time in minutes.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
@@ -644,12 +646,12 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the unitness earth orbit eccentricity
+  Returns the earth orbit eccentricity.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
@@ -657,7 +659,7 @@ defmodule Astro.Solar do
     A value of `0` is a circular orbit, values
     between `0` and `1` form an elliptic orbit,
     `1` is a parabolic escape orbit, and greater
-    than `1` is a hyperbola
+    than `1` is a hyperbola.
 
   ## Notes
 
@@ -675,12 +677,12 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the suns geometric mean anomoly in degrees
+  Returns the suns geometric mean anomoly in degrees.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
@@ -698,7 +700,7 @@ defmodule Astro.Solar do
   It is the angular distance from the pericenter
   which a fictitious body would have if it moved
   in a circular orbit, with constant speed, in the same
-  orbital period as the actual body in its elliptical orbit
+  orbital period as the actual body in its elliptical orbit.
 
   """
   @spec sun_geometric_mean_anomaly(float) :: float()
@@ -708,16 +710,16 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the suns geometric mean longitude in degrees
+  Returns the sun's geometric mean longitude in degrees.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
-  * the mean solar longitude in degrees as a float
+  * the mean solar longitude in degrees as a float.
 
   ## Notes
 
@@ -741,17 +743,17 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the obliquity correction in degrees
+  Returns the obliquity correction in degrees.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
   * the obliquity correction in
-    degrees as a `float`
+    degrees as a `float`.
 
   """
   @spec obliquity_correction(float) :: float()
@@ -764,17 +766,17 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the mean obliquity of the ecliptic in degrees
+  Returns the mean obliquity of the ecliptic in degrees.
 
   ## Arguments
 
   * `julian_centuries` is the any moment
-    in time expressed as julian centuries
+    in time expressed as julian centuries.
 
   ## Returns
 
   * the mean obliquity of the ecliptic in
-    degrees as a `float`
+    degrees as a `float`.
 
   ## Notes
 
