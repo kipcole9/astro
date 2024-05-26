@@ -115,8 +115,8 @@ defmodule Astro.Earth do
     solar_elevation + solar_radius() + refraction() + elevation_adjustment(elevation)
   end
 
-  def adjusted_solar_elevation(solar_elevation, _elevation) do
-    solar_elevation
+  def adjusted_solar_elevation(solar_elevation, elevation) do
+    solar_elevation + elevation_adjustment(elevation)
   end
 
 end
