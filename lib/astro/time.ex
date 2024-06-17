@@ -738,11 +738,11 @@ defmodule Astro.Time do
     local_mean_time - offset_for_zone(gregorian_seconds, time_zone) * seconds_per_day()
   end
 
-  @doc false
-  def offset_from_location(%Geo.PointZ{} = location, t) do
-    {:ok, time_zone} = timezone_at(location)
-    offset_for_zone(t, time_zone)
-  end
+  # @doc false
+  # def offset_from_location(%Geo.PointZ{} = location, t) do
+  #   {:ok, time_zone} = timezone_at(location)
+  #   offset_for_zone(t, time_zone)
+  # end
 
   @doc """
   Returns the offset in float days
@@ -779,7 +779,7 @@ defmodule Astro.Time do
         {:ok, utc_event_time}
 
       :default ->
-        with {:ok, time_zone} <- timezone_at(location) do
+        with {:ok, time_zone} <- timezone_at(location, options[:time_zone_resolver]) do
           DateTime.shift_zone(utc_event_time, time_zone, time_zone_database)
         end
 
@@ -789,9 +789,20 @@ defmodule Astro.Time do
   end
 
   @doc false
-  def timezone_at(%Geo.PointZ{} = location) do
+  if Code.ensure_loaded?(TzWorld) do
+    def timezone_at(%Geo.PointZ{} = location, nil) do
+      location = %Geo.Point{coordinates: Tuple.delete_at(location.coordinates, 2)}
+      TzWorld.timezone_at(location)
+    end
+  else
+    def timezone_at(%Geo.PointZ{} = _location, nil) do
+      {:error, :time_zone_not_resolved}
+    end
+  end
+
+  def timezone_at(%Geo.PointZ{} = location, time_zone_resolver) do
     location = %Geo.Point{coordinates: Tuple.delete_at(location.coordinates, 2)}
-    TzWorld.timezone_at(location)
+    time_zone_resolver.(location)
   end
 
   @jan_1_1900  Date.new!(1900, 1, 1)

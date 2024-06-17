@@ -82,7 +82,7 @@ defmodule Astro.Solar do
     %{time_zone_database: time_zone_database} = options
 
     with {:ok, iso_datetime} <- NaiveDateTime.convert(datetime, Calendar.ISO),
-         {:ok, time_zone} <- Time.timezone_at(location),
+         {:ok, time_zone} <- Time.timezone_at(location, options[:time_zone_resolver]),
          {:ok, utc_datetime} <- DateTime.from_naive(iso_datetime, time_zone, time_zone_database) do
       sun_rise_or_set(location, utc_datetime, options)
     end

@@ -1,2 +1,5 @@
 ExUnit.start()
-Astro.Supervisor.start()
+
+if Code.ensure_loaded?(TzWorld) do
+  Astro.Supervisor.start()
+end

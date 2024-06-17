@@ -1,7 +1,7 @@
 defmodule Astro.MixProject do
   use Mix.Project
 
-  @version "1.0.2"
+  @version "1.1.0-dev"
 
   def project do
     [
@@ -83,8 +83,10 @@ defmodule Astro.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:tz_world, "~> 1.0"},
       {:geo, "~> 3.0"},
+
+      # If using tz_world to resolve geo location to time zone
+      {:tz_world, "~> 1.0", optional: true},
 
       # If using tzdata
       {:tzdata, "~> 1.1", optional: true},

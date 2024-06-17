@@ -132,4 +132,17 @@ defmodule Astro.SunriseSunsetTest do
         Astro.sunrise(london_z, ~D[2024-05-26], solar_elevation: :civil)
     end
   end
+
+  describe "Sunrise/sunet with a custom time zone resolver" do
+    for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.Sun.TestData.sunrise("sydney") do
+      test "Sunrise on December #{day} 2019 for Sydney, Australia with custom time zone resolver" do
+        time_zone_resolver = fn _location -> {:ok, "Australia/Sydney"} end
+        {:ok, date} = Date.new(2019, 12, unquote(day))
+        {:ok, sunrise} = Astro.sunrise(@sydney, date, time_zone_resolver: time_zone_resolver)
+        assert sunrise.day == unquote(day)
+        assert sunrise.hour == unquote(sunrise_hour)
+        assert_in_delta sunrise.minute, unquote(sunrise_minute), 1
+      end
+    end
+  end
 end
