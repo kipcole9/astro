@@ -106,7 +106,7 @@ For this implementation, the latitude and longitude of the functions in `Astro` 
 
 ## Installation
 
-### Configure Astro
+### Add Astro as a dependency
 
 Astro can be installed by adding `astro` to your list of dependencies in `mix.exs`:
 
@@ -120,7 +120,7 @@ end
 
 ### Install a time zone database
 
-A time zone database is required in order to support time zone conversions. Two popular options are [tzdata](https://hex.pm/packages/tzdata) and [tz](https://hex.pm/packages/tz). Then the appropriate database must be configured in `config.exs` or `runtime.exs` as the default time zone database.  For example:
+A time zone database is required in order to support time zone conversions. Two popular options are [tzdata](https://hex.pm/packages/tzdata) and [tz](https://hex.pm/packages/tz). The time zone database must be configured in `config.exs` or `runtime.exs` as the default time zone database.  For example:
 
 ```elixir
 # If using tzdata
@@ -132,15 +132,26 @@ config :elixir,
   :time_zone_database, Tz.TimeZoneDatabase
 ```
 
-### Install TzWorld Data
-Then get dependencies and install the data required to determine a time zone from a location which is used by the dependency `tz_world`.
+### Optionally Install TzWorld
+
+For functions such as `Astro.sunrise/3` and `Astro.sunset/3` it is common to expect the returned date time to be in the time zone of the specified location. The library `tz_world` provides that capability and, if configured, will automatically be used by those functions.
+
+It is expected that `tz_world` is configured for most applications although it is not formally required.
+
+`tz_world` does however require the download of nearly 30Mb of geojson data and a non-trivial post-processing step to format the data for efficient use by Astro. This might not be suitable for embedded devices and therefore `Astro.sunrise/3` and `Astro.sunset/3` take an optional `:time_zone_resolver` option to support the implementation of a custom function to resolve the time zone name from a given location.
+
+The following steps should be following if `tz_world` is configured.
+
+#### Install TzWorld Data
+
+Get all dependencies and then install the data required to resolve a time zone from a location which is used by the dependency `tz_world`.
 
 ```
 mix deps.get
 mix tz_world.update
 ```
 
-### Add TzWorld to supervision tree
+#### Add TzWorld to supervision tree
 
 It is also required that `tz_world` be added to your applications supervision tree by adding the relevant `tz_world` backend to it in your `MyApp.Application` module:
 ```
@@ -162,7 +173,7 @@ defmodule MyApp.Application do
 end
 ```
 
-### Configure your application module
+#### Configure your application module
 
 Make sure that you have configured your application in `mix.exs`:
 ```elixir

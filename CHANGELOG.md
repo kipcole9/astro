@@ -2,7 +2,7 @@
 
 ## Astro version 1.1.0
 
-This is the changelog for Astro version 1.1.0 released on ____, 2024.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 1.1.0 released on June 18th, 2024.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Breaking Change
 
@@ -12,12 +12,12 @@ This is the changelog for Astro version 1.1.0 released on ____, 2024.  For older
 
 ### Enhancements
 
-* Adds an option `:time_zone_resolver` to `Astro.sunrise/3` and `Astro.sunset/3` that is invoked to resolve the time zone name from a given latitude and longitude. The default is to use `TzWorld.timezone_at/1` if `TzWorld` is configured, otherwise an error is returned.
+* Adds an option `:time_zone_resolver` to `Astro.sunrise/3` and `Astro.sunset/3` that is a 1-arity function that is invoked to resolve the time zone name from a given latitude and longitude. The default is to use `TzWorld.timezone_at/1` if `TzWorld` is configured, otherwise an error is returned.
 
 * The default time zone database is now detected in the following order:
-    Application.get_env(:elixir, :time_zone_database) 
-    TzData.TimeZoneDatabase if TzData is configured
-    Tz.TimeZoneDatabase if Tz is configured
+    1. Application.get_env(:elixir, :time_zone_database) 
+    2. TzData.TimeZoneDatabase if TzData is configured
+    3. Tz.TimeZoneDatabase if Tz is configured
 
 ## Astro version 1.0.2
 
