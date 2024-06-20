@@ -1,7 +1,7 @@
 defmodule Astro.MixProject do
   use Mix.Project
 
-  @version "1.1.0"
+  @version "1.1.1"
 
   def project do
     [
@@ -53,7 +53,7 @@ defmodule Astro.MixProject do
 
   def application do
     [
-      extra_applications: [:hackney, :tzdata, :logger]
+      extra_applications: [:logger]
     ]
   end
 
