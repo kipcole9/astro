@@ -1042,10 +1042,8 @@ defmodule Astro do
     end
   end
 
-  @doc """
-
-  beta and lambda in degrees
-  """
+  @doc false
+  # beta and lambda in degrees
   @spec declination(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
   def declination(t, beta, lambda) do
     julian_centuries = Time.julian_centuries_from_moment(t)
@@ -1056,9 +1054,8 @@ defmodule Astro do
     |> mod(360.0)
   end
 
-  @doc """
-  beta and lambda in degrees
-  """
+  @doc false
+  # beta and lambda in degrees
   @spec right_ascension(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
   def right_ascension(t, beta, lambda) do
     julian_centuries = Time.julian_centuries_from_moment(t)
