@@ -630,7 +630,13 @@ defmodule Astro do
 
   * `{:error, :no_time}` if for the requested date
     and location there is no sunrise. This can occur at
-    very high latitudes during summer and winter.
+    very high and very low latitudes during summer and winter.
+
+  ## Notes
+
+  * If the resolved UTC date time is ambiguous because of a daylight savings
+    transition, the second of the two possibilities is applied. See
+    the `DateTime.from_naive/3` for more information.
 
   ## Examples
 
@@ -735,7 +741,13 @@ defmodule Astro do
 
   * `{:error, :no_time}` if for the requested date
     and location there is no sunset. This can occur at
-    very high latitudes during summer and winter.
+    very high and very low latitudes during summer and winter.
+
+  ## Notes
+
+  * If the resolved UTC date time is ambiguous because of a daylight savings
+    transition, the second of the two possibilities is applied. See
+    the `DateTime.from_naive/3` for more information.
 
   ## Examples
 
