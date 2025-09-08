@@ -56,7 +56,22 @@ defmodule AstroTest do
   end
 
   test "Time zone offset for float t" do
-    assert Astro.Time.offset_for_zone(63794995200.96832, "Europe/London") ==
-      0.041666666666666664
+    assert Astro.Time.offset_for_zone(63_794_995_200.96832, "Europe/London") ==
+             0.041666666666666664
+  end
+
+  test "sunrise and sunset handle date gaps gracefully" do
+    {:ok, date} = Date.new(2025, 09, 07)
+
+    santiago_chile = {-70.673676, -33.447487}
+
+    {:ok, test_date} =
+      DateTime.new(
+        ~D[2025-09-07],
+        ~T[19:29:24.000000],
+        "America/Santiago"
+      )
+
+    assert Astro.sunset(santiago_chile, date) == {:ok, test_date}
   end
 end
