@@ -126,9 +126,9 @@ A time zone database is required in order to support time zone conversions. Two 
 # If using tzdata
 config :elixir,
   :time_zone_database, Tzdata.TimeZoneDatabase
-  
+
 # If using tz
-config :elixir, 
+config :elixir,
   :time_zone_database, Tz.TimeZoneDatabase
 ```
 
@@ -187,3 +187,10 @@ Make sure that you have configured your application in `mix.exs`:
 
 Documentation can be found at [https://hexdocs.pm/astro](https://hexdocs.pm/astro).
 
+#### Developing Astro Locally ####
+
+The Astro test suite requires a functioning tz_world database to be available in the test environmment. Once all other dependencies are installed you will need to run:
+
+```
+  MIX_ENV=test mix tz_world.update
+```
