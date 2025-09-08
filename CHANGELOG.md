@@ -6,7 +6,7 @@ This is the changelog for Astro version 1.1.2 released on September 9th, 2025.  
 
 ### Bug Fixes
 
-* Fix
+* Fix `Astro.sunrise/3` and `Astro.sunset/3` when the resolved UTC datetime is ambiguous or has a gap (typically during a daylight savings transition). Thanks to @andykent for the PR. Closes #6 and #7.
 
 ## Astro version 1.1.1
 
