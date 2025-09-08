@@ -192,7 +192,7 @@ Documentation can be found at [https://hexdocs.pm/astro](https://hexdocs.pm/astr
 
 #### Developing Astro Locally
 
-The Astro test suite requires a functioning tz_world database to be available in the test environmment. Once all other dependencies are installed you will need to run:
+The Astro test suite requires a functioning tz_world database to be available in the test environmment. Once all other dependencies are installed, exceute:
 
 ```
 MIX_ENV=test mix tz_world.update
