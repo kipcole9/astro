@@ -438,7 +438,7 @@ defmodule Astro.Time do
     seconds = trunc(60 * (m - minutes))
 
     {:ok, naive_datetime} = NaiveDateTime.new(year, month, day, hours, minutes, seconds, {0, 0})
-    DateTime.from_naive(naive_datetime, @utc_zone)
+    datetime_in_utc(naive_datetime)
   end
 
   @doc """
@@ -567,7 +567,7 @@ defmodule Astro.Time do
   def moment_to_datetime(time_of_day, %{year: year, month: month, day: day}) do
     with {hours, minutes, seconds} <- hours_to_hms(time_of_day),
          {:ok, naive_datetime} <- NaiveDateTime.new(year, month, day, hours, minutes, seconds, 0) do
-      DateTime.from_naive(naive_datetime, @utc_zone)
+      datetime_in_utc(naive_datetime)
     end
   end
 
@@ -676,7 +676,7 @@ defmodule Astro.Time do
   @spec datetime_from_date_and_minutes(minutes(), Calendar.date()) :: {:ok, Calendar.datetime()}
   def datetime_from_date_and_minutes(minutes, date) do
     {:ok, naive_datetime} = NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0)
-    {:ok, datetime} = DateTime.from_naive(naive_datetime, @utc_zone)
+    {:ok, datetime} = datetime_in_utc(naive_datetime)
     {:ok, DateTime.add(datetime, trunc(minutes * @seconds_per_minute), :second)}
   end
 
@@ -899,4 +899,17 @@ defmodule Astro.Time do
     end
   end
 
+  @doc false
+  def datetime_in_utc(
+        datetime,
+        time_zone \\ @utc_zone,
+        time_zone_database \\ Calendar.get_time_zone_database()
+      ) do
+    case DateTime.from_naive(datetime, time_zone, time_zone_database) do
+      {:ok, datetime} -> {:ok, datetime}
+      {:error, error} -> {:error, error}
+      {:ambiguous, _datetime1, datetime2} -> {:ok, datetime2}
+      {:gap, _datetime1, datetime2} -> {:ok, datetime2}
+    end
+  end
 end
