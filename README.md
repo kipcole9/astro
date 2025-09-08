@@ -149,6 +149,9 @@ Get all dependencies and then install the data required to resolve a time zone f
 ```
 mix deps.get
 mix tz_world.update
+
+# If testing locally also install for the test environment
+MIX_ENV=test mix tz_world.update
 ```
 
 #### Add TzWorld to supervision tree
@@ -187,10 +190,10 @@ Make sure that you have configured your application in `mix.exs`:
 
 Documentation can be found at [https://hexdocs.pm/astro](https://hexdocs.pm/astro).
 
-#### Developing Astro Locally ####
+#### Developing Astro Locally
 
 The Astro test suite requires a functioning tz_world database to be available in the test environmment. Once all other dependencies are installed you will need to run:
 
 ```
-  MIX_ENV=test mix tz_world.update
+MIX_ENV=test mix tz_world.update
 ```
