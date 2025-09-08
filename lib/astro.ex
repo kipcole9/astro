@@ -40,7 +40,7 @@ defmodule Astro do
   Returns a tuple `{azimuth, altitude}` for a given
   date time and location.
 
-  ## Arguments
+  ### Arguments
 
   * `location` is the latitude, longitude and
     optionally elevation for the desired sunrise
@@ -55,12 +55,12 @@ defmodule Astro do
   * `date_time` is a `DateTime` any struct that meets the
     requirements of `t:Calendar.datetime`.
 
-  ## Returns
+  ### Returns
 
   * a tuple of the format `{azimith, altitude}` which are
     expressed in float degrees.
 
-  ## Example
+  ### Example
 
       iex> {:ok, date_time} = DateTime.new(~D[2023-05-17], ~T[12:47:00], "Australia/Sydney")
       iex> location = {151.1637781, -33.5145852}
@@ -109,20 +109,20 @@ defmodule Astro do
   the right ascension and declination of
   the sun at a given date or date time.
 
-  ## Arguments
+  ### Arguments
 
   * `date_time` is a `DateTime` or a `Date` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`
+    `t:Calendar.date` or `t:Calendar.datetime`.
 
-  ## Returns
+  ### Returns
 
   * a `t:Geo.PointZ` struct with coordinates
     `{right_ascension, declination, distance}` with properties
     `%{reference: :celestial, object: :sun}`.
     `distance` is in meters.
 
-  ## Example
+  ### Example
 
       iex> Astro.sun_position_at(~D[1992-10-13])
       %Geo.PointZ{
@@ -166,20 +166,20 @@ defmodule Astro do
   the right ascension and declination of
   the moon at a given date or date time.
 
-  ## Arguments
+  ### Arguments
 
   * `date_time` is a `DateTime` or a `Date` or
     any struct that meets the requirements of
     `t:Calendar.date` or `t:Calendar.datetime`
 
-  ## Returns
+  ### Returns
 
   * a `t:Geo.PointZ` struct with coordinates
     `{right_ascension, declination, distance}` with properties
     `%{reference: :celestial, object: :moon}`
     `distance` is in meters.
 
-  ## Example
+  ### Example
 
       iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
       %Geo.PointZ{
@@ -218,19 +218,19 @@ defmodule Astro do
   Returns the illumination of the moon
   as a fraction for a given date or date time.
 
-  ## Arguments
+  ### Arguments
 
   * `date_time` is a `DateTime` or a `Date` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`
+    `t:Calendar.date` or `t:Calendar.datetime`.
 
-  ## Returns
+  ### Returns
 
   * a `float` value between `0.0` and `1.0`
     representing the fractional illumination of
     the moon.
 
-  ## Example
+  ### Example
 
       iex> Astro.illuminated_fraction_of_moon_at(~D[2017-03-16])
       0.8884442367681415
@@ -262,19 +262,19 @@ defmodule Astro do
   Returns the date time of the new
   moon before a given date or date time.
 
-  ## Arguments
+  ### Arguments
 
   * `date_time` is a `DateTime` or a `Date` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`
+    `t:Calendar.date` or `t:Calendar.datetime`.
 
-  ## Returns
+  ### Returns
 
   * `{:ok, date_time}` at which the new moon occurs or
 
   * `{:error, {module, reason}}`
 
-  ## Example
+  ### Example
 
       iex> Astro.date_time_new_moon_before ~D[2021-08-23]
       {:ok, ~U[2021-08-08 13:49:07.000000Z]}
@@ -307,19 +307,19 @@ defmodule Astro do
   moon at or after a given date or
   date time.
 
-  ## Arguments
+  ### Arguments
 
   * `date_time` is a `DateTime` or a `Date` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`
+    `t:Calendar.date` or `t:Calendar.datetime`.
 
-  ## Returns
+  ### Returns
 
   * `{:ok, date_time}` at which the new moon occurs or
 
   * `{:error, {module, reason}}`
 
-  ## Example
+  ### Example
 
       iex> Astro.date_time_new_moon_at_or_after ~D[2021-08-23]
       {:ok, ~U[2021-09-07 00:50:43.000000Z]}
@@ -352,18 +352,18 @@ defmodule Astro do
   float number of degrees at a given
   date or date time.
 
-  ## Arguments
+  ### Arguments
 
   * `date_time` is a `DateTime`, `Date` or
     a `moment` which is a float number of days
-    since `0000-01-01`
+    since `0000-01-01`.
 
-  ## Returns
+  ### Returns
 
   * the lunar phase as a float number of
     degrees.
 
-  ## Example
+  ### Example
 
       iex> Astro.lunar_phase_at ~U[2021-08-22 12:01:02.170362Z]
       180.00001498208536
@@ -396,16 +396,16 @@ defmodule Astro do
   Returns the moon phase as a UTF8 binary
   representing an emoji of the moon phase.
 
-  ## Arguments
+  ### Arguments
 
-  * `phase` is a moon phase between `0.0` and `360.0`
+  * `phase` is a moon phase between `0.0` and `360.0`.
 
-  ## Returns
+  ### Returns
 
   * A single grapheme string representing the [Unicode
-    moon phase emoji](https://unicode-table.com/en/sets/moon/)
+    moon phase emoji](https://unicode-table.com/en/sets/moon/).
 
-  ## Examples
+  ### Examples
 
       iex> Astro.lunar_phase_emoji 0
       "🌑"
@@ -451,23 +451,23 @@ defmodule Astro do
   lunar phase at or before a given
   date time or date.
 
-  ## Arguments
+  ### Arguments
 
   * `date_time` is a `DateTime` or a `Date` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`
+    `t:Calendar.date` or `t:Calendar.datetime`.
 
   * `phase` is the required lunar phase expressed
     as a float number of degrees between `0` and
-    `3660`
+    `3660`.
 
-  ## Returns
+  ### Returns
 
   * `{:ok, date_time}` at which the phase occurs or
 
   * `{:error, {module, reason}}`
 
-  ## Example
+  ### Example
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon())
       {:ok, ~U[2021-07-10 01:15:33.000000Z]}
@@ -501,23 +501,23 @@ defmodule Astro do
   lunar phase at or after a given
   date time or date.
 
-  ## Arguments
+  ### Arguments
 
   * `date_time` is a `DateTime` or a `Date` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`
+    `t:Calendar.date` or `t:Calendar.datetime`.
 
   * `phase` is the required lunar phase expressed
     as a float number of degrees between `0.0` and
-    `360.0`
+    `360.0`.
 
-  ## Returns
+  ### Returns
 
   * `{:ok, date_time}` at which the phase occurs or
 
   * `{:error, {module, reason}}`
 
-  ## Example
+  ### Example
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon())
       {:ok, ~U[2021-08-22 12:01:02.000000Z]}
@@ -552,7 +552,7 @@ defmodule Astro do
   Sunrise is the moment when the upper limb of
   the sun appears on the horizon in the morning.
 
-  ## Arguments
+  ### Arguments
 
   * `location` is the latitude, longitude and
     optionally elevation for the desired sunrise
@@ -570,7 +570,7 @@ defmodule Astro do
 
   * `options` is a keyword list of options.
 
-  ## Options
+  ### Options
 
   * `solar_elevation` represents the type of sunrise
     required. The default is `:geometric` which equates to
@@ -615,7 +615,7 @@ defmodule Astro do
     The default is `TzWorld.timezone_at/1` if `:tz_world` is
     configured.
 
-  ## Returns
+  ### Returns
 
   * a `t:DateTime.t/0` representing the time of sunrise in the
     requested timzone at the requested location.
@@ -632,13 +632,13 @@ defmodule Astro do
     and location there is no sunrise. This can occur at
     very high and very low latitudes during summer and winter.
 
-  ## Notes
+  ### Notes
 
   * If the resolved UTC date time is ambiguous because of a daylight savings
     transition, the second of the two possibilities is applied. See
     the `DateTime.from_naive/3` for more information.
 
-  ## Examples
+  ### Examples
 
       # Sunrise in Sydney, Australia
       Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -663,7 +663,7 @@ defmodule Astro do
   Sunset is the moment when the upper limb of
   the sun disappears below the horizon in the evening.
 
-  ## Arguments
+  ### Arguments
 
   * `location` is the latitude, longitude and
     optionally elevation for the desired sunrise
@@ -681,7 +681,7 @@ defmodule Astro do
 
   * `options` is a keyword list of options.
 
-  ## Options
+  ### Options
 
   * `solar_elevation` represents the type of sunset
     required. The default is `:geometric` which equates to
@@ -726,7 +726,7 @@ defmodule Astro do
     The default is `TzWorld.timezone_at/1` if `:tz_world` is
     configured.
 
-  ## Returns
+  ### Returns
 
   * a `t:DateTime.t/0` representing the time of sunset in the
     requested time zone at the requested location.
@@ -743,13 +743,13 @@ defmodule Astro do
     and location there is no sunset. This can occur at
     very high and very low latitudes during summer and winter.
 
-  ## Notes
+  ### Notes
 
   * If the resolved UTC date time is ambiguous because of a daylight savings
     transition, the second of the two possibilities is applied. See
     the `DateTime.from_naive/3` for more information.
 
-  ## Examples
+  ### Examples
 
       # Sunset in Sydney, Australia
       Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -772,27 +772,27 @@ defmodule Astro do
   Returns the datetime in UTC for either the
   March or September equinox.
 
-  ## Arguments
+  ### Arguments
 
   * `year` is the gregorian year for which the equinox is
-    to be calculated
+    to be calculated.
 
   * `event` is either `:march` or `:september` indicating
-    which of the two annual equinox datetimes is required
+    which of the two annual equinox datetimes is required.
 
-  ## Returns
+  ### Returns
 
   * `{:ok, datetime}` representing the UTC datetime of
     the equinox
 
-  ## Examples
+  ### Examples
 
       iex> Astro.equinox 2019, :march
       {:ok, ~U[2019-03-20 21:58:06Z]}
       iex> Astro.equinox 2019, :september
       {:ok, ~U[2019-09-23 07:49:30Z]}
 
-  ## Notes
+  ### Notes
 
   This equinox calculation is expected to be accurate
   to within 2 minutes for the years 1000 CE to 3000 CE.
@@ -815,27 +815,27 @@ defmodule Astro do
   Returns the datetime in UTC for either the
   June or December solstice.
 
-  ## Arguments
+  ### Arguments
 
   * `year` is the gregorian year for which the solstice is
-    to be calculated
+    to be calculated.
 
   * `event` is either `:june` or `:december` indicating
-    which of the two annual solstice datetimes is required
+    which of the two annual solstice datetimes is required.
 
-  ## Returns
+  ### Returns
 
   * `{:ok, datetime}` representing the UTC datetime of
-    the solstice
+    the solstice.
 
-  ## Examples
+  ### Examples
 
       iex> Astro.solstice 2019, :december
       {:ok, ~U[2019-12-22 04:18:57Z]}
       iex> Astro.solstice 2019, :june
       {:ok, ~U[2019-06-21 15:53:45Z]}
 
-  ## Notes
+  ### Notes
 
   This solstice calculation is expected to be accurate
   to within 2 minutes for the years 1000 CE to 3000 CE.
@@ -872,7 +872,7 @@ defmodule Astro do
   given date and location as
   a UTC datetime
 
-  ## Arguments
+  ### Arguments
 
   * `location` is the latitude, longitude and
     optionally elevation for the desired solar noon
@@ -887,17 +887,17 @@ defmodule Astro do
   * `date` is any date in the Gregorian
     calendar (for example, `Calendar.ISO`)
 
-  ## Returns
+  ### Returns
 
   * a UTC datetime representing solar noon
     at the given location for the given date
 
-  ## Example
+  ### Example
 
       iex> Astro.solar_noon {151.20666584, -33.8559799094}, ~D[2019-12-06]
       {:ok, ~U[2019-12-06 01:45:42Z]}
 
-  ## Notes
+  ### Notes
 
   Solar noon is the moment when the Sun passes a
   location's meridian and reaches its highest position
@@ -925,18 +925,18 @@ defmodule Astro do
   given date. Solar longitude is used
   to identify the seasons.
 
-  ## Arguments
+  ### Arguments
 
   * `date` is any date in the Gregorian
-    calendar (for example, `Calendar.ISO`)
+    calendar (for example, `Calendar.ISO`).
 
-  ## Returns
+  ### Returns
 
   * a `float` number of degrees between 0 and
     360 representing the solar longitude
-    on `date`
+    on `date`.
 
-  ## Examples
+  ### Examples
 
       iex> Astro.sun_apparent_longitude ~D[2019-03-21]
       0.08035853207991295
@@ -947,7 +947,7 @@ defmodule Astro do
       iex> Astro.sun_apparent_longitude ~D[2019-12-23]
       270.83941087483504
 
-  ## Notes
+  ### Notes
 
   Solar longitude (the ecliptic longitude of the sun)
   in effect describes the position of the earth in its
@@ -974,7 +974,7 @@ defmodule Astro do
   Returns the number of hours of daylight for a given
   location on a given date.
 
-  ## Arguments
+  ### Arguments
 
   * `location` is the latitude, longitude and
     optionally elevation for the desired hours of
@@ -989,11 +989,11 @@ defmodule Astro do
   * `date` is any date in the Gregorian
     calendar (for example, `Calendar.ISO`)
 
-  ## Returns
+  ### Returns
 
   * `{:ok, time}` where `time` is a `Time.t()`
 
-  ## Examples
+  ### Examples
 
       iex> Astro.hours_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-07]
       {:ok, ~T[14:18:45]}
@@ -1006,7 +1006,7 @@ defmodule Astro do
       iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-12-07]
       {:ok, ~T[00:00:00]}
 
-  ## Notes
+  ### Notes
 
   In latitudes above the polar circles (approximately
   +/- 66.5631 degrees) there will be no hours of daylight
