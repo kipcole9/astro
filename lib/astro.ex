@@ -52,8 +52,9 @@ defmodule Astro do
     * a `Geo.Point.t` struct to represent a location without elevation
     * a `Geo.PointZ.t` struct to represent a location and elevation
 
-  * `date_time` is a `DateTime` any struct that meets the
-    requirements of `t:Calendar.datetime`.
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
+    any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   ### Returns
 
@@ -111,13 +112,13 @@ defmodule Astro do
 
   ### Arguments
 
-  * `date_time` is a `DateTime` or a `Date` or
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date/0` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   ### Returns
 
-  * a `t:Geo.PointZ` struct with coordinates
+  * a `t:Geo.PointZ.t/0` struct with coordinates
     `{right_ascension, declination, distance}` with properties
     `%{reference: :celestial, object: :sun}`.
     `distance` is in meters.
@@ -168,9 +169,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `date_time` is a `DateTime` or a `Date` or
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   ### Returns
 
@@ -220,9 +221,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `date_time` is a `DateTime` or a `Date` or
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   ### Returns
 
@@ -264,9 +265,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `date_time` is a `DateTime` or a `Date` or
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   ### Returns
 
@@ -354,9 +355,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `date_time` is a `DateTime`, `Date` or
-    a `moment` which is a float number of days
-    since `0000-01-01`.
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
+    any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   ### Returns
 
@@ -453,9 +454,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `date_time` is a `DateTime` or a `Date` or
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   * `phase` is the required lunar phase expressed
     as a float number of degrees between `0` and
@@ -503,9 +504,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `date_time` is a `DateTime` or a `Date` or
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   * `phase` is the required lunar phase expressed
     as a float number of degrees between `0.0` and
@@ -564,7 +565,7 @@ defmodule Astro do
     * a `t:Geo.Point.t/0` struct to represent a location without elevation
     * a `t:Geo.PointZ.t/0` struct to represent a location and elevation
 
-  * `date` is a `t:Date`, `t:NaiveDateTime` or `t:DateTime`
+  * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
     to indicate the date of the year in which
     the sunrise time is required.
 
@@ -574,9 +575,9 @@ defmodule Astro do
 
   * `solar_elevation` represents the type of sunrise
     required. The default is `:geometric` which equates to
-    a solar elevation of 90°. In this case the calulation
+    a solar elevation of 90°. In this case the calculation
     also accounts for refraction and elevation to return a
-    result which accords with the eyes perception. Other
+    result which accords with the eye's perception. Other
     solar elevations are:
 
       * `:civil` representing a solar elevation of 96.0°. At this
@@ -618,7 +619,7 @@ defmodule Astro do
   ### Returns
 
   * a `t:DateTime.t/0` representing the time of sunrise in the
-    requested timzone at the requested location.
+    requested time zone at the requested location.
 
   * `{:error, :time_zone_not_found}` if the requested
     time zone is unknown.
@@ -675,7 +676,7 @@ defmodule Astro do
     * a `Geo.Point.t` struct to represent a location without elevation
     * a `Geo.PointZ.t` struct to represent a location and elevation
 
-  * `date` is a `t:Date`, `t:NaiveDateTime` or `t:DateTime`
+  * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
     to indicate the date of the year in which
     the sunset time is required.
 
@@ -704,7 +705,7 @@ defmodule Astro do
         becomes impractical.
 
       * Any floating point number representing the desired
-      solar elevation.
+        solar elevation.
 
   * `:time_zone` is the time zone in which the sunset
     is requested. The default is `:default` in which
@@ -783,7 +784,7 @@ defmodule Astro do
   ### Returns
 
   * `{:ok, datetime}` representing the UTC datetime of
-    the equinox
+    the equinox.
 
   ### Examples
 
@@ -798,12 +799,12 @@ defmodule Astro do
   to within 2 minutes for the years 1000 CE to 3000 CE.
 
   An equinox is commonly regarded as the instant of
-  time when the plane of Earth's equator passes through
+  time when the plane of earth's equator passes through
   the center of the Sun. This occurs twice each year:
   around 20 March and 23 September.
 
   In other words, it is the moment at which the
-  center of the visible Sun is directly above the equator.
+  center of the visible sun is directly above the equator.
 
   """
   @spec equinox(Calendar.year(), :march | :september) :: {:ok, DateTime.t()}
@@ -881,16 +882,16 @@ defmodule Astro do
     * `{lng, lat}` - a tuple with longitude and latitude
       as floating point numbers. **Note** the order of the
       arguments.
-    * a `Geo.Point.t` struct to represent a location without elevation
-    * a `Geo.PointZ.t` struct to represent a location and elevation
+    * a `Geo.Point.t` struct to represent a location without elevation.
+    * a `Geo.PointZ.t` struct to represent a location and elevation.
 
-  * `date` is any date in the Gregorian
-    calendar (for example, `Calendar.ISO`)
+  * `date` is any `t:Date.t/0` in the Gregorian
+    calendar (for example, `Calendar.ISO`).
 
   ### Returns
 
   * a UTC datetime representing solar noon
-    at the given location for the given date
+    at the given location for the given date.
 
   ### Example
 
@@ -899,7 +900,7 @@ defmodule Astro do
 
   ### Notes
 
-  Solar noon is the moment when the Sun passes a
+  Solar noon is the moment when the sun passes a
   location's meridian and reaches its highest position
   in the sky. In most cases, it doesn't happen at 12 o'clock.
 
@@ -927,7 +928,7 @@ defmodule Astro do
 
   ### Arguments
 
-  * `date` is any date in the Gregorian
+  * `date` is any `t:Date.t/0` in the Gregorian
     calendar (for example, `Calendar.ISO`).
 
   ### Returns
@@ -951,7 +952,7 @@ defmodule Astro do
 
   Solar longitude (the ecliptic longitude of the sun)
   in effect describes the position of the earth in its
-  orbit, being zero at the moment of the vernal
+  orbit, being zero at the moment of the March
   equinox.
 
   Since it is based on how far the earth has moved
@@ -984,10 +985,10 @@ defmodule Astro do
       as floating point numbers. **Note** the order of the
       arguments.
     * a `Geo.Point.t` struct to represent a location without elevation
-    * a `Geo.PointZ.t` struct to represent a location and elevation
+    * a `Geo.PointZ.t` struct to represent a location and elevation.
 
-  * `date` is any date in the Gregorian
-    calendar (for example, `Calendar.ISO`)
+  * `date` is any `t:Date.t/0` in the Gregorian
+    calendar (for example, `Calendar.ISO`).
 
   ### Returns
 

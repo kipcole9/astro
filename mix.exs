@@ -38,6 +38,7 @@ defmodule Astro.MixProject do
       source_ref: "v#{@version}",
       main: "readme",
       logo: "logo.png",
+      formatters: ["html", "markdown"],
       extras: [
         "README.md",
         "LICENSE.md",
