@@ -198,10 +198,7 @@ defmodule Astro do
 
     date_time
     |> Time.date_time_to_moment()
-    |> Lunar.lunar_position()
-    |> convert_distance_to_m()
-    |> Location.normalize_location()
-    |> Map.put(:properties, %{reference: :celestial, object: :moon})
+    |> moon_position_at_moment()
   end
 
   def moon_position_at(unquote(Guards.date()) = date) do
@@ -209,6 +206,11 @@ defmodule Astro do
 
     date
     |> Date.to_gregorian_days()
+    |> moon_position_at_moment()
+  end
+
+  defp moon_position_at_moment(moment) do
+    moment
     |> Lunar.lunar_position()
     |> convert_distance_to_m()
     |> Location.normalize_location()
@@ -459,8 +461,8 @@ defmodule Astro do
     `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   * `phase` is the required lunar phase expressed
-    as a float number of degrees between `0` and
-    `3660`.
+    as a float number of degrees between `0.0` and
+    `3660.0`.
 
   ### Returns
 
