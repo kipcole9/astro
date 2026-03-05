@@ -219,7 +219,7 @@ defmodule Astro do
 
   @doc """
   Returns the illumination of the moon
-  as a fraction for a given date or date time.
+  as a float for a given date or date time.
 
   ### Arguments
 
