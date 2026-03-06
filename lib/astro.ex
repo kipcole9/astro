@@ -25,9 +25,11 @@ defmodule Astro do
   @type latitude :: float()
   @type altitude :: float()
   @type degrees :: float()
+  @type radians :: float()
 
   @type angle() :: number()
   @type meters() :: number()
+  @type kilometers() :: number()
   @type phase() :: angle()
 
   @type location :: {longitude, latitude} | Geo.Point.t() | Geo.PointZ.t()

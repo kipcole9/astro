@@ -224,30 +224,6 @@ defmodule Astro.Time do
     t - offset
   end
 
-  # @doc """
-  # Returns the standard time from
-  # a local time at a given location.
-  #
-  # """
-  # @spec standard_from_local(time(), zone_name()) :: time()
-  # def standard_from_local(t, zone_name) do
-  #   t
-  #   |> universal_from_local(zone_name)
-  #   |> standard_from_universal(zone_name)
-  # end
-  #
-  # @doc """
-  # Returns the local time from
-  # a standard time at a given location.
-  #
-  # """
-  # @spec local_from_standard(time(), zone_name()) :: time()
-  # def local_from_standard(t, zone_name) do
-  #   t
-  #   |> universal_from_standard(zone_name)
-  #   |> local_from_universal(zone_name)
-  # end
-
   def sidereal_from_moment(t) do
     c = (t - j2000()) / @julian_days_per_century
 
@@ -310,13 +286,13 @@ defmodule Astro.Time do
   Returns the astronomical Julian day for a given
   date
 
-  ## Arguments
+  ### Arguments
 
-  * `date` is any `Calendar.date`
+  * `date` is any `t:Calendar.date/0`.
 
-  ## Returns
+  ### Returns
 
-  * the astronomical Julian day as a `float`
+  * the astronomical Julian day as a `float`.
 
   ## Example
 
@@ -343,14 +319,14 @@ defmodule Astro.Time do
   Returns the Julian centuries for a given
   Julian day
 
-  ## Arguments
+  ### Arguments
 
   * `julian_day` is any astronomical Julian day such
-    as returned from `Astro.Time.julian_day_from_date/1`
+    as returned from `Astro.Time.julian_day_from_date/1`.
 
-  ## Returns
+  ### Returns
 
-  * the astronomical Julian century as a `float`
+  * the astronomical Julian century as a `float`.
 
   """
   def julian_centuries_from_julian_day(julian_day) do
@@ -363,7 +339,7 @@ defmodule Astro.Time do
 
   @doc """
   Returns the day number for
-  January 1st, 2000
+  January 1st, 2000.
 
   """
   @new_year_2000 Date.new!(2000, 1, 1)
@@ -375,16 +351,16 @@ defmodule Astro.Time do
 
   @doc """
   Returns the Julian day for a given
-  Julian century
+  Julian century.
 
-  ## Arguments
+  ### Arguments
 
   * `julian_century` is any astronomical Julian century such
-    as returned from `Astro.Time.julian_centuries_from_julian_day/1`
+    as returned from `Astro.Time.julian_centuries_from_julian_day/1`.
 
-  ## Returns
+  ### Returns
 
-  * the astronomical Julian day as a `float`
+  * the astronomical Julian day as a `float`.
 
   """
   @spec julian_day_from_julian_centuries(julian_centuries()) :: julian_days()
@@ -393,16 +369,16 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the datetime for a given Julian day
+  Returns the datetime for a given Julian day.
 
-  ## Arguments
+  ### Arguments
 
   * `julian_day` is any astronomical Julian day such
-    as returned from `Astro.Time.julian_day_from_date/1`
+    as returned from `Astro.Time.julian_day_from_date/1`.
 
-  ## Returns
+  ### Returns
 
-  * a `DateTime.t` in the UTC time zone
+  * a `DateTime.t` in the UTC time zone.
 
   ## Example
 
@@ -444,12 +420,12 @@ defmodule Astro.Time do
   @doc """
   Converts a terrestrial datetime to a UTC datetime
 
-  ## Arguments
+  ### Arguments
 
   * `datetime` is any UTC datetime which is considered
     to be a Terrestrial Time.
 
-  ## Returns
+  ### Returns
 
   * A UTC datetime adjusted for the difference
     between Terrestrial Time and UTC time
@@ -520,15 +496,15 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the modified Julian day for a date
+  Returns the modified Julian day for a date.
 
-  ## Arguments
+  ### Arguments
 
-  * `date` is any `Calendar.date`
+  * `date` is any `Calendar.date`.
 
-  ## Returns
+  ### Returns
 
-  * the modified Julian day as a `float`
+  * the modified Julian day as a `float`.
 
   ## Notes
 
@@ -548,18 +524,18 @@ defmodule Astro.Time do
 
   @doc """
   Converts a float number of hours since midnight to
-  a `DateTime.t()`
+  a `t:DateTime.t/0`.
 
-  ## Arguments
+  ### Arguments
 
   * `time_of_day` is a float number of hours
-    since midnight
+    since midnight.
 
-  * `date` is any `Calendar.date()`
+  * `date` is any `t:Calendar.date/0`.
 
-  ## Returns
+  ### Returns
 
-  A `DateTime.t()` combining the `date` and `time_of_day`
+  A `t:DateTime.t/0` combining the `date` and `time_of_day`
   in the UTC timezone.
 
   """
@@ -575,12 +551,12 @@ defmodule Astro.Time do
   Converts a float number of hours
   since midnight into `{hours, minutes, seconds}`.
 
-  ## Arguments
+  ### Arguments
 
   * `time_of_day` is a float number of hours
-    since midnight
+    since midnight.
 
-  ## Returns
+  ### Returns
 
   * A `{hour, minute, second}` tuple. Fractions of
     seconds are truncated.
@@ -609,13 +585,13 @@ defmodule Astro.Time do
   @doc """
   Converts a number of hours into days.
 
-  ## Arguments
+  ### Arguments
 
-  * a float number of `hours`
+  * a float number of `hours`.
 
-  ## Returns
+  ### Returns
 
-  * a float number of `days`
+  * a float number of `days`.
 
   ## Examples
 
@@ -632,11 +608,11 @@ defmodule Astro.Time do
   Converts a number of seconds
   since midnight into `{hours, minutes, seconds}`.
 
-  ## Arguments
+  ### Arguments
 
-  * `time_of_day` is a number of seconds
+  * `time_of_day` is a number of seconds.
 
-  ## Returns
+  ### Returns
 
   * A `{hour, minute, second}` tuple.
 
@@ -660,15 +636,15 @@ defmodule Astro.Time do
 
   @doc """
   Adds the requested minutes to a date
-  returning a datetime in the UTC time zone
+  returning a datetime in the UTC time zone.
 
-  ## Arguments
+  ### Arguments
 
-  * `minutes` is a float number of minutes since midnight
+  * `minutes` is a float number of minutes since midnight.
 
-  * `date` is any date in the Gregorian calendar
+  * `date` is any date in the Gregorian calendar.
 
-  ## Returns
+  ### Returns
 
   * `{:ok, datetime in the UTC time zone}`
 
@@ -737,12 +713,6 @@ defmodule Astro.Time do
     local_mean_time = longitude * @minutes_per_degree * @seconds_per_minute
     local_mean_time - offset_for_zone(gregorian_seconds, time_zone) * seconds_per_day()
   end
-
-  # @doc false
-  # def offset_from_location(%Geo.PointZ{} = location, t) do
-  #   {:ok, time_zone} = timezone_at(location)
-  #   offset_for_zone(t, time_zone)
-  # end
 
   @doc """
   Returns the offset in float days
@@ -844,12 +814,12 @@ defmodule Astro.Time do
           @seconds_per_day
 
       year in 1600..1699 ->
-         poly(year - 1600, [196.58333, -4.0675, 0.0219167]) /
-           @seconds_per_day
+        poly(year - 1600, [196.58333, -4.0675, 0.0219167]) /
+          @seconds_per_day
 
-       true ->
-         x = hr(12) + Date.diff(Date.new!(year, 1, 1), Date.new!(1810, 1, 1))
-         ((x * x) / 41_048_480.0 - 15) / @seconds_per_day
+      true ->
+        x = hr(12) + Date.diff(Date.new!(year, 1, 1), Date.new!(1810, 1, 1))
+        ((x * x) / 41_048_480.0 - 15) / @seconds_per_day
     end
   end
 

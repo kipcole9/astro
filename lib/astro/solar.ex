@@ -212,10 +212,10 @@ defmodule Astro.Solar do
     first_pass = approximate_utc_sun_position(tnoon, latitude, longitude, solar_elevation, mode)
 
     # refine using output of first pass
-    trefinement = Time.julian_centuries_from_julian_day(julian_day + first_pass / minutes_per_day())
+    refinement = Time.julian_centuries_from_julian_day(julian_day + first_pass / minutes_per_day())
 
     position =
-      approximate_utc_sun_position(trefinement, latitude, longitude, solar_elevation, mode)
+      approximate_utc_sun_position(refinement, latitude, longitude, solar_elevation, mode)
 
     {:ok, position}
   rescue
