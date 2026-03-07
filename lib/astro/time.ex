@@ -545,8 +545,8 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a float number of hours since midnight to
-  a `t:DateTime.t/0`.
+  Adds a float number of hours since midnight to
+  a `t:Date.t/0` to return a UTC `t:DateTime.t/0`.
 
   ### Arguments
 
@@ -557,39 +557,16 @@ defmodule Astro.Time do
 
   ### Returns
 
-  A `t:DateTime.t/0` combining the `date` and `time_of_day`
+  A `t:NaiveDateTime.t/0` combining the `date` and `time_of_day`
   in the UTC timezone.
 
   """
-  @spec moment_to_datetime(fraction_of_day(), Calendar.date()) :: {:ok, Calendar.datetime()}
-  def moment_to_datetime(time_of_day, %{year: year, month: month, day: day}) do
+  @spec hours_and_date_to_datetime(hours(), Calendar.date()) :: {:ok, Calendar.datetime()}
+  def hours_and_date_to_datetime(time_of_day, %{year: year, month: month, day: day}) do
     with {hours, minutes, seconds} <- hours_to_hms(time_of_day),
          {:ok, naive_datetime} <- NaiveDateTime.new(year, month, day, hours, minutes, seconds, 0) do
       datetime_in_utc(naive_datetime)
     end
-  end
-
-  @doc """
-  Converts a moment to a `t:DateTime.t/0`.
-
-  ### Arguments
-
-  * `moment` is a float number of ISO days
-    with the time encoded as a decimal fraction
-    of a day.
-
-  ### Returns
-
-  * A `t:DateTime.t/0`.
-
-  """
-  @spec moment_to_datetime(fraction_of_day(), Calendar.date()) :: {:ok, Calendar.datetime()}
-  def moment_to_datetime(moment) do
-    iso_days = trunc(moment)
-    {year, month, day} = Calendar.ISO.date_from_iso_days(iso_days)
-    {:ok, date} = Date.new(year, month, day)
-    fraction_of_day = moment - iso_days
-    moment_to_datetime(fraction_of_day, date)
   end
 
   @doc """
@@ -618,7 +595,7 @@ defmodule Astro.Time do
     {15, 27, 21}
 
   """
-  @spec hours_to_hms(fraction_of_day()) :: hms()
+  @spec hours_to_hms(hours()) :: hms()
   def hours_to_hms(time_of_day) when is_float(time_of_day) do
     hours = trunc(time_of_day)
     minutes = (time_of_day - hours) * @minutes_per_hour
@@ -868,19 +845,34 @@ defmodule Astro.Time do
     end
   end
 
-  @doc false
-  @spec date_time_from_moment(moment()) ::
-    {:ok, DateTime.t()} |
-    {:error, atom()} |
-    {:ambiguous, DateTime.t(), DateTime.t()} |
-    {:gap, DateTime.t(), DateTime.t()}
+  @doc """
+  Converts an `t:Astro.moment/0` into a `NaiveDateTime.t/0`.
+
+  ### Arguments
+
+  * `moment` is float representation of a UTC date_time
+    where the integer part is the number of gregorian days
+    since 0000-01-01 and the fractional part is the fraction
+    of a day since midnight.
+
+  ### Examples
+
+      iex> Astro.Time.date_time_from_moment 740047.5
+      {:ok, ~U[2026-03-07 12:00:00.000000Z]}
+      iex> Astro.Time.date_time_from_moment 740047.0
+      {:ok, ~U[2026-03-07 00:00:00.000000Z]}
+      iex> Astro.Time.date_time_from_moment 740047.999999
+      {:ok, ~U[2026-03-07 23:59:59.000000Z]}
+
+  """
+  @spec date_time_from_moment(moment()) :: {:ok, NaiveDateTime.t()}
 
   def date_time_from_moment(t) do
     days = trunc(t)
     hours = (t - days) * @hours_per_day
 
     date = Elixir.Date.from_gregorian_days(days)
-    moment_to_datetime(hours, date)
+    hours_and_date_to_datetime(hours, date)
   end
 
   @doc false

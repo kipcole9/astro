@@ -302,11 +302,12 @@ defmodule Astro.Lunar do
          {:ok, moment_of_rise_or_set} <-
            utc_moon_rise_or_set(location, iso_datetime, options),
          {:ok, utc_rise_or_set} <-
-           Time.moment_to_datetime(moment_of_rise_or_set),
+           Time.date_time_from_moment(moment_of_rise_or_set),
          {:ok, local_rise_or_set} <-
            Time.datetime_in_requested_zone(utc_rise_or_set, location, options) do
       DateTime.convert(local_rise_or_set, datetime.calendar)
     end
+    |> dbg()
   end
 
   @doc false

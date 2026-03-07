@@ -71,8 +71,7 @@ defmodule Astro.Solar do
 
   @doc false
   def sun_rise_or_set(%Geo.PointZ{} = location, %Date{} = date, options) do
-    with {:ok, naive_datetime} <-
-           NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0, {0, 0}, date.calendar) do
+    with {:ok, naive_datetime} <- NaiveDateTime.new(date, ~T[00:00:00]) do
       sun_rise_or_set(location, naive_datetime, options)
     end
   end
@@ -97,7 +96,7 @@ defmodule Astro.Solar do
          {:ok, moment_of_rise_or_set} <-
            utc_sun_rise_or_set(adjusted_datetime, location, options),
          {:ok, utc_rise_or_set} <-
-           Time.moment_to_datetime(moment_of_rise_or_set, adjusted_datetime),
+           Time.hours_and_date_to_datetime(moment_of_rise_or_set, adjusted_datetime),
          {:ok, adjusted_rise_or_set} <-
            Time.adjust_for_wraparound(utc_rise_or_set, location, options),
          {:ok, local_rise_or_set} <-
