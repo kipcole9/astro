@@ -6,7 +6,9 @@ defmodule Astro.Earth do
   """
   alias Astro.Time
 
-  import Astro.Math, only: [to_radians: 1, to_degrees: 1, poly: 2, deg: 1, sin: 1]
+  import Astro.Math, only: [to_degrees: 1, poly: 2, deg: 1, sin: 1]
+
+  @meters_per_kilometer 1000.0
 
   @geometric_solar_elevation 90.0
 
@@ -16,9 +18,12 @@ defmodule Astro.Earth do
   # 16 arc minutes in degrees
   @solar_radius 16.0 / 60.0
 
-  @meters_per_kilometer 1000.0
-  @obliquity to_radians(23.4397)
+  # Mean obliquity in degrees
+  @obliquity 23.4397
+
+  # Equatorial radius in kilometers
   @earth_radius 6_378.1366
+  @earth_radius_m @earth_radius * @meters_per_kilometer
 
   @doc """
   Returns an estimate of the effect of refraction
@@ -83,6 +88,11 @@ defmodule Astro.Earth do
     @earth_radius
   end
 
+  @doc false
+  def earth_radius_m do
+    @earth_radius_m
+  end
+
   @doc """
   Returns the mean [obliquity](https://en.wikipedia.org/wiki/Axial_tilt)
   of the [ecliptic](https://en.wikipedia.org/wiki/Ecliptic) at
@@ -101,8 +111,12 @@ defmodule Astro.Earth do
 
   See [Astronomical Algorithms](https://www.amazon.com/dp/0943396611) Chapter 22.
 
+  ### Returns
+
+  * The mean obliquity as a float angle in degrees.
+
   """
-  @spec obliquity :: Astro.radians()
+  @spec obliquity :: Astro.angle()
   def obliquity do
     @obliquity
   end

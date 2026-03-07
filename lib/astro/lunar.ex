@@ -19,7 +19,7 @@ defmodule Astro.Lunar do
 
   """
 
-  alias Astro.{Math, Time, Solar}
+  alias Astro.{Math, Time, Solar, Earth, Location}
 
   import Astro.Math, only: [
     deg: 1,
@@ -31,7 +31,9 @@ defmodule Astro.Lunar do
     mod: 2,
     degrees: 1,
     poly: 2,
-    invert_angular: 4
+    invert_angular: 4,
+    to_degrees: 1,
+    to_radians: 1
   ]
 
   import Astro.Time, only: [
@@ -46,6 +48,34 @@ defmodule Astro.Lunar do
 
   @months_epoch_to_j2000 24_724
   @average_distance_earth_to_moon 385_000_560.0
+  @meters_per_kilometer 1000.0
+
+  # IAU 2015 lunar radius in km
+  @lunar_radius 1_737.4
+  @lunar_radius_m @lunar_radius * @meters_per_kilometer
+  @lunar_diameter_m @lunar_radius_m * 2
+
+  # Moon's mean radius / Earth's equatorial radius (Meeus Ch.47).
+  @lunar_k @lunar_radius_m / Earth.earth_radius_m()
+
+  @doc """
+  Returns the lunar radius in kilometers.
+
+  """
+  @spec lunar_radius() :: Astro.kilometers()
+  def lunar_radius do
+    @lunar_radius
+  end
+
+  @doc false
+  def lunar_radius_m do
+    @lunar_radius_m
+  end
+
+  @doc false
+  def lunar_k do
+    @lunar_k
+  end
 
   @doc """
   Returns the date time of the new
@@ -53,12 +83,12 @@ defmodule Astro.Lunar do
 
   ## Arguments
 
-  * a `t:Time.moment()` which is a float number of days
+  * a `t:Time.moment/0` which is a float number of days
     since `0000-01-01`
 
   ## Returns
 
-  * a `t:Time.moment()` which is a float number of days
+  * a `t:Time.moment/0` which is a float number of days
     since `0000-01-01`
 
   ## Example
@@ -248,6 +278,256 @@ defmodule Astro.Lunar do
     0.5 * (1 + :math.cos(i))
   end
 
+  @doc false
+  def moon_rise_or_set(%Geo.PointZ{} = location, %Date{} = date, options) do
+    IO.puts "MOON_RISE_OR_SET with Date"
+    with {:ok, naive_datetime} <- NaiveDateTime.new(date, ~T[00:00:00]) do
+      moon_rise_or_set(location, naive_datetime, options)
+    end
+  end
+
+  @doc false
+  def moon_rise_or_set(%Geo.PointZ{} = location, %NaiveDateTime{} = datetime, options) do
+    %{time_zone_database: time_zone_database} = options
+
+    with {:ok, iso_datetime} <- NaiveDateTime.convert(datetime, Calendar.ISO),
+         {:ok, time_zone} <- Time.timezone_at(location, options[:time_zone_resolver]),
+         {:ok, utc_datetime} <- Time.datetime_in_utc(iso_datetime, time_zone, time_zone_database) do
+      moon_rise_or_set(location, utc_datetime, options)
+    end
+    |> dbg()
+  end
+
+  @doc false
+  def moon_rise_or_set(%Geo.PointZ{} = location, %DateTime{} = datetime, options) do
+    with {:ok, iso_datetime} <-
+           DateTime.convert(datetime, Calendar.ISO),
+         {:ok, moment_of_rise_or_set} <-
+           utc_moon_rise_or_set(iso_datetime, location, options),
+         {:ok, utc_rise_or_set} <-
+           Time.moment_to_datetime(moment_of_rise_or_set),
+         {:ok, local_rise_or_set} <-
+           Time.datetime_in_requested_zone(utc_rise_or_set, location, options) do
+      DateTime.convert(local_rise_or_set, datetime.calendar)
+    end
+    |> dbg()
+  end
+
+  @doc false
+  def moon_rise_or_set(location, datetime, options) do
+    Location.normalize_location(location)
+    |> moon_rise_or_set(datetime, options)
+  end
+
+  defp utc_moon_rise_or_set(utc_datetime, location, %{rise_or_set: :rise}) do
+    moment = Time.date_time_to_moment(utc_datetime)
+    utc_moon_rise(moment, location)
+  end
+
+  defp utc_moon_rise_or_set(utc_datetime, location, %{rise_or_set: :set}) do
+    moment = Time.date_time_to_moment(utc_datetime)
+    utc_moon_set(moment, location)
+  end
+
+  @doc """
+  Returns `{:ok, moment}` for moonrise, or `{:error, :no_rise}`.
+
+  """
+  @doc since: "2.0.0"
+  @spec utc_moon_rise(t :: Time.moment(), location :: Geo.PointZ.t()) ::
+          {:ok, Time.moment()} | {:error, :moon_always_below_horizon}
+
+  def utc_moon_rise(location, date) do
+    case utc_moonrise_and_moonset(location, date) do
+      {:ok, %{rise: rise}} -> {:ok, rise}
+      error -> error
+    end
+  end
+
+  @doc """
+  Returns `{:ok, moment}` for moonset, or `{:error, :no_set}`.
+
+  """
+  @doc since: "2.0.0"
+  @spec utc_moon_set(t :: Time.moment, location :: Geo.PointZ.t()) ::
+          {:ok, DateTime.t()} | {:error, :moon_always_above_horizon}
+
+  def utc_moon_set(location, date) do
+    case utc_moonrise_and_moonset(location, date) do
+      {:ok, %{set: set}} -> {:ok, set}
+      error -> error
+    end
+  end
+
+  @doc since: "2.0.0"
+  @spec utc_moonrise_and_moonset(t :: Time.moment(), location: Geo.PointZ.t()) ::
+    {:ok, map()}, {:error, atom()}
+
+  defp utc_moonrise_and_moonset(t, location) do
+    IO.puts "UTC_MOONRISE_AND_MOONSET"
+    %Geo.PointZ{coordinates: {lng, lat, _alt}} = location
+
+    # Step 0, truncate to beginning of day.
+    t = trunc(t)
+
+    # Step 1 – Moon RA, Dec, and distance at 0h, 12h, 24h UT.
+    {ra0, dec0, dist0} = lunar_position(t + 0.0)
+    {ra1, dec1, dist1} = lunar_position(t + 0.5)
+    {ra2, dec2, dist2} = lunar_position(t + 1.0)
+
+    # Step 2 – Dynamic horizon dip from the Moon's actual distance at noon.
+    h0 = horizon_dip_from_distance(dist1)
+
+    # Step 3 – Greenwich Sidereal Time at 0h UT on the date (degrees).
+    gst0 = Time.sidereal_from_moment(t)
+
+    # Step 4 – Approximate transit time m0 (fractional day 0..1).
+    # Transit is when the Moon's RA equals the observer's local sidereal time.
+    m0 = fractional_day((ra1 - lng - gst0) / 360.0)
+
+    # Step 5 – Hour angle H0 at which altitude equals h0, using noon Dec.
+    cos_h0 = cos_hour_angle(h0, lat, dec1)
+
+    cond do
+      cos_h0 < -1.0 ->
+        {:error, :moon_always_above_horizon}
+
+      cos_h0 > 1.0 ->
+        {:error, :moon_always_below_horizon}
+
+      true ->
+        h0_deg = to_degrees(:math.acos(cos_h0))
+
+        # Initial estimates for rise (m1) and set (m2) as fractional days 0..1.
+        m1 = fractional_day(m0 - h0_deg / 360.0)
+        m2 = fractional_day(m0 + h0_deg / 360.0)
+
+        positions = {
+          {ra0, dec0}, {ra1, dec1}, {ra2, dec2},
+          {dist0, dist1, dist2}
+        }
+
+        rise_m = refine(:rise, m1, gst0, lat, lng, positions)
+        set_m  = refine(:set,  m2, gst0, lat, lng, positions)
+
+        {:ok, %{
+          rise: t + rise_m,
+          set:  t + set_m
+        }}
+    end
+  end
+
+  # Convergence tolerance in fractional days (~1 second).
+  @tolerance 1.0 / 86_400.0
+
+  # Maximum refinement iterations before accepting the estimate.
+  @max_iterations 10
+
+  # Iteratively correct the fractional-day estimate `m` using the altitude
+  # residual at the interpolated position.  Meeus eq. 15.a / 15.b.
+  defp refine(type, m, gst0, lat, lng, positions, iteration \\ 0)
+
+  defp refine(_type, m, _gst0, _lat, _lng, _positions, iteration)
+      when iteration >= @max_iterations, do: m
+
+  defp refine(type, m, gst0, lat, lng, positions, iteration) do
+    IO.puts "REFINE"
+    {{ra0, dec0}, {ra1, dec1}, {ra2, dec2}, {dist0, dist1, dist2}} = positions
+
+    # Interpolate RA, Dec, and distance at trial time m.
+    ra   = interpolate(ra0, ra1, ra2, m)
+    dec  = interpolate(dec0, dec1, dec2, m)
+    dist = interpolate(dist0, dist1, dist2, m)
+
+    # Dynamic horizon dip at the trial distance.
+    h0 = horizon_dip_from_distance(dist)
+
+    # Local hour angle at trial time (degrees).
+    lha = local_hour_angle(gst0, m, lng, ra)
+
+    # Moon's altitude at the trial time.
+    alt = altitude(dec, lat, lha)
+
+    # Meeus correction term (fractional days).
+    # Denominator is the rate of change of altitude with respect to m.
+    correction =
+      (alt - h0) /
+        (360.0 *
+           :math.cos(to_radians(dec)) *
+           :math.cos(to_radians(lat)) *
+           :math.sin(to_radians(lha)))
+
+    new_m = m + correction
+
+    if abs(correction) < @tolerance do
+      new_m
+    else
+      refine(type, new_m, gst0, lat, lng, positions, iteration + 1)
+    end
+  end
+
+  # Dynamic horizon dip from the Moon's actual geocentric distance in metres.
+  defp horizon_dip_from_distance(dist_m) do
+    horizontal_parallax = :math.asin(Earth.earth_radius_m() / dist_m)
+    semi_diameter = :math.asin(@lunar_k * :math.sin(horizontal_parallax))
+    -(Earth.refraction() + to_degrees(semi_diameter) - to_degrees(horizontal_parallax))
+  end
+
+  # Moon's altitude (degrees) given Dec, observer latitude, and local hour angle.
+  defp altitude(dec_deg, lat_deg, lha_deg) do
+    to_degrees(
+      :math.asin(
+        :math.sin(to_radians(lat_deg)) * :math.sin(to_radians(dec_deg)) +
+          :math.cos(to_radians(lat_deg)) * :math.cos(to_radians(dec_deg)) *
+          :math.cos(to_radians(lha_deg))
+      )
+    )
+  end
+
+  # Local hour angle at fractional day m (degrees, normalised to -180..+180).
+  # 360.985647 is the number of degrees Earth rotates per solar day relative
+  # to the stars (sidereal rotation rate), from Meeus eq. 15.2.
+  defp local_hour_angle(gst0, m, lng_deg, ra_deg) do
+    lha = gst0 + 360.985647 * m - lng_deg - ra_deg
+    lha = :math.fmod(lha, 360.0)
+
+    cond do
+      lha >  180.0 -> lha - 360.0
+      lha < -180.0 -> lha + 360.0
+      true         -> lha
+    end
+  end
+
+  # cos(H₀) — Meeus eq. 15.1.
+  # H₀ is the hour angle at which the body crosses the horizon altitude h0.
+  defp cos_hour_angle(h0_deg, lat_deg, dec_deg) do
+    numerator =
+      :math.sin(to_radians(h0_deg)) -
+        :math.sin(to_radians(lat_deg)) * :math.sin(to_radians(dec_deg))
+
+    denominator =
+      :math.cos(to_radians(lat_deg)) * :math.cos(to_radians(dec_deg))
+
+    numerator / denominator
+  end
+
+  # Normalise a fractional day to [0, 1).
+  defp fractional_day(m) do
+    m = :math.fmod(m, 1.0)
+    if m < 0, do: m + 1.0, else: m
+  end
+
+  # Three-point Lagrange interpolation (Meeus eq. 3.3).
+  # y1, y2, y3 are values at fractional days 0, 0.5, 1 respectively.
+  # m is the trial fractional day (0..1), mapped to n in (-1..+1).
+  defp interpolate(y1, y2, y3, m) do
+    n = (m - 0.5) * 2.0
+    a = y2 - y1
+    b = y3 - y2
+    c = b - a
+    y2 + n / 2.0 * (a + b + n * c / 2.0)
+  end
+
   @doc """
   Returns the new moon lunar
   phase expressed as a float number
@@ -255,8 +535,8 @@ defmodule Astro.Lunar do
 
   """
   @doc since: "0.5.0"
-  @spec new_moon() :: Astro.phase()
-  def new_moon() do
+  @spec new_moon_phase() :: Astro.phase()
+  def new_moon_phase() do
     deg(0.0)
   end
 
@@ -267,8 +547,8 @@ defmodule Astro.Lunar do
 
   """
   @doc since: "0.5.0"
-  @spec full_moon() :: Astro.phase()
-  def full_moon() do
+  @spec full_moon_phase() :: Astro.phase()
+  def full_moon_phase() do
     deg(180.0)
   end
 
@@ -279,8 +559,8 @@ defmodule Astro.Lunar do
 
   """
   @doc since: "0.5.0"
-  @spec first_quarter() :: Astro.phase()
-  def first_quarter() do
+  @spec first_quarter_phase() :: Astro.phase()
+  def first_quarter_phase() do
     deg(90.0)
   end
 
@@ -291,9 +571,9 @@ defmodule Astro.Lunar do
 
   """
   @doc since: "0.5.0"
-  @spec last_quarter() :: Astro.phase()
+  @spec last_quarter_phase() :: Astro.phase()
 
-  def last_quarter() do
+  def last_quarter_phase() do
     deg(270.0)
   end
 
@@ -450,8 +730,17 @@ defmodule Astro.Lunar do
     mod(altitude + deg(180.0), 360.0) - deg(180.0)
   end
 
+  @doc false
+  @doc since: "2.0.0"
+  @spec topocentric_lunar_altitude(t :: Time.moment(), location :: Geo.PointZ.t()) ::
+      Astro.angle()
+
+  def topocentric_lunar_altitude(t, location) do
+    lunar_altitude(t, location) - topocentric_lunar_parallax(t, location)
+  end
+
   @doc since: "0.6.0"
-  @spec lunar_distance(Time.moment()) :: Astro.meters()
+  @spec lunar_distance(t :: Time.moment()) :: Astro.meters()
 
   def lunar_distance(t) do
     c = Time.julian_centuries_from_moment(t)
@@ -610,19 +899,40 @@ defmodule Astro.Lunar do
     Time.universal_from_dynamical(approx + correction + extra + additional)
   end
 
-  def lunar_parallax(t, location) do
-    geo = lunar_altitude(t, location)
-    delta = lunar_distance(t)
-    alt = mt(6_378_140) / delta
-    arg = alt * cos(geo)
-    asin(arg)
+  @doc """
+  Returns the Moon's equatorial horizontal parallax in degrees at
+  moment `t`.
+
+  The horizontal parallax is the angle subtended by Earth's equatorial
+  radius as seen from the Moon, or equivalently the maximum apparent
+  displacement of the Moon caused by the observer being on Earth's surface
+  rather than its centre.
+
+  """
+  @spec horizontal_parallax(t :: Time.moment()) :: Astro.angle
+  def horizontal_parallax(t) do
+    asin(Earth.earth_radius_m() / lunar_distance(t))
+    |> to_degrees()
   end
 
-  def topocentric_lunar_altitude(t, location) do
-    lunar_altitude(t, location) - lunar_parallax(t, location)
+  @doc """
+  This is the *observer-specific* parallax (also called the parallax in
+  altitude), which varies with the observer's latitude and the Moon's
+  altitude above their horizon — as opposed to the equatorial horizontal
+  parallax returned by `Astro.Lunar.horizontal_parallax/1`, which is
+  location-independent.
+
+  """
+  @spec topocentric_lunar_parallax(t :: Time.moment(), location :: Geo.PointZ.t()) ::
+      Astro.angle()
+
+  def topocentric_lunar_parallax(t, location) do
+    asin(Earth.earth_radius_m() / lunar_distance(t) * cos(lunar_altitude(t, location)))
+    |> to_degrees()
   end
 
   @doc false
+  @spec mean_lunar_longitude(c :: Astro.julian_centuries()) :: Astro.angle()
   def mean_lunar_longitude(c) do
     c
     |> poly([218.3164477, 481267.88123421, -0.0015786, 1 / 538841.0, -1 /65194000.0])
@@ -630,6 +940,7 @@ defmodule Astro.Lunar do
   end
 
   @doc false
+  @spec lunar_elongation(c :: Astro.julian_centuries()) :: Astro.angle()
   def lunar_elongation(c) do
     c
     |> poly([297.8501921, 445267.1114034, -0.0018819, 1/545868, -1 / 113065000.0])
@@ -637,6 +948,20 @@ defmodule Astro.Lunar do
   end
 
   @doc false
+  @spec angular_semi_diameter(t :: Time.moment()) :: Astro.angle()
+  def angular_semi_diameter(t) do
+    asin(@lunar_diameter_m / lunar_distance(t))
+    |> to_degrees()
+  end
+
+  @doc false
+  @spec horizontal_dip(t :: Time.moment()) :: Astro.angle()
+  def horizontal_dip(t) do
+    -(Earth.refraction() + angular_semi_diameter(t) - horizontal_parallax(t))
+  end
+
+  @doc false
+  @spec solar_anomaly(c :: Astro.julian_centuries()) :: Astro.angle()
   def solar_anomaly(c) do
     c
     |> poly([357.5291092, 35999.0502909, -0.0001536, 1 / 24490000.0])
@@ -644,6 +969,7 @@ defmodule Astro.Lunar do
   end
 
   @doc false
+  @spec lunar_anomaly(c :: Astro.julian_centuries()) :: Astro.angle()
   def lunar_anomaly(c) do
     c
     |> poly([134.9633964, 477198.8675055, 0.0087414, 1 / 69699.0, -1 / 14712000.0])
@@ -656,6 +982,7 @@ defmodule Astro.Lunar do
   end
 
   @doc false
+  @spec lunar_node(t :: Time.moment()) :: Astro.angle()
   def lunar_node(t) do
     c = julian_centuries_from_moment(t)
 
@@ -665,6 +992,7 @@ defmodule Astro.Lunar do
   end
 
   @doc false
+  @spec moon_node(c :: Astro.julian_centuries()) :: Astro.angle()
   def moon_node(c) do
     c
     |> poly([93.2720950, 483202.0175233, -0.0036539, -1 / 3526000.0, 1 / 863310000.0])

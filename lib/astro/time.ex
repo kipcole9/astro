@@ -74,6 +74,7 @@ defmodule Astro.Time do
 
   @julian_day_jan_1_2000 2_451_545
   @julian_days_per_century 36_525.0
+  @julian_epoch_days 1_721_425.5
   @utc_zone "Etc/UTC"
 
   @minutes_per_degree 4
@@ -114,6 +115,15 @@ defmodule Astro.Time do
 
   @doc false
   def minutes_per_hour, do: @minutes_per_hour
+
+  @doc false
+  def julian_epoch_days, do: @julian_epoch_days
+
+  @doc false
+  def julian_day_jan_1_2000, do: @julian_day_jan_1_2000
+
+  @doc false
+  def julian_days_per_century, do: @julian_days_per_century
 
   @doc false
   def days_from_minutes(minutes), do: minutes / @minutes_per_day
@@ -548,6 +558,29 @@ defmodule Astro.Time do
   end
 
   @doc """
+  Converts a moment to a `t:DateTime.t/0`.
+
+  ### Arguments
+
+  * `moment` is a float number of ISO days
+    with the time encoded as a decimal fraction
+    of a day.
+
+  ### Returns
+
+  * A `t:DateTime.t/0`.
+
+  """
+  @spec moment_to_datetime(fraction_of_day(), Calendar.date()) :: {:ok, Calendar.datetime()}
+  def moment_to_datetime(moment) do
+    iso_days = trunc(moment)
+    {year, month, day} = Calendar.ISO.date_from_iso_days(iso_days)
+    {:ok, date} = Date.new(year, month, day)
+    fraction_of_day = moment - iso_days
+    moment_to_datetime(fraction_of_day, date)
+  end
+
+  @doc """
   Converts a float number of hours
   since midnight into `{hours, minutes, seconds}`.
 
@@ -874,12 +907,22 @@ defmodule Astro.Time do
         datetime,
         time_zone \\ @utc_zone,
         time_zone_database \\ Calendar.get_time_zone_database()
-      ) do
+      )
+
+  def datetime_in_utc(%NaiveDateTime{} = datetime, time_zone, time_zone_database) do
     case DateTime.from_naive(datetime, time_zone, time_zone_database) do
-      {:ok, datetime} -> {:ok, datetime}
-      {:error, error} -> {:error, error}
-      {:ambiguous, _datetime1, datetime2} -> {:ok, datetime2}
-      {:gap, _datetime1, datetime2} -> {:ok, datetime2}
+      {:ok, datetime} ->
+        DateTime.shift_zone(datetime, @utc_zone, time_zone_database)
+      {:error, error} ->
+        {:error, error}
+      {:ambiguous, _datetime1, datetime2} ->
+        DateTime.shift_zone(datetime2, @utc_zone, time_zone_database)
+      {:gap, _datetime1, datetime2} ->
+        DateTime.shift_zone(datetime2, @utc_zone, time_zone_database)
     end
+  end
+
+  def datetime_in_utc(%DateTime{} = datetime, _time_zone, time_zone_database) do
+    DateTime.shift_zone(datetime, @utc_zone, time_zone_database)
   end
 end

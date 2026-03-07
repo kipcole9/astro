@@ -773,6 +773,26 @@ defmodule Astro do
     Solar.sun_rise_or_set(location, date, options)
   end
 
+  @spec moonrise(location, date, options) ::
+          {:ok, DateTime.t()} | {:error, :moon_always_below_horizon}
+
+  def moonrise(location, date, options \\ default_options())
+
+  def moonrise(location, date, options) when is_list(options) do
+    options = Keyword.put(options, :rise_or_set, :rise) |> Map.new()
+    Lunar.moon_rise_or_set(location, date, options)
+  end
+
+  @spec moonset(location, date, options) ::
+          {:ok, DateTime.t()} | {:error, :moon_always_above_horizon}
+
+  def moonset(location, date, options \\ default_options())
+
+  def moonset(location, date, options) when is_list(options) do
+     options = Keyword.put(options, :rise_or_set, :set) |> Map.new()
+    Lunar.moon_rise_or_set(location, date, options)
+  end
+
   @doc """
   Returns the datetime in UTC for either the
   March or September equinox.

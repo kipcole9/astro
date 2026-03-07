@@ -68,31 +68,31 @@ defmodule Astro.Math do
 
   def cos(degrees) do
     degrees
-    |> to_radians
+    |> to_radians()
     |> :math.cos()
   end
 
   def sin(degrees) do
     degrees
-    |> to_radians
+    |> to_radians()
     |> :math.sin()
   end
 
   def asin(degrees) do
     degrees
-    |> to_radians
+    |> to_radians()
     |> :math.asin()
   end
 
   def acos(degrees) do
     degrees
-    |> to_radians
+    |> to_radians()
     |> :math.acos()
   end
 
   def tan(degrees) do
     degrees
-    |> to_radians
+    |> to_radians()
     |> :math.tan()
   end
 

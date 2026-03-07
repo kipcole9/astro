@@ -1,5 +1,17 @@
 # Changelog
 
+## Astro version 2.0.0
+
+This is the changelog for Astro version 2.0.0 released on ______.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Breaking changes
+
+* `Astro.obliquity/0` now returns its value in degrees (was previously radians). This change has no impact on the validity of the test suite. The only impact is to code that directly calls this function.
+
+* Rename `Astro.Lunar.full_moon/0` to `Astro.Lunar.full_moon_phase/0` (the same for the `Astro.Lunar.{new_moon, first_quarter, last_quarter}/0`).
+
+### Enhancements
+
 ## Astro version 1.1.2
 
 This is the changelog for Astro version 1.1.2 released on September 9th, 2025.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
