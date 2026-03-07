@@ -295,7 +295,6 @@ defmodule Astro.Lunar do
          {:ok, utc_datetime} <- Time.datetime_in_utc(iso_datetime, time_zone, time_zone_database) do
       moon_rise_or_set(location, utc_datetime, options)
     end
-    |> dbg()
   end
 
   @doc false
@@ -309,8 +308,6 @@ defmodule Astro.Lunar do
          {:ok, local_rise_or_set} <-
            Time.datetime_in_requested_zone(utc_rise_or_set, location, options) do
       DateTime.convert(local_rise_or_set, datetime.calendar)
-    end
-    |> dbg()
   end
 
   @doc false
