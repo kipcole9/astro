@@ -234,11 +234,21 @@ defmodule Astro.Time do
     t - offset
   end
 
-  def sidereal_from_moment(t) do
+  @doc false
+  def mean_sidereal_from_moment(t) do
     c = (t - j2000()) / @julian_days_per_century
 
     terms =
       Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
+
+    mod(Math.poly(c, terms), 360)
+  end
+
+  def apparent_sidereal_from_moment(t) do
+    c = (t - j2000()) / @julian_days_per_century
+
+    terms =
+      Enum.map([100.4606184, 36_000.77004, 0.000387933, -1 / 38710000.0], &Math.deg/1)
 
     mod(Math.poly(c, terms), 360)
   end
@@ -258,7 +268,7 @@ defmodule Astro.Time do
 
     date_time_utc
     |> date_time_to_moment()
-    |> sidereal_from_moment()
+    |> mean_sidereal_from_moment()
   end
 
   @doc """

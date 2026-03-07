@@ -53,7 +53,6 @@ defmodule Astro.Lunar do
   # IAU 2015 lunar radius in km
   @lunar_radius 1_737.4
   @lunar_radius_m @lunar_radius * @meters_per_kilometer
-  @lunar_diameter_m @lunar_radius_m * 2
 
   # Moon's mean radius / Earth's equatorial radius (Meeus Ch.47).
   @lunar_k @lunar_radius_m / Earth.earth_radius_m()
@@ -280,7 +279,6 @@ defmodule Astro.Lunar do
 
   @doc false
   def moon_rise_or_set(%Geo.PointZ{} = location, %Date{} = date, options) do
-    IO.puts "MOON_RISE_OR_SET with Date"
     with {:ok, naive_datetime} <- NaiveDateTime.new(date, ~T[00:00:00]) do
       moon_rise_or_set(location, naive_datetime, options)
     end
@@ -302,12 +300,13 @@ defmodule Astro.Lunar do
     with {:ok, iso_datetime} <-
            DateTime.convert(datetime, Calendar.ISO),
          {:ok, moment_of_rise_or_set} <-
-           utc_moon_rise_or_set(iso_datetime, location, options),
+           utc_moon_rise_or_set(location, iso_datetime, options),
          {:ok, utc_rise_or_set} <-
            Time.moment_to_datetime(moment_of_rise_or_set),
          {:ok, local_rise_or_set} <-
            Time.datetime_in_requested_zone(utc_rise_or_set, location, options) do
       DateTime.convert(local_rise_or_set, datetime.calendar)
+    end
   end
 
   @doc false
@@ -316,14 +315,14 @@ defmodule Astro.Lunar do
     |> moon_rise_or_set(datetime, options)
   end
 
-  defp utc_moon_rise_or_set(utc_datetime, location, %{rise_or_set: :rise}) do
+  defp utc_moon_rise_or_set(location, utc_datetime, %{rise_or_set: :rise}) do
     moment = Time.date_time_to_moment(utc_datetime)
-    utc_moon_rise(moment, location)
+    utc_moon_rise(location, moment)
   end
 
-  defp utc_moon_rise_or_set(utc_datetime, location, %{rise_or_set: :set}) do
+  defp utc_moon_rise_or_set(location, utc_datetime, %{rise_or_set: :set}) do
     moment = Time.date_time_to_moment(utc_datetime)
-    utc_moon_set(moment, location)
+    utc_moon_set(location, moment)
   end
 
   @doc """
@@ -331,11 +330,11 @@ defmodule Astro.Lunar do
 
   """
   @doc since: "2.0.0"
-  @spec utc_moon_rise(t :: Time.moment(), location :: Geo.PointZ.t()) ::
+  @spec utc_moon_rise(location :: Geo.PointZ.t(), t :: Time.moment()) ::
           {:ok, Time.moment()} | {:error, :moon_always_below_horizon}
 
-  def utc_moon_rise(location, date) do
-    case utc_moonrise_and_moonset(location, date) do
+  def utc_moon_rise(location, t) do
+    case utc_moonrise_and_moonset(location, t) do
       {:ok, %{rise: rise}} -> {:ok, rise}
       error -> error
     end
@@ -346,22 +345,21 @@ defmodule Astro.Lunar do
 
   """
   @doc since: "2.0.0"
-  @spec utc_moon_set(t :: Time.moment, location :: Geo.PointZ.t()) ::
+  @spec utc_moon_set(location :: Geo.PointZ.t(), t :: Time.moment) ::
           {:ok, DateTime.t()} | {:error, :moon_always_above_horizon}
 
-  def utc_moon_set(location, date) do
-    case utc_moonrise_and_moonset(location, date) do
+  def utc_moon_set(location, t) do
+    case utc_moonrise_and_moonset(location, t) do
       {:ok, %{set: set}} -> {:ok, set}
       error -> error
     end
   end
 
   @doc since: "2.0.0"
-  @spec utc_moonrise_and_moonset(t :: Time.moment(), location: Geo.PointZ.t()) ::
+  @spec utc_moonrise_and_moonset(location :: Geo.PointZ.t(), t :: Time.moment()) ::
     {:ok, map()}, {:error, atom()}
 
-  defp utc_moonrise_and_moonset(t, location) do
-    IO.puts "UTC_MOONRISE_AND_MOONSET"
+  defp utc_moonrise_and_moonset(location, t) do
     %Geo.PointZ{coordinates: {lng, lat, _alt}} = location
 
     # Step 0, truncate to beginning of day.
@@ -376,7 +374,7 @@ defmodule Astro.Lunar do
     h0 = horizon_dip_from_distance(dist1)
 
     # Step 3 – Greenwich Sidereal Time at 0h UT on the date (degrees).
-    gst0 = Time.sidereal_from_moment(t)
+    gst0 = Time.apparent_sidereal_from_moment(t)
 
     # Step 4 – Approximate transit time m0 (fractional day 0..1).
     # Transit is when the Moon's RA equals the observer's local sidereal time.
@@ -404,8 +402,8 @@ defmodule Astro.Lunar do
           {dist0, dist1, dist2}
         }
 
-        rise_m = refine(:rise, m1, gst0, lat, lng, positions)
-        set_m  = refine(:set,  m2, gst0, lat, lng, positions)
+        rise_m = refine(:rise, m1, gst0, lat, lng, positions) |> IO.inspect(label: "rise_m")
+        set_m  = refine(:set,  m2, gst0, lat, lng, positions) |> IO.inspect(label: "set_m")
 
         {:ok, %{
           rise: t + rise_m,
@@ -428,7 +426,6 @@ defmodule Astro.Lunar do
       when iteration >= @max_iterations, do: m
 
   defp refine(type, m, gst0, lat, lng, positions, iteration) do
-    IO.puts "REFINE"
     {{ra0, dec0}, {ra1, dec1}, {ra2, dec2}, {dist0, dist1, dist2}} = positions
 
     # Interpolate RA, Dec, and distance at trial time m.
@@ -721,7 +718,7 @@ defmodule Astro.Lunar do
     beta = lunar_latitude(t)
     alpha = Astro.right_ascension(t, beta, lambda)
     delta = Astro.declination(t, beta, lambda)
-    theta = Time.sidereal_from_moment(t)
+    theta = Time.mean_sidereal_from_moment(t)
     h = mod(theta + psi - alpha, 360.0)
     altitude = asin(sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h))
     mod(altitude + deg(180.0), 360.0) - deg(180.0)
@@ -947,7 +944,7 @@ defmodule Astro.Lunar do
   @doc false
   @spec angular_semi_diameter(t :: Time.moment()) :: Astro.angle()
   def angular_semi_diameter(t) do
-    asin(@lunar_diameter_m / lunar_distance(t))
+    asin(@lunar_radius_m / lunar_distance(t))
     |> to_degrees()
   end
 
