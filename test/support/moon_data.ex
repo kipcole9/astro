@@ -19,7 +19,7 @@ defmodule Astro.Moon.TestData do
   end
 
   def phase(phase) do
-    String.to_atom(phase)
+    String.to_atom(phase <> "_phase")
   end
 
   def date(month, day) do

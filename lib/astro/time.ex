@@ -236,7 +236,8 @@ defmodule Astro.Time do
 
   @doc false
   def mean_sidereal_from_moment(t) do
-    c = (t - j2000()) / @julian_days_per_century
+    # c = (t - j2000()) / @julian_days_per_century
+    c = julian_centuries_from_moment(t)
 
     terms =
       Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
@@ -245,7 +246,8 @@ defmodule Astro.Time do
   end
 
   def apparent_sidereal_from_moment(t) do
-    c = (t - j2000()) / @julian_days_per_century
+    # c = (t - j2000()) / @julian_days_per_century
+    c = julian_centuries_from_moment(t)
 
     terms =
       Enum.map([100.4606184, 36_000.77004, 0.000387933, -1 / 38710000.0], &Math.deg/1)
@@ -903,6 +905,7 @@ defmodule Astro.Time do
     end
   end
 
+  @doc false
   def periods_for_time(time_zone, gregorian_seconds, time_zone_database) do
     {:ok, date_time} = date_time_from_moment(gregorian_seconds / @seconds_per_day)
 
@@ -917,22 +920,13 @@ defmodule Astro.Time do
         datetime,
         time_zone \\ @utc_zone,
         time_zone_database \\ Calendar.get_time_zone_database()
-      )
-
-  def datetime_in_utc(%NaiveDateTime{} = datetime, time_zone, time_zone_database) do
+      ) do
     case DateTime.from_naive(datetime, time_zone, time_zone_database) do
-      {:ok, datetime} ->
-        DateTime.shift_zone(datetime, @utc_zone, time_zone_database)
-      {:error, error} ->
-        {:error, error}
-      {:ambiguous, _datetime1, datetime2} ->
-        DateTime.shift_zone(datetime2, @utc_zone, time_zone_database)
-      {:gap, _datetime1, datetime2} ->
-        DateTime.shift_zone(datetime2, @utc_zone, time_zone_database)
+      {:ok, datetime} -> {:ok, datetime}
+      {:error, error} -> {:error, error}
+      {:ambiguous, _datetime1, datetime2} -> {:ok, datetime2}
+      {:gap, _datetime1, datetime2} -> {:ok, datetime2}
     end
   end
 
-  def datetime_in_utc(%DateTime{} = datetime, _time_zone, time_zone_database) do
-    DateTime.shift_zone(datetime, @utc_zone, time_zone_database)
-  end
 end

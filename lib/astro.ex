@@ -474,7 +474,7 @@ defmodule Astro do
 
   ### Example
 
-      iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon())
+      iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
       {:ok, ~U[2021-07-10 01:15:33.000000Z]}
 
   """
@@ -524,7 +524,7 @@ defmodule Astro do
 
   ### Example
 
-      iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon())
+      iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
       {:ok, ~U[2021-08-22 12:01:02.000000Z]}
 
   """

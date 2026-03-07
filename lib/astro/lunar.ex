@@ -198,7 +198,7 @@ defmodule Astro.Lunar do
 
   ## Example
 
-      iex> Astro.Lunar.date_time_lunar_phase_at_or_before(738368, Astro.Lunar.new_moon())
+      iex> Astro.Lunar.date_time_lunar_phase_at_or_before(738368, Astro.Lunar.new_moon_phase())
       738346.0524695957
 
   """
@@ -233,7 +233,7 @@ defmodule Astro.Lunar do
 
   ## Example
 
-      iex> Astro.Lunar.date_time_lunar_phase_at_or_after(738368, Astro.Lunar.full_moon())
+      iex> Astro.Lunar.date_time_lunar_phase_at_or_after(738368, Astro.Lunar.full_moon_phase())
       738389.5007195254
 
   """
