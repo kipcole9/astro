@@ -93,6 +93,13 @@ defmodule Astro.Earth do
     @earth_radius_m
   end
 
+  def horizon_distance(observer_elevation_m \\ 0.0) do
+    # Distance to the geometric horizon in metres (standard formula).
+    # apprimation is d = sqrt(2 * R * h)  (without refraction k the pure geometric distance)
+    # exact formula is d = √(h² + 2Rh)
+    :math.sqrt((observer_elevation_m * observer_elevation_m) + (2 * @earth_radius_m * observer_elevation_m))
+  end
+
   @doc """
   Returns the mean [obliquity](https://en.wikipedia.org/wiki/Axial_tilt)
   of the [ecliptic](https://en.wikipedia.org/wiki/Ecliptic) at

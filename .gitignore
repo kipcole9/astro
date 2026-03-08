@@ -26,3 +26,6 @@ erl_crash.dump
 /priv/timezones.data
 /priv/timezones-geodata.etf.zip
 
+# JPL Ephemeris data
+/priv/de440s.bsp
+

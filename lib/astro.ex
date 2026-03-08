@@ -29,6 +29,7 @@ defmodule Astro do
 
   @type angle() :: number()
   @type meters() :: number()
+  @type astronomical_units() :: number()
   @type kilometers() :: number()
   @type phase() :: angle()
 
@@ -186,7 +187,7 @@ defmodule Astro do
 
       iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
       %Geo.PointZ{
-        coordinates: {134.697888, 13.765243, 5.511320224169038e19},
+        coordinates: {134.697888, 13.765243, 368409001.97178},
         properties: %{object: :moon, reference: :celestial},
         srid: nil
       }
@@ -214,7 +215,7 @@ defmodule Astro do
   defp moon_position_at_moment(moment) do
     moment
     |> Lunar.lunar_position()
-    |> convert_distance_to_m()
+    # |> convert_distance_to_m()
     |> Location.normalize_location()
     |> Map.put(:properties, %{reference: :celestial, object: :moon})
   end
@@ -1075,8 +1076,8 @@ defmodule Astro do
     epsilon = obliquity_correction(julian_centuries)
 
     :math.asin(sin(beta) * cos(epsilon) + cos(beta) * sin(epsilon) * sin(lambda))
-    |> Math.to_degrees
-    |> mod(360.0)
+    |> Math.to_degrees()
+    |> :math.fmod(360.0)
   end
 
   @doc false

@@ -37,7 +37,7 @@ defmodule Astro.Math do
   end
 
   def degrees(degrees) do
-    mod(degrees, 360.0)
+    :math.fmod(degrees, 360.0)
   end
 
   defmacro mt(x) do
