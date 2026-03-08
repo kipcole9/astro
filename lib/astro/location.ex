@@ -29,7 +29,9 @@ defmodule Astro.Location do
   end
 
   def round(%Geo.PointZ{coordinates: {lng, lat, alt}} = location, precision \\ 5) do
-    coordinates = {Float.round(lng, precision), Float.round(lat, precision), Float.round(alt, precision)}
+    coordinates =
+      {Float.round(lng, precision), Float.round(lat, precision), Float.round(alt, precision)}
+
     Map.put(location, :coordinates, coordinates)
   end
 end

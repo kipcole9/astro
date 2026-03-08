@@ -119,17 +119,17 @@ defmodule Astro.SunriseSunsetTest do
         DateTime.new(~D[2024-05-26], ~T[04:07:56.000000], "Europe/London")
 
       assert {:ok, ^expected_date_time} =
-        Astro.sunrise(crouch_end_z, ~D[2024-05-26], solar_elevation: :civil)
+               Astro.sunrise(crouch_end_z, ~D[2024-05-26], solar_elevation: :civil)
     end
 
     test "London dawn" do
       london_z = %Geo.PointZ{coordinates: {-0.1276, 51.5072, 21.0}}
 
       {:ok, expected_date_time} =
-         DateTime.new(~D[2024-05-26], ~T[04:08:37.000000], "Europe/London")
+        DateTime.new(~D[2024-05-26], ~T[04:08:37.000000], "Europe/London")
 
       assert {:ok, ^expected_date_time} =
-        Astro.sunrise(london_z, ~D[2024-05-26], solar_elevation: :civil)
+               Astro.sunrise(london_z, ~D[2024-05-26], solar_elevation: :civil)
     end
   end
 

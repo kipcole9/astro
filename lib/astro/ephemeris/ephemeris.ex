@@ -40,11 +40,11 @@ defmodule Astro.Ephemeris do
   alias Astro.Coordinates
 
   # NAIF body IDs
-  @moon_id  301
+  @moon_id 301
   @earth_id 399
-  @emb_id     3
-  @sun_id    10
-  @ssb_id     0
+  @emb_id 3
+  @sun_id 10
+  @ssb_id 0
 
   @doc """
   Computes the apparent geocentric position of the Moon for the given UTC
@@ -74,9 +74,9 @@ defmodule Astro.Ephemeris do
   @spec moon_position_et(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
   def moon_position_et(et) do
-    with {:ok, seg_moon}  <- Kernel.find_segment(@moon_id, @emb_id, et),
-         {:ok, seg_earth} <- Kernel.find_segment( @earth_id, @emb_id, et) do
-      {mx, my, mz} = Kernel.position(seg_moon,  et)
+    with {:ok, seg_moon} <- Kernel.find_segment(@moon_id, @emb_id, et),
+         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, et) do
+      {mx, my, mz} = Kernel.position(seg_moon, et)
       {ex, ey, ez} = Kernel.position(seg_earth, et)
 
       # Moon relative to Earth (geocentric), ICRF/J2000 Cartesian (km)
@@ -123,11 +123,11 @@ defmodule Astro.Ephemeris do
   @spec sun_position_et(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
   def sun_position_et(et) do
-    with {:ok, seg_sun}   <- Kernel.find_segment(@sun_id,   @ssb_id, et),
-         {:ok, seg_emb}   <- Kernel.find_segment(@emb_id,   @ssb_id, et),
+    with {:ok, seg_sun} <- Kernel.find_segment(@sun_id, @ssb_id, et),
+         {:ok, seg_emb} <- Kernel.find_segment(@emb_id, @ssb_id, et),
          {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, et) do
-      {sx, sy, sz} = Kernel.position(seg_sun,   et)
-      {bx, by, bz} = Kernel.position(seg_emb,   et)
+      {sx, sy, sz} = Kernel.position(seg_sun, et)
+      {bx, by, bz} = Kernel.position(seg_emb, et)
       {ex, ey, ez} = Kernel.position(seg_earth, et)
 
       # Sun relative to Earth (geocentric), ICRF/J2000 Cartesian (km):

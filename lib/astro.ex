@@ -8,18 +8,20 @@ defmodule Astro do
 
   alias Astro.{Solar, Lunar, Location, Time, Math, Guards}
 
-  import Astro.Math, only: [
-    sin: 1,
-    cos: 1,
-    atan_r: 2,
-    tan: 1,
-    mod: 2,
-    to_degrees: 1
-  ]
+  import Astro.Math,
+    only: [
+      sin: 1,
+      cos: 1,
+      atan_r: 2,
+      tan: 1,
+      mod: 2,
+      to_degrees: 1
+    ]
 
-  import Astro.Solar, only: [
-    obliquity_correction: 1
-  ]
+  import Astro.Solar,
+    only: [
+      obliquity_correction: 1
+    ]
 
   @type longitude :: float()
   @type latitude :: float()
@@ -77,7 +79,8 @@ defmodule Astro do
   # that calculator.
 
   @doc since: "0.11.0"
-  @spec sun_azimuth_elevation(location(), Calendar.datetime()) :: {azimuth :: float, altitude :: float}
+  @spec sun_azimuth_elevation(location(), Calendar.datetime()) ::
+          {azimuth :: float, altitude :: float}
 
   def sun_azimuth_elevation(location, unquote(Guards.datetime()) = date_time) do
     _ = calendar
@@ -95,11 +98,15 @@ defmodule Astro do
       mod(local_sidereal_time - right_ascension, 360.0)
 
     altitude =
-      :math.asin(sin(declination) * sin(latitude) + cos(declination) * cos(latitude) * cos(hour_angle))
+      :math.asin(
+        sin(declination) * sin(latitude) + cos(declination) * cos(latitude) * cos(hour_angle)
+      )
       |> to_degrees
 
     a =
-      :math.acos((sin(declination) - sin(altitude) * sin(latitude)) / (cos(altitude) * cos(latitude)))
+      :math.acos(
+        (sin(declination) - sin(altitude) * sin(latitude)) / (cos(altitude) * cos(latitude))
+      )
       |> to_degrees()
 
     azimuth =
@@ -287,8 +294,11 @@ defmodule Astro do
 
   """
   @doc since: "0.5.0"
-  @spec date_time_new_moon_before(date()) ::
-    {:ok, Calendar.datetime()}, {:error, {module(), String.t}}
+  @spec(
+    date_time_new_moon_before(date()) ::
+      {:ok, Calendar.datetime()},
+    {:error, {module(), String.t()}}
+  )
 
   def date_time_new_moon_before(unquote(Guards.datetime()) = date_time) do
     _ = calendar
@@ -332,8 +342,11 @@ defmodule Astro do
 
   """
   @doc since: "0.5.0"
-  @spec date_time_new_moon_at_or_after(date) ::
-    {:ok, Calendar.datetime()}, {:error, {module(), String.t}}
+  @spec(
+    date_time_new_moon_at_or_after(date) ::
+      {:ok, Calendar.datetime()},
+    {:error, {module(), String.t()}}
+  )
 
   def date_time_new_moon_at_or_after(unquote(Guards.datetime()) = datetime) do
     _ = calendar
@@ -438,9 +451,9 @@ defmodule Astro do
       "🌕"
 
   """
-  @emoji_base 0x1f310
+  @emoji_base 0x1F310
   @emoji_phase_count 8
-  @emoji_phase (360.0 / @emoji_phase_count)
+  @emoji_phase 360.0 / @emoji_phase_count
 
   @spec lunar_phase_emoji(phase()) :: String.t()
   def lunar_phase_emoji(360) do
@@ -481,8 +494,11 @@ defmodule Astro do
   """
 
   @doc since: "0.5.0"
-  @spec date_time_lunar_phase_at_or_before(date(), Astro.phase()) ::
-      {:ok, Calendar.datetime()}, {:error, {module(), String.t}}
+  @spec(
+    date_time_lunar_phase_at_or_before(date(), Astro.phase()) ::
+      {:ok, Calendar.datetime()},
+    {:error, {module(), String.t()}}
+  )
 
   def date_time_lunar_phase_at_or_before(unquote(Guards.datetime()) = date_time, phase) do
     _ = calendar
@@ -531,8 +547,11 @@ defmodule Astro do
   """
 
   @doc since: "0.5.0"
-  @spec date_time_lunar_phase_at_or_after(date(), Astro.phase()) ::
-    {:ok, Calendar.datetime()}, {:error, {module(), String.t}}
+  @spec(
+    date_time_lunar_phase_at_or_after(date(), Astro.phase()) ::
+      {:ok, Calendar.datetime()},
+    {:error, {module(), String.t()}}
+  )
 
   def date_time_lunar_phase_at_or_after(unquote(Guards.datetime()) = date_time, phase) do
     _ = calendar
@@ -656,7 +675,8 @@ defmodule Astro do
 
   """
   @spec sunrise(location, date, options) ::
-          {:ok, DateTime.t()} | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
+          {:ok, DateTime.t()}
+          | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
 
   def sunrise(location, date, options \\ default_options()) when is_list(options) do
     options = Keyword.put(options, :rise_or_set, :rise)
@@ -767,7 +787,8 @@ defmodule Astro do
 
   """
   @spec sunset(location, date, options) ::
-          {:ok, DateTime.t()} | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
+          {:ok, DateTime.t()}
+          | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
 
   def sunset(location, date, options \\ default_options()) when is_list(options) do
     options = Keyword.put(options, :rise_or_set, :set)
@@ -1096,9 +1117,14 @@ defmodule Astro do
   def default_options do
     default_time_zone_db =
       cond do
-        Application.get_env(:elixir, :time_zone_database) -> Application.get_env(:elixir, :time_zone_database)
-        Code.ensure_loaded?(Tzdata.TimeZoneDatabase) -> Tzdata.TimeZoneDatabase
-        Code.ensure_loaded?(Tz.TimeZoneDatabase) -> Tz.TimeZoneDatabase
+        Application.get_env(:elixir, :time_zone_database) ->
+          Application.get_env(:elixir, :time_zone_database)
+
+        Code.ensure_loaded?(Tzdata.TimeZoneDatabase) ->
+          Tzdata.TimeZoneDatabase
+
+        Code.ensure_loaded?(Tz.TimeZoneDatabase) ->
+          Tz.TimeZoneDatabase
       end
 
     [
@@ -1107,5 +1133,4 @@ defmodule Astro do
       time_zone_database: default_time_zone_db
     ]
   end
-
 end

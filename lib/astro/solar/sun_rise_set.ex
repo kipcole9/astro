@@ -1,11 +1,12 @@
-defmodule SunRiseSet do
+defmodule Astro.Solar.SunRiseSet do
   @moduledoc """
   Computes sunrise and sunset times using the JPL DE440s ephemeris and a
-  scan-and-bisect algorithm, replacing `Astro.sunrise/3` and `Astro.sunset/3`.
+  scan-and-bisect algorithm, as an alternative to`Astro.sunrise/3` and
+  `Astro.sunset/3`.
 
   ## Algorithm
 
-  The same coarse-scan / binary-search framework used by `MoonRiseSet2` is
+  The same coarse-scan / binary-search framework used by `Astro.Lunar.MoonRiseSet` is
   applied to the Sun. Because the Sun's equatorial horizontal parallax is only
   ~8.7 arcseconds (≈ 0.002°), no topocentric correction is required; the
   geocentric position is used directly.
@@ -27,18 +28,15 @@ defmodule SunRiseSet do
 
   ## Required setup
 
-      {:ok, kernel} = Spk.Kernel.load("priv/de440s.bsp")
-      {:ok, dt} = SunRiseSet.sunrise({151.2093, -33.8688}, ~D[2026-03-08])
-      {:ok, dt} = SunRiseSet.sunset( {151.2093, -33.8688}, ~D[2026-03-08])
-
-  `de440s.bsp` (~32 MB):
-  https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
+  * Download https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
+    to the priv directory.
 
   ## Options
 
     * `:time_zone`          — tz name string, `:utc`, or `:default` (resolve from location)
     * `:time_zone_database` — tz database module or `:configured`
     * `:time_zone_resolver` — 1-arity fn `(%Geo.Point{}) → {:ok, String.t()}`
+
   """
 
   alias Astro.{Ephemeris, Coordinates}
@@ -47,12 +45,12 @@ defmodule SunRiseSet do
   # minutes when it rises, so 24-minute steps bracket the event reliably.
   @scan_step_s 1_440
 
-  # See MoonRiseSet2 for the rationale.  The same solar-midnight defect applies
+  # See Astro.Lunar.MoonRiseSet for the rationale.  The same solar-midnight defect applies
   # here: −14 h / +38 h relative to UTC midnight covers every civil timezone.
   # The Sun rises at most once per 24 h so at most three events appear in the
   # 52-hour window; the correct one is selected by filtering on local date.
-  @scan_pre_window_s  14 * 3_600
-  @scan_window_s      52 * 3_600
+  @scan_pre_window_s 14 * 3_600
+  @scan_window_s 52 * 3_600
 
   # Bisection precision target (seconds).
   @bisect_tol_s 1.0
@@ -103,7 +101,7 @@ defmodule SunRiseSet do
 
     {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
     et_start = Coordinates.utc_to_et(utc_midnight) - @scan_pre_window_s
-    et_end   = et_start + @scan_window_s
+    et_end = et_start + @scan_window_s
 
     scan_pairs =
       Stream.iterate(et_start, &(&1 + @scan_step_s))
@@ -116,21 +114,27 @@ defmodule SunRiseSet do
       |> Enum.filter(fn [{_et1, f1}, {_et2, f2}] ->
         case event do
           :rise -> f1 < 0.0 and f2 >= 0.0
-          :set  -> f1 > 0.0 and f2 <= 0.0
+          :set -> f1 > 0.0 and f2 <= 0.0
         end
       end)
 
     result =
       Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
         et_event = bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, @bisect_max)
-        utc_dt   = Coordinates.et_to_utc(et_event)
+        utc_dt = Coordinates.et_to_utc(et_event)
 
         case apply_time_zone(utc_dt, location, options) do
-          {:ok, local_dt} when local_dt.year  == date.year  and
-                               local_dt.month == date.month and
-                               local_dt.day   == date.day   -> {:ok, local_dt}
-          {:ok, _}                                          -> nil
-          error                                             -> error
+          {:ok, local_dt}
+          when local_dt.year == date.year and
+                 local_dt.month == date.month and
+                 local_dt.day == date.day ->
+            {:ok, local_dt}
+
+          {:ok, _} ->
+            nil
+
+          error ->
+            error
         end
       end)
 
@@ -148,12 +152,12 @@ defmodule SunRiseSet do
     {:ok, {ra, dec, _dist}} = Ephemeris.sun_position_et(et)
 
     gast = Coordinates.gast(et)
-    h    = fmod(gast + lng - ra, 360.0)
-    h    = if h > 180.0, do: h - 360.0, else: h
+    h = fmod(gast + lng - ra, 360.0)
+    h = if h > 180.0, do: h - 360.0, else: h
 
     sin_alt =
       sin_d(lat) * sin_d(dec) +
-      cos_d(lat) * cos_d(dec) * cos_d(h)
+        cos_d(lat) * cos_d(dec) * cos_d(h)
 
     alt = :math.asin(sin_alt) * 180.0 / :math.pi()
     alt - @h0_deg
@@ -169,7 +173,7 @@ defmodule SunRiseSet do
       (et_lo + et_hi) / 2.0
     else
       et_mid = (et_lo + et_hi) / 2.0
-      f_mid  = altitude_f(et_mid, lat, lng)
+      f_mid = altitude_f(et_mid, lat, lng)
 
       if f_lo * f_mid <= 0.0 do
         bisect(et_lo, f_lo, et_mid, f_mid, lat, lng, iters - 1)
@@ -185,18 +189,18 @@ defmodule SunRiseSet do
 
   defp apply_time_zone(utc_dt, location, options) do
     tz_name = Keyword.get(options, :time_zone, :default)
-    tz_db   = Keyword.get(options, :time_zone_database, :configured)
+    tz_db = Keyword.get(options, :time_zone_database, :configured)
 
     tz_result =
       case tz_name do
-        :utc     -> {:ok, "Etc/UTC"}
+        :utc -> {:ok, "Etc/UTC"}
         :default -> resolve_time_zone(location, options)
-        tz       -> {:ok, tz}
+        tz -> {:ok, tz}
       end
 
     case tz_result do
       {:ok, tz} -> shift_zone(utc_dt, tz, tz_db)
-      error     -> error
+      error -> error
     end
   end
 
@@ -213,18 +217,18 @@ defmodule SunRiseSet do
   end
 
   defp shift_zone(utc_dt, tz, :configured), do: DateTime.shift_zone(utc_dt, tz)
-  defp shift_zone(utc_dt, tz, tz_db),       do: DateTime.shift_zone(utc_dt, tz, tz_db)
+  defp shift_zone(utc_dt, tz, tz_db), do: DateTime.shift_zone(utc_dt, tz, tz_db)
 
   # ── Math helpers ─────────────────────────────────────────────────────────────
 
-  defp sin_d(deg),  do: :math.sin(to_rad(deg))
-  defp cos_d(deg),  do: :math.cos(to_rad(deg))
+  defp sin_d(deg), do: :math.sin(to_rad(deg))
+  defp cos_d(deg), do: :math.cos(to_rad(deg))
   defp to_rad(deg), do: deg * :math.pi() / 180.0
 
   defp fmod(x, m) when x >= 0, do: :math.fmod(x, m)
-  defp fmod(x, m),              do: :math.fmod(x, m) + m
+  defp fmod(x, m), do: :math.fmod(x, m) + m
 
-  defp to_date(%Date{} = d),            do: d
-  defp to_date(%DateTime{} = dt),       do: DateTime.to_date(dt)
+  defp to_date(%Date{} = d), do: d
+  defp to_date(%DateTime{} = dt), do: DateTime.to_date(dt)
   defp to_date(%NaiveDateTime{} = ndt), do: NaiveDateTime.to_date(ndt)
 end

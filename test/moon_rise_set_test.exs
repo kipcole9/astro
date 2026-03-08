@@ -36,7 +36,7 @@ defmodule Astro.MoonRiseSetTest do
 
   # Returns true when `actual` is within @tolerance_minutes of `expected`.
   defp within_tolerance?(%DateTime{} = actual, %Time{} = expected, tolerance) do
-    actual_mins   = actual.hour   * 60 + actual.minute
+    actual_mins = actual.hour * 60 + actual.minute
     expected_mins = expected.hour * 60 + expected.minute
     abs(actual_mins - expected_mins) <= tolerance
   end
@@ -45,10 +45,19 @@ defmodule Astro.MoonRiseSetTest do
   defp time!(hour, minute), do: Time.new!(hour, minute, 0)
 
   # Asserts that moonrise returns {:ok, time} within tolerance.
-  defp assert_moonrise(date, lat, lon, expected_hour, expected_minute, tolerance \\ @tolerance_minutes) do
+  defp assert_moonrise(
+         date,
+         lat,
+         lon,
+         expected_hour,
+         expected_minute,
+         tolerance \\ @tolerance_minutes
+       ) do
     expected = time!(expected_hour, expected_minute)
+
     assert {:ok, actual} = Astro.Lunar.MoonRiseSet.moonrise({lon, lat}, date),
            "Expected moonrise on #{date} at #{lat},#{lon} to return {:ok, time}, got :no_event"
+
     assert within_tolerance?(actual, expected, tolerance),
            """
            Moonrise on #{date} at #{lat},#{lon}:
@@ -58,10 +67,19 @@ defmodule Astro.MoonRiseSetTest do
   end
 
   # Asserts that moonset returns {:ok, time} within tolerance.
-  defp assert_moonset(date, lat, lon, expected_hour, expected_minute, tolerance \\ @tolerance_minutes) do
+  defp assert_moonset(
+         date,
+         lat,
+         lon,
+         expected_hour,
+         expected_minute,
+         tolerance \\ @tolerance_minutes
+       ) do
     expected = time!(expected_hour, expected_minute)
+
     assert {:ok, actual} = Astro.Lunar.MoonRiseSet.moonset({lon, lat}, date),
            "Expected moonset on #{date} at #{lat},#{lon} to return {:ok, time}, got :no_event"
+
     assert within_tolerance?(actual, expected, tolerance),
            """
            Moonset on #{date} at #{lat},#{lon}:
@@ -71,7 +89,7 @@ defmodule Astro.MoonRiseSetTest do
   end
 
   defp assert_no_moonrise(date, lat, lon) do
-    assert  {:error, :no_time} = Astro.Lunar.MoonRiseSet.moonrise({lon, lat}, date),
+    assert {:error, :no_time} = Astro.Lunar.MoonRiseSet.moonrise({lon, lat}, date),
            "Expected no moonrise on #{date} at #{lat},#{lon}, but got an event"
   end
 
@@ -90,17 +108,17 @@ defmodule Astro.MoonRiseSetTest do
   # as reported by timeanddate.com / time.now.  The module under test is
   # responsible for applying the correct UTC offset and DST rules.
 
-  @new_york_lat   40.7128
-  @new_york_lon  -74.0060
+  @new_york_lat 40.7128
+  @new_york_lon -74.0060
 
-  @london_lat     51.5074
-  @london_lon     -0.1278
+  @london_lat 51.5074
+  @london_lon -0.1278
 
-  @sydney_lat    -33.8688
-  @sydney_lon    151.2093
+  @sydney_lat -33.8688
+  @sydney_lon 151.2093
 
-  @tokyo_lat      35.6762
-  @tokyo_lon     139.6503
+  @tokyo_lat 35.6762
+  @tokyo_lon 139.6503
 
   # ---------------------------------------------------------------------------
   # New York  (America/New_York)

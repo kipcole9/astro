@@ -17,10 +17,12 @@ defmodule Astro.Moon.Phase.Test do
     hour = time.hour
     minute = time.minute
 
-    test "Moon phase for #{inspect date}" do
+    test "Moon phase for #{inspect(date)}" do
       {:ok, date_time} =
-        Astro.date_time_lunar_phase_at_or_after(unquote(Macro.escape(date)),
-          apply(Astro.Lunar, unquote(phase), []))
+        Astro.date_time_lunar_phase_at_or_after(
+          unquote(Macro.escape(date)),
+          apply(Astro.Lunar, unquote(phase), [])
+        )
 
       assert date_time.year == unquote(year)
       assert date_time.month == unquote(month)

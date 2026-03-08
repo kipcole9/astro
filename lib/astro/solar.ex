@@ -9,23 +9,27 @@ defmodule Astro.Solar do
 
   alias Astro.{Math, Earth, Time, Location}
 
-  import Time, only: [
-    minutes_per_day: 0,
-    hours_per_day: 0,
-    minutes_per_hour: 0,
-    julian_centuries_from_moment: 1
-  ]
+  import Time,
+    only: [
+      minutes_per_day: 0,
+      hours_per_day: 0,
+      minutes_per_hour: 0,
+      julian_centuries_from_moment: 1
+    ]
 
-  import Math, only: [
-    sin: 1,
-    cos: 1,
-    sigma: 2,
-    deg: 1,
-    mod: 2
-  ]
-  import Astro.Earth, only: [
-    nutation: 1
-  ]
+  import Math,
+    only: [
+      sin: 1,
+      cos: 1,
+      sigma: 2,
+      deg: 1,
+      mod: 2
+    ]
+
+  import Astro.Earth,
+    only: [
+      nutation: 1
+    ]
 
   @minutes_per_degree 4.0
 
@@ -51,7 +55,7 @@ defmodule Astro.Solar do
   def solar_distance(julian_centuries) do
     eccentricity = earth_orbit_eccentricity(julian_centuries)
     mean_solar_anomaly = sun_geometric_mean_anomaly(julian_centuries)
-    true_anomaly =  mean_solar_anomaly + julian_centuries
+    true_anomaly = mean_solar_anomaly + julian_centuries
 
     1.000001018 * (1.0 - eccentricity * eccentricity) / (1 + eccentricity * cos(true_anomaly))
   end
@@ -211,7 +215,8 @@ defmodule Astro.Solar do
     first_pass = approximate_utc_sun_position(tnoon, latitude, longitude, solar_elevation, mode)
 
     # refine using output of first pass
-    refinement = Time.julian_centuries_from_julian_day(julian_day + first_pass / minutes_per_day())
+    refinement =
+      Time.julian_centuries_from_julian_day(julian_day + first_pass / minutes_per_day())
 
     position =
       approximate_utc_sun_position(refinement, latitude, longitude, solar_elevation, mode)
@@ -343,11 +348,11 @@ defmodule Astro.Solar do
   when solar longitude just exceeded lambda degrees.
 
   """
-	def estimate_prior_solar_longitude(lambda, t) do
-    rate = (Time.mean_tropical_year() / deg(360))
-    tau = t - (rate * mod(solar_longitude(t) - lambda, 360))
+  def estimate_prior_solar_longitude(lambda, t) do
+    rate = Time.mean_tropical_year() / deg(360)
+    tau = t - rate * mod(solar_longitude(t) - lambda, 360)
     cap_delta = mod(solar_longitude(tau) - lambda + deg(180), 360) - deg(180)
-    min(t, tau - (rate * cap_delta))
+    min(t, tau - rate * cap_delta)
   end
 
   @doc """
@@ -379,7 +384,7 @@ defmodule Astro.Solar do
     true_longitude = sun_true_longitude(julian_centuries)
     omega = omega(julian_centuries)
 
-    true_longitude - 0.00569 - 0.00478 * :math.sin(Math.to_radians(omega))
+    (true_longitude - 0.00569 - 0.00478 * :math.sin(Math.to_radians(omega)))
     |> Math.mod(360)
   end
 
@@ -391,51 +396,168 @@ defmodule Astro.Solar do
   @spec sun_apparent_longitude_alt(Time.julian_centuries()) :: Time.season()
   def sun_apparent_longitude_alt(julian_centuries) do
     coefficients = [
-      403406.0, 195207.0, 119433.0, 112392.0, 3891.0, 2819.0, 1721.0,
-      660.0, 350.0, 334.0, 314.0, 268.0, 242.0, 234.0, 158.0, 132.0, 129.0, 114.0,
-      99.0, 93.0, 86.0, 78.0, 72.0, 68.0, 64.0, 46.0, 38.0, 37.0, 32.0, 29.0, 28.0, 27.0, 27.0,
-      25.0, 24.0, 21.0, 21.0, 20.0, 18.0, 17.0, 14.0, 13.0, 13.0, 13.0, 12.0, 10.0, 10.0, 10.0,
+      403_406.0,
+      195_207.0,
+      119_433.0,
+      112_392.0,
+      3891.0,
+      2819.0,
+      1721.0,
+      660.0,
+      350.0,
+      334.0,
+      314.0,
+      268.0,
+      242.0,
+      234.0,
+      158.0,
+      132.0,
+      129.0,
+      114.0,
+      99.0,
+      93.0,
+      86.0,
+      78.0,
+      72.0,
+      68.0,
+      64.0,
+      46.0,
+      38.0,
+      37.0,
+      32.0,
+      29.0,
+      28.0,
+      27.0,
+      27.0,
+      25.0,
+      24.0,
+      21.0,
+      21.0,
+      20.0,
+      18.0,
+      17.0,
+      14.0,
+      13.0,
+      13.0,
+      13.0,
+      12.0,
+      10.0,
+      10.0,
+      10.0,
       10.0
     ]
 
     multipliers = [
-      0.9287892, 35999.1376958, 35999.4089666,
-      35998.7287385, 71998.20261, 71998.4403,
-      36000.35726, 71997.4812, 32964.4678,
-      -19.4410, 445267.1117, 45036.8840, 3.1008,
-      22518.4434, -19.9739, 65928.9345,
-      9038.0293, 3034.7684, 33718.148, 3034.448,
-      -2280.773, 29929.992, 31556.493, 149.588,
-      9037.750, 107997.405, -4444.176, 151.771,
-      67555.316, 31556.080, -4561.540,
-      107996.706, 1221.655, 62894.167,
-      31437.369, 14578.298, -31931.757,
-      34777.243, 1221.999, 62894.511,
-      -4442.039, 107997.909, 119.066, 16859.071,
-      -4.578, 26895.292, -39.127, 12297.536,
+      0.9287892,
+      35999.1376958,
+      35999.4089666,
+      35998.7287385,
+      71998.20261,
+      71998.4403,
+      36000.35726,
+      71997.4812,
+      32964.4678,
+      -19.4410,
+      445_267.1117,
+      45036.8840,
+      3.1008,
+      22518.4434,
+      -19.9739,
+      65928.9345,
+      9038.0293,
+      3034.7684,
+      33718.148,
+      3034.448,
+      -2280.773,
+      29929.992,
+      31556.493,
+      149.588,
+      9037.750,
+      107_997.405,
+      -4444.176,
+      151.771,
+      67555.316,
+      31556.080,
+      -4561.540,
+      107_996.706,
+      1221.655,
+      62894.167,
+      31437.369,
+      14578.298,
+      -31931.757,
+      34777.243,
+      1221.999,
+      62894.511,
+      -4442.039,
+      107_997.909,
+      119.066,
+      16859.071,
+      -4.578,
+      26895.292,
+      -39.127,
+      12297.536,
       90073.778
     ]
 
     addends = [
-      270.54861, 340.19128, 63.91854, 331.26220,
-      317.843, 86.631, 240.052, 310.26, 247.23,
-      260.87, 297.82, 343.14, 166.79, 81.53,
-      3.50, 132.75, 182.95, 162.03, 29.8,
-      266.4, 249.2, 157.6, 257.8, 185.1, 69.9,
-      8.0, 197.1, 250.4, 65.3, 162.7, 341.5,
-      291.6, 98.5, 146.7, 110.0, 5.2, 342.6,
-      230.9, 256.1, 45.3, 242.9, 115.2, 151.8,
-      285.3, 53.3, 126.6, 205.7, 85.9,
+      270.54861,
+      340.19128,
+      63.91854,
+      331.26220,
+      317.843,
+      86.631,
+      240.052,
+      310.26,
+      247.23,
+      260.87,
+      297.82,
+      343.14,
+      166.79,
+      81.53,
+      3.50,
+      132.75,
+      182.95,
+      162.03,
+      29.8,
+      266.4,
+      249.2,
+      157.6,
+      257.8,
+      185.1,
+      69.9,
+      8.0,
+      197.1,
+      250.4,
+      65.3,
+      162.7,
+      341.5,
+      291.6,
+      98.5,
+      146.7,
+      110.0,
+      5.2,
+      342.6,
+      230.9,
+      256.1,
+      45.3,
+      242.9,
+      115.2,
+      151.8,
+      285.3,
+      53.3,
+      126.6,
+      205.7,
+      85.9,
       146.1
     ]
 
     lambda =
       deg(282.7771834) + deg(36000.76953744) * julian_centuries +
-      deg(0.000005729577951308232) *
-      sigma(
-        [coefficients, addends, multipliers],
-        fn [x, y, z] -> x * sin(y + z * julian_centuries) end
-      )
+        deg(0.000005729577951308232) *
+          sigma(
+            [coefficients, addends, multipliers],
+            fn [x, y, z] -> x * sin(y + z * julian_centuries) end
+          )
 
     mod(lambda + aberration(julian_centuries) + nutation(julian_centuries), 360.0)
   end
@@ -554,7 +676,11 @@ defmodule Astro.Solar do
     approx_sol_noon = 720.0 + longitude * @minutes_per_degree - approx_eq_time
 
     # refinement using output of first pass
-    tnoon = Time.julian_centuries_from_julian_day(century_start - 0.5 + approx_sol_noon / minutes_per_day())
+    tnoon =
+      Time.julian_centuries_from_julian_day(
+        century_start - 0.5 + approx_sol_noon / minutes_per_day()
+      )
+
     eq_time = equation_of_time(tnoon)
     720.0 + longitude * @minutes_per_degree - eq_time
   end
@@ -807,7 +933,7 @@ defmodule Astro.Solar do
 
   """
   @spec equinox_and_solstice(pos_integer, :march | :june | :september | :december) ::
-    {:ok, DateTime.t()}
+          {:ok, DateTime.t()}
 
   def equinox_and_solstice(year, event) when event in [:march, :june, :september, :december] do
     jde0 = initial_estimate(year, event)
@@ -857,19 +983,82 @@ defmodule Astro.Solar do
   defp periodic24_terms do
     [
       [
-        485, 203, 199, 182, 156, 136, 77, 74, 70, 58, 52, 50, 45, 44, 29, 18,
-        17, 16, 14, 12, 12, 12, 9, 8
+        485,
+        203,
+        199,
+        182,
+        156,
+        136,
+        77,
+        74,
+        70,
+        58,
+        52,
+        50,
+        45,
+        44,
+        29,
+        18,
+        17,
+        16,
+        14,
+        12,
+        12,
+        12,
+        9,
+        8
       ],
       [
-        324.96, 337.23, 342.08, 27.85, 73.14, 171.52, 222.54, 296.72, 243.58,
-        119.81, 297.17, 21.02, 247.54, 325.15, 60.93, 155.12, 288.79, 198.04,
-        199.76, 95.39, 287.11, 320.81, 227.73, 15.45
+        324.96,
+        337.23,
+        342.08,
+        27.85,
+        73.14,
+        171.52,
+        222.54,
+        296.72,
+        243.58,
+        119.81,
+        297.17,
+        21.02,
+        247.54,
+        325.15,
+        60.93,
+        155.12,
+        288.79,
+        198.04,
+        199.76,
+        95.39,
+        287.11,
+        320.81,
+        227.73,
+        15.45
       ],
       [
-        1934.136, 32964.467, 20.186, 445_267.112, 45036.886, 22518.443, 65928.934,
-        3034.906, 9037.513, 33718.147, 150.678, 2281.226, 29929.562, 31555.956,
-        4443.417, 67555.328, 4562.452, 62894.029, 31436.921, 14577.848, 31931.756,
-        34777.259, 1222.114, 16859.074
+        1934.136,
+        32964.467,
+        20.186,
+        445_267.112,
+        45036.886,
+        22518.443,
+        65928.934,
+        3034.906,
+        9037.513,
+        33718.147,
+        150.678,
+        2281.226,
+        29929.562,
+        31555.956,
+        4443.417,
+        67555.328,
+        4562.452,
+        62894.029,
+        31436.921,
+        14577.848,
+        31931.756,
+        34777.259,
+        1222.114,
+        16859.074
       ]
     ]
   end

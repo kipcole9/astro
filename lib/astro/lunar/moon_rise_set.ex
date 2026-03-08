@@ -90,8 +90,10 @@ defmodule Astro.Lunar.MoonRiseSet do
   # midnight covers every civil day in every timezone (offsets range −12 to
   # +14).  The 52-hour span can contain at most three lunar rise or set events
   # (~24.8 h period); the correct one is identified by filtering on local date.
-  @scan_pre_window_s  14 * 3_600   # seconds before UTC midnight
-  @scan_window_s      52 * 3_600   # total scan duration
+  # seconds before UTC midnight
+  @scan_pre_window_s 14 * 3_600
+  # total scan duration
+  @scan_window_s 52 * 3_600
 
   # Bisection precision target (seconds).
   @bisect_tol_s 1.0
@@ -132,7 +134,7 @@ defmodule Astro.Lunar.MoonRiseSet do
     # (EDT) is 04:00 UTC, so a moonrise at 04:41 UTC goes unreported.
     {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
     et_start = Coordinates.utc_to_et(utc_midnight) - @scan_pre_window_s
-    et_end   = et_start + @scan_window_s
+    et_end = et_start + @scan_window_s
 
     # Evaluate f at each scan point.
     scan_pairs =
@@ -151,22 +153,29 @@ defmodule Astro.Lunar.MoonRiseSet do
       |> Enum.filter(fn [{_et1, f1}, {_et2, f2}] ->
         case event do
           :rise -> f1 < 0.0 and f2 >= 0.0
-          :set  -> f1 > 0.0 and f2 <= 0.0
+          :set -> f1 > 0.0 and f2 <= 0.0
         end
       end)
 
     result =
       Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
-        et_event = bisect(et_lo, f_lo, et_hi, f_hi,
-                          lat, lng, rho_sin_phi, rho_cos_phi, @bisect_max)
+        et_event =
+          bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, @bisect_max)
+
         utc_dt = Coordinates.et_to_utc(et_event)
 
         case apply_time_zone(utc_dt, location, options) do
-          {:ok, local_dt} when local_dt.year  == date.year  and
-                               local_dt.month == date.month and
-                               local_dt.day   == date.day   -> {:ok, local_dt}
-          {:ok, _}                                          -> nil
-          error                                             -> error
+          {:ok, local_dt}
+          when local_dt.year == date.year and
+                 local_dt.month == date.month and
+                 local_dt.day == date.day ->
+            {:ok, local_dt}
+
+          {:ok, _} ->
+            nil
+
+          error ->
+            error
         end
       end)
 
@@ -188,9 +197,9 @@ defmodule Astro.Lunar.MoonRiseSet do
     semi_diam = :math.asin(@moon_radius_km / dist_km) * 180.0 / :math.pi()
 
     parallax = Ephemeris.equatorial_horizontal_parallax(dist_km)
-    sin_pi   = :math.sin(to_rad(parallax))
+    sin_pi = :math.sin(to_rad(parallax))
 
-    gast  = Coordinates.gast(et)
+    gast = Coordinates.gast(et)
     h_geo = fmod(gast + lng - ra_geo, 360.0)
     h_geo = if h_geo > 180.0, do: h_geo - 360.0, else: h_geo
 
@@ -198,21 +207,21 @@ defmodule Astro.Lunar.MoonRiseSet do
     delta_alpha_rad =
       :math.atan2(
         -rho_cos_phi * sin_pi * sin_d(h_geo),
-         cos_d(dec_geo) - rho_cos_phi * sin_pi * cos_d(h_geo)
+        cos_d(dec_geo) - rho_cos_phi * sin_pi * cos_d(h_geo)
       )
 
     # δ' (Meeus eq. 40.3)
     dec_topo_rad =
       :math.atan2(
         (sin_d(dec_geo) - rho_sin_phi * sin_pi) * :math.cos(delta_alpha_rad),
-         cos_d(dec_geo) - rho_cos_phi * sin_pi * cos_d(h_geo)
+        cos_d(dec_geo) - rho_cos_phi * sin_pi * cos_d(h_geo)
       )
 
-    h_topo = h_geo - (delta_alpha_rad * 180.0 / :math.pi())
+    h_topo = h_geo - delta_alpha_rad * 180.0 / :math.pi()
 
     sin_alt =
       sin_d(lat) * :math.sin(dec_topo_rad) +
-      cos_d(lat) * :math.cos(dec_topo_rad) * cos_d(h_topo)
+        cos_d(lat) * :math.cos(dec_topo_rad) * cos_d(h_topo)
 
     alt_geom = :math.asin(sin_alt) * 180.0 / :math.pi()
 
@@ -221,24 +230,20 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   # ── Bisection ────────────────────────────────────────────────────────────────
 
-  defp bisect(et_lo, _f_lo, et_hi, _f_hi,
-              _lat, _lng, _rsp, _rcp, 0),
+  defp bisect(et_lo, _f_lo, et_hi, _f_hi, _lat, _lng, _rsp, _rcp, 0),
     do: (et_lo + et_hi) / 2.0
 
-  defp bisect(et_lo, f_lo, et_hi, f_hi,
-              lat, lng, rho_sin_phi, rho_cos_phi, iters) do
+  defp bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, iters) do
     if et_hi - et_lo <= @bisect_tol_s do
       (et_lo + et_hi) / 2.0
     else
       et_mid = (et_lo + et_hi) / 2.0
-      f_mid  = topocentric_f(et_mid, lat, lng, rho_sin_phi, rho_cos_phi)
+      f_mid = topocentric_f(et_mid, lat, lng, rho_sin_phi, rho_cos_phi)
 
       if f_lo * f_mid <= 0.0 do
-        bisect(et_lo, f_lo, et_mid, f_mid,
-               lat, lng, rho_sin_phi, rho_cos_phi, iters - 1)
+        bisect(et_lo, f_lo, et_mid, f_mid, lat, lng, rho_sin_phi, rho_cos_phi, iters - 1)
       else
-        bisect(et_mid, f_mid, et_hi, f_hi,
-               lat, lng, rho_sin_phi, rho_cos_phi, iters - 1)
+        bisect(et_mid, f_mid, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, iters - 1)
       end
     end
   end
@@ -260,11 +265,11 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     rho_sin_phi =
       @geodetic_factor * :math.sin(u) +
-        (elev_km / @earth_equatorial_radius_km) * sin_d(lat_deg)
+        elev_km / @earth_equatorial_radius_km * sin_d(lat_deg)
 
     rho_cos_phi =
       :math.cos(u) +
-        (elev_km / @earth_equatorial_radius_km) * cos_d(lat_deg)
+        elev_km / @earth_equatorial_radius_km * cos_d(lat_deg)
 
     {rho_sin_phi, rho_cos_phi}
   end
@@ -273,18 +278,18 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   defp apply_time_zone(utc_dt, location, options) do
     tz_name = Keyword.get(options, :time_zone, :default)
-    tz_db   = Keyword.get(options, :time_zone_database, :configured)
+    tz_db = Keyword.get(options, :time_zone_database, :configured)
 
     tz_result =
       case tz_name do
-        :utc     -> {:ok, "Etc/UTC"}
+        :utc -> {:ok, "Etc/UTC"}
         :default -> resolve_time_zone(location, options)
-        tz       -> {:ok, tz}
+        tz -> {:ok, tz}
       end
 
     case tz_result do
       {:ok, tz} -> shift_zone(utc_dt, tz, tz_db)
-      error     -> error
+      error -> error
     end
   end
 
@@ -301,18 +306,18 @@ defmodule Astro.Lunar.MoonRiseSet do
   end
 
   defp shift_zone(utc_dt, tz, :configured), do: DateTime.shift_zone(utc_dt, tz)
-  defp shift_zone(utc_dt, tz, tz_db),       do: DateTime.shift_zone(utc_dt, tz, tz_db)
+  defp shift_zone(utc_dt, tz, tz_db), do: DateTime.shift_zone(utc_dt, tz, tz_db)
 
   # ── Math helpers ─────────────────────────────────────────────────────────────
 
-  defp sin_d(deg),  do: :math.sin(to_rad(deg))
-  defp cos_d(deg),  do: :math.cos(to_rad(deg))
+  defp sin_d(deg), do: :math.sin(to_rad(deg))
+  defp cos_d(deg), do: :math.cos(to_rad(deg))
   defp to_rad(deg), do: deg * :math.pi() / 180.0
 
   defp fmod(x, m) when x >= 0, do: :math.fmod(x, m)
-  defp fmod(x, m),              do: :math.fmod(x, m) + m
+  defp fmod(x, m), do: :math.fmod(x, m) + m
 
-  defp to_date(%Date{} = d),            do: d
-  defp to_date(%DateTime{} = dt),       do: DateTime.to_date(dt)
+  defp to_date(%Date{} = d), do: d
+  defp to_date(%DateTime{} = dt), do: DateTime.to_date(dt)
   defp to_date(%NaiveDateTime{} = ndt), do: NaiveDateTime.to_date(ndt)
 end

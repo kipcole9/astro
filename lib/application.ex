@@ -8,6 +8,6 @@ defmodule Astro.Application do
     {:ok, kernel} = Astro.Ephemeris.Kernel.load(ephemeris_path)
     :ok = :persistent_term.put(Astro.Ephemeris.Kernel.ephemeris_key(), kernel)
 
-    Supervisor.start_link([], [strategy: :one_for_one, name: __MODULE__])
+    Supervisor.start_link([], strategy: :one_for_one, name: __MODULE__)
   end
 end

@@ -127,6 +127,7 @@ defmodule Astro.Math do
 
   def floor(x) when x < 0 do
     t = trunc(x)
+
     if x - t == 0 do
       t
     else

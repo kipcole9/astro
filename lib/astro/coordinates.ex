@@ -55,8 +55,8 @@ defmodule Astro.Coordinates do
   @spec utc_to_et(DateTime.t()) :: float()
   def utc_to_et(%DateTime{} = utc_dt) do
     unix_seconds = DateTime.to_unix(utc_dt, :millisecond) / 1000.0
-    jd_utc  = @jd_unix_epoch + unix_seconds / @seconds_per_day
-    jd_tt   = jd_utc + @delta_t_seconds / @seconds_per_day
+    jd_utc = @jd_unix_epoch + unix_seconds / @seconds_per_day
+    jd_tt = jd_utc + @delta_t_seconds / @seconds_per_day
     (jd_tt - @jd_j2000) * @seconds_per_day
   end
 
@@ -95,19 +95,20 @@ defmodule Astro.Coordinates do
     t = julian_centuries(et)
 
     # Precession angles (Lieske 1977), arcseconds → radians
-    zeta_a  = arcsec_to_rad(2306.2181 * t + 1.39656 * t * t - 0.000139 * t * t * t)
+    zeta_a = arcsec_to_rad(2306.2181 * t + 1.39656 * t * t - 0.000139 * t * t * t)
     theta_a = arcsec_to_rad(2004.3109 * t - 0.85330 * t * t - 0.000217 * t * t * t)
-    z_a     = arcsec_to_rad(2306.2181 * t + 3.04480 * t * t + 0.000510 * t * t * t)
+    z_a = arcsec_to_rad(2306.2181 * t + 3.04480 * t * t + 0.000510 * t * t * t)
 
     # Precession rotation matrix P = Rz(-zA) · Ry(θA) · Rz(-ζA)
     # Apply as three successive rotations to the vector.
-    {x1, y1, z1} = rot_z({x,  y,  z},  zeta_a)
+    {x1, y1, z1} = rot_z({x, y, z}, zeta_a)
     {x2, y2, z2} = rot_y({x1, y1, z1}, -theta_a)
     {x3, y3, z3} = rot_z({x2, y2, z2}, -z_a)
 
     # Nutation
     {d_psi, d_eps, eps0} = nutation(t)
-    eps = eps0 + d_eps   # true obliquity (radians)
+    # true obliquity (radians)
+    eps = eps0 + d_eps
 
     # Nutation rotation N = Rx(-ε) · Rz(-Δψ) · Rx(ε0)
     {x4, y4, z4} = rot_x({x3, y3, z3}, -eps0)
@@ -127,40 +128,39 @@ defmodule Astro.Coordinates do
   @spec nutation(float()) :: {float(), float(), float()}
   def nutation(t) do
     # Fundamental arguments (degrees, Meeus Ch.22)
-    d  = 297.85036 + 445_267.111480 * t - 0.0019142 * t * t + t * t * t / 189_474.0
-    m  = 357.52772 + 35_999.050340  * t - 0.0001603 * t * t - t * t * t / 300_000.0
+    d = 297.85036 + 445_267.111480 * t - 0.0019142 * t * t + t * t * t / 189_474.0
+    m = 357.52772 + 35_999.050340 * t - 0.0001603 * t * t - t * t * t / 300_000.0
     mp = 134.96298 + 477_198.867398 * t + 0.0086972 * t * t + t * t * t / 56_250.0
-    f  = 93.27191  + 483_202.017538 * t - 0.0036825 * t * t + t * t * t / 327_270.0
-    om = 125.04452 - 1_934.136261   * t + 0.0020708 * t * t + t * t * t / 450_000.0
+    f = 93.27191 + 483_202.017538 * t - 0.0036825 * t * t + t * t * t / 327_270.0
+    om = 125.04452 - 1_934.136261 * t + 0.0020708 * t * t + t * t * t / 450_000.0
 
     # Top 17 terms of the IAU 1980 nutation series.
     # Format: {D, M, M', F, Om, dpsi_s (0.0001"), deps_c (0.0001")}
     terms = [
-      { 0,  0,  0,  0,  1, -171_996.0,  92_025.0},
-      {-2,  0,  0,  2,  2,  -13_187.0,   5_736.0},
-      { 0,  0,  0,  2,  2,   -2_274.0,     977.0},
-      { 0,  0,  0,  0,  2,    2_062.0,    -895.0},
-      { 0,  1,  0,  0,  0,    1_426.0,      54.0},
-      { 0,  0,  1,  0,  0,      712.0,      -7.0},
-      {-2,  1,  0,  2,  2,     -517.0,     224.0},
-      { 0,  0,  0,  2,  1,     -386.0,     200.0},
-      { 0,  0,  1,  2,  2,     -301.0,     129.0},
-      {-2, -1,  0,  2,  2,      217.0,     -95.0},
-      {-2,  0,  1,  0,  0,     -158.0,       0.0},
-      {-2,  0,  0,  2,  1,      129.0,     -70.0},
-      { 0,  0, -1,  2,  2,      123.0,     -53.0},
-      { 2,  0,  0,  0,  0,       63.0,       0.0},
-      { 0,  0,  1,  0,  1,       63.0,     -33.0},
-      { 2,  0, -1,  2,  2,      -59.0,      26.0},
-      { 0,  0, -1,  0,  1,      -58.0,      32.0},
+      {0, 0, 0, 0, 1, -171_996.0, 92_025.0},
+      {-2, 0, 0, 2, 2, -13_187.0, 5_736.0},
+      {0, 0, 0, 2, 2, -2_274.0, 977.0},
+      {0, 0, 0, 0, 2, 2_062.0, -895.0},
+      {0, 1, 0, 0, 0, 1_426.0, 54.0},
+      {0, 0, 1, 0, 0, 712.0, -7.0},
+      {-2, 1, 0, 2, 2, -517.0, 224.0},
+      {0, 0, 0, 2, 1, -386.0, 200.0},
+      {0, 0, 1, 2, 2, -301.0, 129.0},
+      {-2, -1, 0, 2, 2, 217.0, -95.0},
+      {-2, 0, 1, 0, 0, -158.0, 0.0},
+      {-2, 0, 0, 2, 1, 129.0, -70.0},
+      {0, 0, -1, 2, 2, 123.0, -53.0},
+      {2, 0, 0, 0, 0, 63.0, 0.0},
+      {0, 0, 1, 0, 1, 63.0, -33.0},
+      {2, 0, -1, 2, 2, -59.0, 26.0},
+      {0, 0, -1, 0, 1, -58.0, 32.0}
     ]
 
     {dpsi_units, deps_units} =
       Enum.reduce(terms, {0.0, 0.0}, fn {td, tm, tmp, tf, tom, ds, dc}, {acc_psi, acc_eps} ->
         arg_deg = td * d + tm * m + tmp * mp + tf * f + tom * om
         arg_rad = :math.pi() / 180.0 * arg_deg
-        {acc_psi + ds * :math.sin(arg_rad),
-         acc_eps + dc * :math.cos(arg_rad)}
+        {acc_psi + ds * :math.sin(arg_rad), acc_eps + dc * :math.cos(arg_rad)}
       end)
 
     # Convert from 0.0001 arcseconds to radians
@@ -184,11 +184,11 @@ defmodule Astro.Coordinates do
   @spec cartesian_to_spherical({float(), float(), float()}) ::
           {float(), float(), float()}
   def cartesian_to_spherical({x, y, z}) do
-    dist    = :math.sqrt(x * x + y * y + z * z)
+    dist = :math.sqrt(x * x + y * y + z * z)
     dec_rad = :math.asin(z / dist)
-    ra_rad  = :math.atan2(y, x)
-    ra_deg  = ra_rad * 180.0 / :math.pi()
-    ra_deg  = if ra_deg < 0.0, do: ra_deg + 360.0, else: ra_deg
+    ra_rad = :math.atan2(y, x)
+    ra_deg = ra_rad * 180.0 / :math.pi()
+    ra_deg = if ra_deg < 0.0, do: ra_deg + 360.0, else: ra_deg
     dec_deg = dec_rad * 180.0 / :math.pi()
     {ra_deg, dec_deg, dist}
   end

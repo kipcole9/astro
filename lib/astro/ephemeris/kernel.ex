@@ -45,28 +45,28 @@ defmodule Astro.Ephemeris.Kernel do
   """
   alias Astro.Math
 
-  @record_size   1024
-  @double_size      8
+  @record_size 1024
+  @double_size 8
   # SPK always has ND=2, NI=6; summary = 5 doubles = 40 bytes
-  @summary_bytes   40
+  @summary_bytes 40
   @ephemeris_key {Astro, :ephemeris}
 
   defstruct [:path, :endian, :data, :segments]
 
   @type t :: %__MODULE__{
-    path:     String.t(),
-    endian:   :little | :big,
-    data:     binary(),
-    segments: [map()]
-  }
+          path: String.t(),
+          endian: :little | :big,
+          data: binary(),
+          segments: [map()]
+        }
 
   # ── Public API ──────────────────────────────────────────────────────────────
 
   @spec load(Path.t()) :: {:ok, t()} | {:error, term()}
   def load(path) do
-    with {:ok, data}  <- File.read(path),
+    with {:ok, data} <- File.read(path),
          {:ok, endian} <- detect_endian(data),
-         {:ok, fward}  <- read_fward(data, endian) do
+         {:ok, fward} <- read_fward(data, endian) do
       segments = read_all_segments(data, fward, endian)
       {:ok, %__MODULE__{path: path, endian: endian, data: data, segments: segments}}
     end
@@ -112,11 +112,11 @@ defmodule Astro.Ephemeris.Kernel do
 
     %{
       start_addr: start_addr,
-      init_et:    init_et,
-      intlen:     intlen,
-      rsize:      rsize,
-      n_records:  n_records,
-      degree:     degree
+      init_et: init_et,
+      intlen: intlen,
+      rsize: rsize,
+      n_records: n_records,
+      degree: degree
     } = segment
 
     # Identify which Chebyshev record covers `et` (0-based index).
@@ -127,22 +127,21 @@ defmodule Astro.Ephemeris.Kernel do
     # start_addr is a 1-based word index into the entire file.
     rec_byte = (start_addr - 1 + idx * rsize) * @double_size
     rec_size = rsize * @double_size
-    rec_bin  = binary_part(data, rec_byte, rec_size)
+    rec_bin = binary_part(data, rec_byte, rec_size)
 
     # Parse record: t_mid, t_half, then (degree+1) coefficients per axis.
-    t_mid  = read_double(rec_bin, 0, endian)
+    t_mid = read_double(rec_bin, 0, endian)
     t_half = read_double(rec_bin, 1, endian)
 
     # Normalise time to [-1, +1].
     s = (et - t_mid) / t_half
 
-    n  = degree + 1
-    cx = read_doubles_range(rec_bin, 2,     n, endian)
+    n = degree + 1
+    cx = read_doubles_range(rec_bin, 2, n, endian)
     cy = read_doubles_range(rec_bin, 2 + n, n, endian)
     cz = read_doubles_range(rec_bin, 2 + 2 * n, n, endian)
 
-    {Math.evaluate_chebyshev(cx, s),
-     Math.evaluate_chebyshev(cy, s),
+    {Math.evaluate_chebyshev(cx, s), Math.evaluate_chebyshev(cy, s),
      Math.evaluate_chebyshev(cz, s)}
   end
 
@@ -153,12 +152,14 @@ defmodule Astro.Ephemeris.Kernel do
       <<"DAF/SPK ", _::binary>> ->
         # ND is stored at bytes 8-11 as a 4-byte signed integer; for SPK it is 2.
         <<_::8-bytes, nd_le::little-signed-32, _::binary>> = data
+
         if nd_le == 2 do
           {:ok, :little}
         else
           <<_::8-bytes, nd_be::big-signed-32, _::binary>> = data
           if nd_be == 2, do: {:ok, :big}, else: {:error, :unrecognised_nd}
         end
+
       _ ->
         {:error, :not_daf_spk}
     end
@@ -175,16 +176,17 @@ defmodule Astro.Ephemeris.Kernel do
     collect_summaries(data, fward, endian, [])
   end
 
-  defp collect_summaries(_data, 0, _endian, acc),     do: Enum.reverse(acc)
+  defp collect_summaries(_data, 0, _endian, acc), do: Enum.reverse(acc)
+
   defp collect_summaries(_data, rec, _endian, acc)
-       when rec < 0,                                   do: Enum.reverse(acc)
+       when rec < 0, do: Enum.reverse(acc)
 
   defp collect_summaries(data, rec_num, endian, acc) do
     # Each summary record is exactly 1024 bytes.
     # Bytes 0-23: next (double), prev (double), nsum (double)
     # Bytes 24+: summaries, each @summary_bytes bytes wide.
     rec_offset = (rec_num - 1) * @record_size
-    rec_bin    = binary_part(data, rec_offset, @record_size)
+    rec_bin = binary_part(data, rec_offset, @record_size)
 
     next = trunc(read_double(rec_bin, 0, endian))
     nsum = trunc(read_double(rec_bin, 2, endian))
@@ -193,7 +195,8 @@ defmodule Astro.Ephemeris.Kernel do
     new_segs =
       Enum.reduce(0..(nsum - 1), [], fn i, s_acc ->
         sum_offset = 3 * @double_size + i * @summary_bytes
-        sum_bin    = binary_part(rec_bin, sum_offset, @summary_bytes)
+        sum_bin = binary_part(rec_bin, sum_offset, @summary_bytes)
+
         case parse_summary(sum_bin, data, endian) do
           nil -> s_acc
           seg -> [seg | s_acc]
@@ -214,14 +217,14 @@ defmodule Astro.Ephemeris.Kernel do
   #   bytes 32-35: start_addr(int32)
   #   bytes 36-39: end_addr  (int32)
   defp parse_summary(sum_bin, data, endian) do
-    start_et  = read_double(sum_bin, 0, endian)
-    end_et    = read_double(sum_bin, 1, endian)
-    target    = read_int32(sum_bin, 16, endian)
-    centre    = read_int32(sum_bin, 20, endian)
-    frame     = read_int32(sum_bin, 24, endian)
+    start_et = read_double(sum_bin, 0, endian)
+    end_et = read_double(sum_bin, 1, endian)
+    target = read_int32(sum_bin, 16, endian)
+    centre = read_int32(sum_bin, 20, endian)
+    frame = read_int32(sum_bin, 24, endian)
     data_type = read_int32(sum_bin, 28, endian)
     start_addr = read_int32(sum_bin, 32, endian)
-    end_addr   = read_int32(sum_bin, 36, endian)
+    end_addr = read_int32(sum_bin, 36, endian)
 
     if data_type != 2 do
       nil
@@ -229,29 +232,29 @@ defmodule Astro.Ephemeris.Kernel do
       # Type 2 metadata: last 4 doubles of the segment.
       # These are at absolute word indices end_addr-3, end_addr-2, end_addr-1, end_addr.
       # In bytes: starting at (end_addr - 4) * 8.
-      meta_byte  = (end_addr - 4) * @double_size
-      meta_bin   = binary_part(data, meta_byte, 4 * @double_size)
+      meta_byte = (end_addr - 4) * @double_size
+      meta_bin = binary_part(data, meta_byte, 4 * @double_size)
 
-      init_et    = read_double(meta_bin, 0, endian)
-      intlen     = read_double(meta_bin, 1, endian)
-      rsize      = trunc(read_double(meta_bin, 2, endian))
-      n_records  = trunc(read_double(meta_bin, 3, endian))
-      degree     = div(rsize - 2, 3) - 1
+      init_et = read_double(meta_bin, 0, endian)
+      intlen = read_double(meta_bin, 1, endian)
+      rsize = trunc(read_double(meta_bin, 2, endian))
+      n_records = trunc(read_double(meta_bin, 3, endian))
+      degree = div(rsize - 2, 3) - 1
 
       %{
-        target:     target,
-        centre:     centre,
-        frame:      frame,
-        data_type:  data_type,
-        start_et:   start_et,
-        end_et:     end_et,
+        target: target,
+        centre: centre,
+        frame: frame,
+        data_type: data_type,
+        start_et: start_et,
+        end_et: end_et,
         start_addr: start_addr,
-        end_addr:   end_addr,
-        init_et:    init_et,
-        intlen:     intlen,
-        rsize:      rsize,
-        n_records:  n_records,
-        degree:     degree
+        end_addr: end_addr,
+        init_et: init_et,
+        intlen: intlen,
+        rsize: rsize,
+        n_records: n_records,
+        degree: degree
       }
     end
   end
@@ -261,10 +264,12 @@ defmodule Astro.Ephemeris.Kernel do
   # Read the nth double (0-based) from a binary.
   defp read_double(bin, n, endian) do
     offset = n * @double_size
+
     case endian do
       :little ->
         <<_::binary-size(^offset), v::little-float-64, _::binary>> = bin
         v
+
       :big ->
         <<_::binary-size(^offset), v::big-float-64, _::binary>> = bin
         v
@@ -284,6 +289,7 @@ defmodule Astro.Ephemeris.Kernel do
       :little ->
         <<_::binary-size(^byte_offset), v::little-signed-32, _::binary>> = bin
         v
+
       :big ->
         <<_::binary-size(^byte_offset), v::big-signed-32, _::binary>> = bin
         v

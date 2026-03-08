@@ -42,5 +42,4 @@ defmodule Astro.Moon.TestData do
   def lookup("Oct"), do: 10
   def lookup("Nov"), do: 11
   def lookup("Dec"), do: 12
-
 end

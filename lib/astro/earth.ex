@@ -97,7 +97,9 @@ defmodule Astro.Earth do
     # Distance to the geometric horizon in metres (standard formula).
     # apprimation is d = sqrt(2 * R * h)  (without refraction k the pure geometric distance)
     # exact formula is d = √(h² + 2Rh)
-    :math.sqrt((observer_elevation_m * observer_elevation_m) + (2 * @earth_radius_m * observer_elevation_m))
+    :math.sqrt(
+      observer_elevation_m * observer_elevation_m + 2 * @earth_radius_m * observer_elevation_m
+    )
   end
 
   @doc """
@@ -197,5 +199,4 @@ defmodule Astro.Earth do
   def adjusted_solar_elevation(solar_elevation, elevation) do
     solar_elevation + elevation_adjustment(elevation)
   end
-
 end

@@ -240,7 +240,10 @@ defmodule Astro.Time do
     c = julian_centuries_from_moment(t)
 
     terms =
-      Enum.map([280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38710000.0], &Math.deg/1)
+      Enum.map(
+        [280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38_710_000.0],
+        &Math.deg/1
+      )
 
     mod(Math.poly(c, terms), 360)
   end
@@ -250,7 +253,7 @@ defmodule Astro.Time do
     c = julian_centuries_from_moment(t)
 
     terms =
-      Enum.map([100.4606184, 36_000.77004, 0.000387933, -1 / 38710000.0], &Math.deg/1)
+      Enum.map([100.4606184, 36_000.77004, 0.000387933, -1 / 38_710_000.0], &Math.deg/1)
 
     mod(Math.poly(c, terms), 360)
   end
@@ -748,11 +751,15 @@ defmodule Astro.Time do
 
   """
   @spec offset_for_zone(moment(), zone_name()) :: fraction_of_day()
-  def offset_for_zone(gregorian_seconds, time_zone, time_zone_database \\ Calendar.get_time_zone_database())
+  def offset_for_zone(
+        gregorian_seconds,
+        time_zone,
+        time_zone_database \\ Calendar.get_time_zone_database()
+      )
       when is_number(gregorian_seconds) and is_binary(time_zone) do
     case periods_for_time(time_zone, gregorian_seconds, time_zone_database) do
       [period] ->
-        ((period.utc_offset + period.std_offset) / @seconds_per_day)
+        (period.utc_offset + period.std_offset) / @seconds_per_day
 
       [_period_a | _period_b] ->
         :ambiguous_time
@@ -797,7 +804,7 @@ defmodule Astro.Time do
     time_zone_resolver.(location)
   end
 
-  @jan_1_1900  Date.new!(1900, 1, 1)
+  @jan_1_1900 Date.new!(1900, 1, 1)
 
   @doc """
   Returns the adjustment necessary to various celestial
@@ -818,17 +825,29 @@ defmodule Astro.Time do
 
       year in [1900, 1987] ->
         poly(c, [
-          -0.00002, 0.000297, 0.025184,
-          -0.181133, 0.553040, -0.861938,
-          0.677066, -0.212591
+          -0.00002,
+          0.000297,
+          0.025184,
+          -0.181133,
+          0.553040,
+          -0.861938,
+          0.677066,
+          -0.212591
         ])
 
       year in 1800..1899 ->
         poly(c, [
-          -0.000009, 0.003844, 0.083563,
-          0.865736, 4.867575, 15.845535,
-          31.332267, 38.291999, 28.316289,
-          11.636204, 2.043794
+          -0.000009,
+          0.003844,
+          0.083563,
+          0.865736,
+          4.867575,
+          15.845535,
+          31.332267,
+          38.291999,
+          28.316289,
+          11.636204,
+          2.043794
         ])
 
       year in [1700, 1799] ->
@@ -841,7 +860,7 @@ defmodule Astro.Time do
 
       true ->
         x = hr(12) + Date.diff(Date.new!(year, 1, 1), Date.new!(1810, 1, 1))
-        ((x * x) / 41_048_480.0 - 15) / @seconds_per_day
+        (x * x / 41_048_480.0 - 15) / @seconds_per_day
     end
   end
 
@@ -920,5 +939,4 @@ defmodule Astro.Time do
       {:gap, _datetime1, datetime2} -> {:ok, datetime2}
     end
   end
-
 end
