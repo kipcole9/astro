@@ -1,4 +1,4 @@
-defmodule Astro.Solar.SunRiseSet do
+defmodule SunRiseSet do
   @moduledoc """
   Computes sunrise and sunset times using the JPL DE440s ephemeris and a
   scan-and-bisect algorithm, replacing `Astro.sunrise/3` and `Astro.sunset/3`.
@@ -41,11 +41,18 @@ defmodule Astro.Solar.SunRiseSet do
     * `:time_zone_resolver` — 1-arity fn `(%Geo.Point{}) → {:ok, String.t()}`
   """
 
-  alias Astro.{Ephemeris, Coordinates}
+  alias Jpl.{Ephemeris, Coordinates}
 
   # Coarse scan step (seconds). The Sun is always visible for at least a few
   # minutes when it rises, so 24-minute steps bracket the event reliably.
   @scan_step_s 1_440
+
+  # See MoonRiseSet2 for the rationale.  The same solar-midnight defect applies
+  # here: −14 h / +38 h relative to UTC midnight covers every civil timezone.
+  # The Sun rises at most once per 24 h so at most three events appear in the
+  # 52-hour window; the correct one is selected by filtering on local date.
+  @scan_pre_window_s  14 * 3_600
+  @scan_window_s      52 * 3_600
 
   # Bisection precision target (seconds).
   @bisect_tol_s 1.0
@@ -70,10 +77,10 @@ defmodule Astro.Solar.SunRiseSet do
   the solar position from the JPL DE440s ephemeris rather than the
   Chapront truncated series.
   """
-  @spec sunrise(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec sunrise(Spk.Kernel.t(), Astro.location(), Date.t() | DateTime.t(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def sunrise(location, date, options \\ []) do
-    sun_event(location, to_date(date), :rise, options)
+  def sunrise(kernel, location, date, options \\ []) do
+    sun_event(kernel, location, to_date(date), :rise, options)
   end
 
   @doc """
@@ -82,46 +89,52 @@ defmodule Astro.Solar.SunRiseSet do
   Mirrors `Astro.sunset/3` in signature and return value, but derives
   the solar position from the JPL DE440s ephemeris.
   """
-  @spec sunset(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec sunset(Spk.Kernel.t(), Astro.location(), Date.t() | DateTime.t(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def sunset(location, date, options \\ []) do
-    sun_event(location, to_date(date), :set, options)
+  def sunset(kernel, location, date, options \\ []) do
+    sun_event(kernel, location, to_date(date), :set, options)
   end
 
   # ── Core ─────────────────────────────────────────────────────────────────────
 
-  defp sun_event(location, date, event, options) do
+  defp sun_event(kernel, location, date, event, options) do
     %Geo.PointZ{coordinates: {lng, lat, _elev_m}} =
       Astro.Location.normalize_location(location)
 
-    local_midnight_utc = local_midnight(date, lng)
-    et_start = Coordinates.utc_to_et(local_midnight_utc)
-    et_end   = et_start + 86_400.0
+    {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
+    et_start = Coordinates.utc_to_et(utc_midnight) - @scan_pre_window_s
+    et_end   = et_start + @scan_window_s
 
     scan_pairs =
       Stream.iterate(et_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= et_end))
-      |> Enum.map(fn et -> {et, altitude_f(et, lat, lng)} end)
+      |> Enum.map(fn et -> {et, altitude_f(kernel, et, lat, lng)} end)
 
-    bracket =
+    brackets =
       scan_pairs
       |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.find(fn [{_et1, f1}, {_et2, f2}] ->
+      |> Enum.filter(fn [{_et1, f1}, {_et2, f2}] ->
         case event do
           :rise -> f1 < 0.0 and f2 >= 0.0
           :set  -> f1 > 0.0 and f2 <= 0.0
         end
       end)
 
-    case bracket do
-      nil ->
-        {:error, :no_time}
-
-      [{et_lo, f_lo}, {et_hi, f_hi}] ->
-        et_event = bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, @bisect_max)
+    result =
+      Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
+        et_event = bisect(kernel, et_lo, f_lo, et_hi, f_hi, lat, lng, @bisect_max)
         utc_dt   = Coordinates.et_to_utc(et_event)
-        apply_time_zone(utc_dt, location, options)
-    end
+
+        case apply_time_zone(utc_dt, location, options) do
+          {:ok, local_dt} when local_dt.year  == date.year  and
+                               local_dt.month == date.month and
+                               local_dt.day   == date.day   -> {:ok, local_dt}
+          {:ok, _}                                          -> nil
+          error                                             -> error
+        end
+      end)
+
+    result || {:error, :no_time}
   end
 
   # ── Altitude function ────────────────────────────────────────────────────────
@@ -131,8 +144,8 @@ defmodule Astro.Solar.SunRiseSet do
   # Event occurs at f = 0, i.e. when the Sun's geometric altitude equals h0.
   # Positive f: Sun above the event threshold.
   # Negative f: Sun below the event threshold.
-  defp altitude_f(et, lat, lng) do
-    {:ok, {ra, dec, _dist}} = Ephemeris.sun_position_et(et)
+  defp altitude_f(kernel, et, lat, lng) do
+    {:ok, {ra, dec, _dist}} = Ephemeris.sun_position_et(kernel, et)
 
     gast = Coordinates.gast(et)
     h    = fmod(gast + lng - ra, 360.0)
@@ -148,31 +161,25 @@ defmodule Astro.Solar.SunRiseSet do
 
   # ── Bisection ────────────────────────────────────────────────────────────────
 
-  defp bisect(et_lo, _f_lo, et_hi, _f_hi, _lat, _lng, 0),
+  defp bisect(_kernel, et_lo, _f_lo, et_hi, _f_hi, _lat, _lng, 0),
     do: (et_lo + et_hi) / 2.0
 
-  defp bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, iters) do
+  defp bisect(kernel, et_lo, f_lo, et_hi, f_hi, lat, lng, iters) do
     if et_hi - et_lo <= @bisect_tol_s do
       (et_lo + et_hi) / 2.0
     else
       et_mid = (et_lo + et_hi) / 2.0
-      f_mid  = altitude_f(et_mid, lat, lng)
+      f_mid  = altitude_f(kernel, et_mid, lat, lng)
 
       if f_lo * f_mid <= 0.0 do
-        bisect(et_lo, f_lo, et_mid, f_mid, lat, lng, iters - 1)
+        bisect(kernel, et_lo, f_lo, et_mid, f_mid, lat, lng, iters - 1)
       else
-        bisect(et_mid, f_mid, et_hi, f_hi, lat, lng, iters - 1)
+        bisect(kernel, et_mid, f_mid, et_hi, f_hi, lat, lng, iters - 1)
       end
     end
   end
 
   # ── Time helpers ─────────────────────────────────────────────────────────────
-
-  defp local_midnight(date, lng_deg) do
-    {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
-    offset_s = round(lng_deg / 360.0 * 86_400.0)
-    DateTime.add(utc_midnight, -offset_s, :second)
-  end
 
   # ── Time zone helpers ────────────────────────────────────────────────────────
 

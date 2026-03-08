@@ -25,28 +25,27 @@ defmodule Astro.Lunar.MoonRiseSet do
      ephemeris position, one Ch.40 topocentric correction, and one refraction
      call — no derivatives, no interpolation error.
 
-  The altitude function is:
-
-      f(et) = apparent_topocentric_altitude(et) + semi_diameter(et)
-
-  where `apparent_topocentric_altitude` includes atmospheric refraction via
-  the Bennett (1982) formula. The event occurs at the zero-crossing of `f`:
-  positive → negative for a set, negative → positive for a rise.
-
-  Using the Bennett formula rather than Meeus's fixed 34 arcmin removes an
-  additional ~1 arcmin (~1 min of time) systematic bias.
+  where the event is defined to match the USNO / timeanddate.com standard:
+  the topocentric geometric altitude of the Moon's centre equals
+  `−(34'/60° + semi_diameter)`, where 34' is a fixed standard-atmosphere
+  refraction constant. This is equivalent to the USNO's published condition
+  `zd_centre = 90.5666° + angular_radius − horizontal_parallax`, once the
+  horizontal parallax is absorbed by computing the topocentric position directly.
 
   ## Accuracy
 
-  Expected agreement with timeanddate.com (which uses the same methodology):
-  < 1 minute for locations with a flat mathematical horizon and a standard
-  atmosphere. The dominant residual is the refraction model, which varies
-  by up to ~2 arcmin (≈ 4 min) with real weather conditions.
+  Expected agreement with timeanddate.com to within their 1-minute display
+  resolution for locations with a flat mathematical horizon. The dominant
+  residual is real-atmosphere refraction variation (~±2 arcmin, ≈ ±10 s),
+  which neither this implementation nor timeanddate.com models.
 
   ## Required setup
 
-    * Ephemeris data needs to be downloaded into the `priv/` directory. The
-      URL to download is https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
+      {:ok, kernel} = Spk.Kernel.load("priv/de440s.bsp")
+      {:ok, dt} = MoonRiseSet2.moonrise(kernel, {151.2093, -33.8688}, ~D[2026-03-08])
+
+  `de440s.bsp` (~32 MB):
+  https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
 
   ## Options
 
@@ -69,6 +68,20 @@ defmodule Astro.Lunar.MoonRiseSet do
   # Coarse scan step (seconds). Must be shorter than the minimum possible
   # duration of any lunar appearance above the horizon (always ≥ 6 h).
   @scan_step_s 1_440
+
+  @std_refraction_deg 34.0 / 60.0
+
+  # The scan window is anchored to UTC midnight of the requested date rather
+  # than to the observer's solar midnight (lng/360 × 86400 s).  The solar
+  # midnight approach fails whenever the civil timezone diverges from the
+  # observer's solar longitude — which includes DST transitions, politically
+  # offset timezones (Spain, western China), and any location not near its
+  # timezone's nominal meridian.  A window of −14 h to +38 h relative to UTC
+  # midnight covers every civil day in every timezone (offsets range −12 to
+  # +14).  The 52-hour span can contain at most three lunar rise or set events
+  # (~24.8 h period); the correct one is identified by filtering on local date.
+  @scan_pre_window_s  14 * 3_600   # seconds before UTC midnight
+  @scan_window_s      52 * 3_600   # total scan duration
 
   # Bisection precision target (seconds).
   @bisect_tol_s 1.0
@@ -97,10 +110,19 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     {rho_sin_phi, rho_cos_phi} = geocentric_observer(lat, elev_m)
 
-    # TDB epoch range covering one complete local day.
-    local_midnight_utc = local_midnight(date, lng)
-    et_start = Coordinates.utc_to_et(local_midnight_utc)
-    et_end   = et_start + 86_400.0
+    # Scan a 52-hour window anchored 14 hours before UTC midnight of the
+    # requested date. This guarantees that the full civil day is contained
+    # regardless of the observer's UTC offset (which ranges from −12 to +14).
+    #
+    # Using a solar-longitude offset instead (round(lng/360 × 86400 s)) would
+    # start the window at "mean solar midnight", which can differ from civil
+    # midnight by up to 3 hours due to timezone boundaries and DST. Events in
+    # that gap are silently missed. The New York case illustrates this: on a
+    # DST date the solar midnight at lng −74° is 04:56 UTC, but civil midnight
+    # (EDT) is 04:00 UTC, so a moonrise at 04:41 UTC goes unreported.
+    {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
+    et_start = Coordinates.utc_to_et(utc_midnight) - @scan_pre_window_s
+    et_end   = et_start + @scan_window_s
 
     # Evaluate f at each scan point.
     scan_pairs =
@@ -110,32 +132,35 @@ defmodule Astro.Lunar.MoonRiseSet do
         {et, topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi)}
       end)
 
-    # Find the first bracket with the correct sign change polarity.
-    bracket =
+    # Collect every bracket with the correct sign-change polarity.  The Moon
+    # rises at most once per ~24.8 h, so at most two or three events appear in
+    # the 52-hour window; we want the one whose LOCAL date matches `date`.
+    brackets =
       scan_pairs
       |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.find(fn [{_et1, f1}, {_et2, f2}] ->
+      |> Enum.filter(fn [{_et1, f1}, {_et2, f2}] ->
         case event do
           :rise -> f1 < 0.0 and f2 >= 0.0
           :set  -> f1 > 0.0 and f2 <= 0.0
         end
       end)
 
-    case bracket do
-      nil ->
-        {:error, :no_time}
-
-      [{et_lo, f_lo}, {et_hi, f_hi}] ->
-        et_event = bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, @bisect_max)
+    result =
+      Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
+        et_event = bisect(et_lo, f_lo, et_hi, f_hi,
+                          lat, lng, rho_sin_phi, rho_cos_phi, @bisect_max)
         utc_dt = Coordinates.et_to_utc(et_event)
-        {:ok, local_dt} = apply_time_zone(utc_dt, location, options)
 
-        if Date.compare(local_dt, date) == :eq do
-          {:ok, local_dt}
-        else
-          {:error, :no_time}
+        case apply_time_zone(utc_dt, location, options) do
+          {:ok, local_dt} when local_dt.year  == date.year  and
+                               local_dt.month == date.month and
+                               local_dt.day   == date.day   -> {:ok, local_dt}
+          {:ok, _}                                          -> nil
+          error                                             -> error
         end
-    end
+      end)
+
+    result || {:error, :no_time}
   end
 
   # ── Altitude function ────────────────────────────────────────────────────────
@@ -181,33 +206,17 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     alt_geom = :math.asin(sin_alt) * 180.0 / :math.pi()
 
-    # Refraction is defined as a function of APPARENT altitude, not geometric.
-    # We solve the implicit equation:
-    #   apparent_alt = geometric_alt + R(apparent_alt)
-    # by a short fixed-point iteration (converges in 3–4 steps to < 0.001').
-    alt_app = apparent_altitude(alt_geom)
-
-    alt_app + semi_diam
-  end
-
-  # Solves apparent_alt = geometric_alt + R(apparent_alt) by fixed-point iteration.
-  # Starting from the geometric altitude, convergence is rapid because R changes
-  # slowly: each step corrects the refraction estimate by ~15%, converging to
-  # better than 0.001 arcmin within 4 iterations.
-  defp apparent_altitude(alt_geom) do
-    # Initial estimate: use geometric alt as the refraction argument.
-    apparent_altitude(alt_geom, alt_geom + refraction(alt_geom), 6)
-  end
-
-  defp apparent_altitude(_alt_geom, alt_app, 0), do: alt_app
-
-  defp apparent_altitude(alt_geom, alt_app_prev, iters) do
-    alt_app = alt_geom + refraction(alt_app_prev)
-    if abs(alt_app - alt_app_prev) < 1.0e-6 do
-      alt_app
-    else
-      apparent_altitude(alt_geom, alt_app, iters - 1)
-    end
+    # Event condition matching the USNO / timeanddate.com standard (see RST_defs):
+    #   geometric zenith distance of centre = 90° + 34' + semi_diam − h_parallax
+    # In topocentric geometric altitude this reduces to:
+    #   alt_geom = −(34'/60° + semi_diam)
+    # where 34' is a fixed standard-atmosphere refraction constant and the
+    # horizontal parallax has already been absorbed by computing the topocentric
+    # position directly via Ch.40. Using a fixed 34' (rather than a continuously
+    # evaluated formula such as Bennett's ~38' at this altitude) is what USNO
+    # and timeanddate.com actually compute, and matching it eliminates the
+    # residual systematic offset.
+    alt_geom + semi_diam + @std_refraction_deg
   end
 
   # ── Bisection ────────────────────────────────────────────────────────────────
@@ -234,18 +243,14 @@ defmodule Astro.Lunar.MoonRiseSet do
     end
   end
 
-  # ── Atmospheric refraction (Bennett 1982) ────────────────────────────────────
+  # ── Standard refraction constant (USNO / timeanddate.com) ───────────────────
 
-  # Returns atmospheric refraction in degrees for geometric altitude alt_deg.
-  # Valid for alt > −5°. At the horizon this gives ~34.5 arcmin, consistent
-  # with most professional implementations. Meeus's fixed 34' underestimates
-  # by ~0.5 arcmin, causing a ~1 min systematic bias.
-  defp refraction(alt_deg) when alt_deg >= 85.0, do: 0.0
-
-  defp refraction(alt_deg) do
-    r_arcmin = 1.0 / :math.tan(to_rad(alt_deg + 7.31 / (alt_deg + 4.4)))
-    r_arcmin / 60.0
-  end
+  # Fixed 34-arcminute standard-atmosphere refraction, expressed in degrees.
+  # The USNO defines moonrise/moonset using this constant (RST_defs page):
+  #   zd_centre = 90° + 34' + angular_radius − horizontal_parallax
+  # timeanddate.com follows the same convention. Using 34' here rather than
+  # a formula (e.g. Bennett's ~38' at −0.26° apparent altitude) ensures our
+  # results agree with both references to within their 1-minute display precision.
 
   # ── Observer geocentric factors (Meeus Ch.11) ────────────────────────────────
 
@@ -262,14 +267,6 @@ defmodule Astro.Lunar.MoonRiseSet do
         (elev_km / @earth_equatorial_radius_km) * cos_d(lat_deg)
 
     {rho_sin_phi, rho_cos_phi}
-  end
-
-  # ── Time helpers ─────────────────────────────────────────────────────────────
-
-  defp local_midnight(date, lng_deg) do
-    {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
-    offset_s = round(lng_deg / 360.0 * 86_400.0)
-    DateTime.add(utc_midnight, -offset_s, :second)
   end
 
   # ── Time zone helpers ────────────────────────────────────────────────────────
@@ -304,7 +301,7 @@ defmodule Astro.Lunar.MoonRiseSet do
   end
 
   defp shift_zone(utc_dt, tz, :configured), do: DateTime.shift_zone(utc_dt, tz)
-  defp shift_zone(utc_dt, tz, tz_db), do: DateTime.shift_zone(utc_dt, tz, tz_db)
+  defp shift_zone(utc_dt, tz, tz_db),       do: DateTime.shift_zone(utc_dt, tz, tz_db)
 
   # ── Math helpers ─────────────────────────────────────────────────────────────
 
