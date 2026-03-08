@@ -12,6 +12,10 @@ This is the changelog for Astro version 2.0.0 released on ______.  For older cha
 
 ### Enhancements
 
+* Adds `Astro.moonrise/3` and `Astro.moonset/3`.
+
+* Adds `Astro.Time.date_from_julian_days/1`.
+
 ## Astro version 1.1.2
 
 This is the changelog for Astro version 1.1.2 released on September 9th, 2025.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

@@ -403,11 +403,11 @@ defmodule Astro.Time do
 
   ### Returns
 
-  * a `DateTime.t` in the UTC time zone.
+  * a `t:DateTime.t/0` in the UTC time zone.
 
   ## Example
 
-      iex> Astro.Time.datetime_from_julian_days 2458822.5
+      iex> Astro.Time.datetime_from_julian_days(2458822.5)
       {:ok, ~U[2019-12-05 00:00:00Z]}
 
   """
@@ -432,14 +432,50 @@ defmodule Astro.Time do
     month = e - if(e < 13.5, do: 1, else: 13)
     year = c - if(month > 2.5, do: 4716, else: 4715)
     day = trunc(dt)
+
     h = 24 * (dt - day)
     hours = trunc(h)
     m = 60 * (h - hours)
     minutes = trunc(m)
     seconds = trunc(60 * (m - minutes))
 
-    {:ok, naive_datetime} = NaiveDateTime.new(year, month, day, hours, minutes, seconds, {0, 0})
+    {:ok, date} = Date.new(year, month, day)
+    {:ok, time} = Time.new( hours,minutes, seconds)
+    {:ok, naive_datetime} = NaiveDateTime.new(date, time)
     datetime_in_utc(naive_datetime)
+  end
+
+  @doc """
+  Returns the date for a given Julian day.
+
+  ### Arguments
+
+  * `julian_day` is any astronomical integer Julian day such
+    as returned from `Astro.Time.julian_day_from_date/1`.
+
+  ### Returns
+
+  * a `t:Date.t/0`
+
+  ## Example
+
+      iex> Astro.Time.date_from_julian_days(2458822.5)
+      {:ok, ~D[2019-12-05]}
+
+  """
+  def date_from_julian_days(julian_days) do
+    julian_days = round(julian_days)
+
+    f = julian_days + 1_401 + div((div(4 * julian_days + 274_277, 146_097) * 3), 4) - 38
+    e = 4 * f + 3
+    g = rem(e, 1_461) |> div(4)
+    h = 5 * g + 2
+
+    day   = rem(h, 153) |> div(5) |> Kernel.+(1)
+    month = rem(div(h, 153) + 2, 12) + 1
+    year  = div(e, 1_461) - 4_716 + div(14 - month, 12)
+
+    Date.new(year, month, day)
   end
 
   @doc """
