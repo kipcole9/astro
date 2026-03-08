@@ -670,14 +670,14 @@ defmodule Astro.Lunar do
   rather than its centre.
 
   """
-  @spec horizontal_parallax(t :: Time.moment()) :: Astro.angle
-  def horizontal_parallax(t) do
+  @spec equatorial_horizontal_parallax(t :: Time.moment()) :: Astro.angle
+  def equatorial_horizontal_parallax(t) do
     asin(Earth.earth_radius_m() / lunar_distance(t))
     |> to_degrees()
   end
 
   @doc """
-  This is the *observer-specific* parallax (also called the parallax in
+  Return the *observer-specific* parallax (also called the parallax in
   altitude), which varies with the observer's latitude and the Moon's
   altitude above their horizon — as opposed to the equatorial horizontal
   parallax returned by `Astro.Lunar.horizontal_parallax/1`, which is
@@ -688,10 +688,9 @@ defmodule Astro.Lunar do
       Astro.angle()
 
   def topocentric_lunar_parallax(t, location) do
-    :math.asin(sin(horizontal_parallax(t)) * cos(lunar_altitude(t, location)))
+    :math.asin(sin(equatorial_horizontal_parallax(t)) * cos(lunar_altitude(t, location)))
     |> to_degrees()
   end
-
 
   @doc false
   @spec mean_lunar_longitude(c :: Astro.julian_centuries()) :: Astro.angle()
@@ -719,7 +718,7 @@ defmodule Astro.Lunar do
   @doc false
   @spec horizontal_dip(t :: Time.moment()) :: Astro.angle()
   def horizontal_dip(t) do
-    -(Earth.refraction() + angular_semi_diameter(t) - horizontal_parallax(t))
+    -(Earth.refraction() + angular_semi_diameter(t) - equatorial_horizontal_parallax(t))
   end
 
   @doc false
