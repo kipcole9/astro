@@ -69,6 +69,16 @@ defmodule Astro.Lunar.MoonRiseSet do
   # duration of any lunar appearance above the horizon (always ≥ 6 h).
   @scan_step_s 1_440
 
+  # Event condition matching the USNO / timeanddate.com standard (see RST_defs):
+  #   geometric zenith distance of centre = 90° + 34' + semi_diam − h_parallax
+  # In topocentric geometric altitude this reduces to:
+  #   alt_geom = −(34'/60° + semi_diam)
+  # where 34' is a fixed standard-atmosphere refraction constant and the
+  # horizontal parallax has already been absorbed by computing the topocentric
+  # position directly via Ch.40. Using a fixed 34' (rather than a continuously
+  # evaluated formula such as Bennett's ~38' at this altitude) is what USNO
+  # and timeanddate.com actually compute, and matching it eliminates the
+  # residual systematic offset.
   @std_refraction_deg 34.0 / 60.0
 
   # The scan window is anchored to UTC midnight of the requested date rather
@@ -206,16 +216,6 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     alt_geom = :math.asin(sin_alt) * 180.0 / :math.pi()
 
-    # Event condition matching the USNO / timeanddate.com standard (see RST_defs):
-    #   geometric zenith distance of centre = 90° + 34' + semi_diam − h_parallax
-    # In topocentric geometric altitude this reduces to:
-    #   alt_geom = −(34'/60° + semi_diam)
-    # where 34' is a fixed standard-atmosphere refraction constant and the
-    # horizontal parallax has already been absorbed by computing the topocentric
-    # position directly via Ch.40. Using a fixed 34' (rather than a continuously
-    # evaluated formula such as Bennett's ~38' at this altitude) is what USNO
-    # and timeanddate.com actually compute, and matching it eliminates the
-    # residual systematic offset.
     alt_geom + semi_diam + @std_refraction_deg
   end
 
