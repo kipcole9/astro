@@ -40,9 +40,11 @@ defmodule Jpl.Ephemeris do
   alias Jpl.Coordinates
 
   # NAIF body IDs
-  @moon_id 301
+  @moon_id  301
   @earth_id 399
-  @emb_id   3
+  @emb_id     3
+  @sun_id    10
+  @ssb_id     0
 
   @doc """
   Computes the apparent geocentric position of the Moon for the given UTC
@@ -81,6 +83,55 @@ defmodule Jpl.Ephemeris do
       apparent = Coordinates.icrf_to_true_equator(geo, et)
 
       # Convert to spherical coordinates
+      {ra, dec, dist} = Coordinates.cartesian_to_spherical(apparent)
+      {:ok, {ra, dec, dist}}
+    end
+  end
+
+  @doc """
+  Computes the apparent geocentric position of the Sun for the given UTC
+  datetime.
+
+  Returns `{:ok, {ra_deg, dec_deg, distance_km}}` in the true equator and
+  equinox of date, or `{:error, reason}`.
+
+  ## Segment chaining (DE440s)
+
+  `de440s.bsp` supplies:
+    - Body 10 (Sun) relative to body 0 (Solar System Barycenter, SSB)
+    - Body 3  (EMB) relative to body 0 (SSB)
+    - Body 399 (Earth) relative to body 3 (EMB)
+
+  Sun relative to Earth = Sun/SSB − EMB/SSB + Earth/EMB.
+  """
+  @spec sun_position(SpkKernel.t(), DateTime.t()) ::
+          {:ok, {float(), float(), float()}} | {:error, term()}
+  def sun_position(kernel, %DateTime{} = utc_dt) do
+    et = Coordinates.utc_to_et(utc_dt)
+    sun_position_et(kernel, et)
+  end
+
+  @doc """
+  Computes the apparent geocentric position of the Sun for the given TDB
+  epoch `et` (seconds past J2000.0).
+
+  Returns `{:ok, {ra_deg, dec_deg, distance_km}}`.
+  """
+  @spec sun_position_et(SpkKernel.t(), float()) ::
+          {:ok, {float(), float(), float()}} | {:error, term()}
+  def sun_position_et(kernel, et) do
+    with {:ok, seg_sun}   <- SpkKernel.find_segment(kernel, @sun_id,   @ssb_id, et),
+         {:ok, seg_emb}   <- SpkKernel.find_segment(kernel, @emb_id,   @ssb_id, et),
+         {:ok, seg_earth} <- SpkKernel.find_segment(kernel, @earth_id, @emb_id, et) do
+      {sx, sy, sz} = SpkKernel.position(kernel, seg_sun,   et)
+      {bx, by, bz} = SpkKernel.position(kernel, seg_emb,   et)
+      {ex, ey, ez} = SpkKernel.position(kernel, seg_earth, et)
+
+      # Sun relative to Earth (geocentric), ICRF/J2000 Cartesian (km):
+      #   Sun/SSB − (EMB/SSB − Earth/EMB) = Sun/SSB − EMB/SSB + Earth/EMB
+      geo = {sx - bx + ex, sy - by + ey, sz - bz + ez}
+
+      apparent = Coordinates.icrf_to_true_equator(geo, et)
       {ra, dec, dist} = Coordinates.cartesian_to_spherical(apparent)
       {:ok, {ra, dec, dist}}
     end
