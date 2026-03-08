@@ -1,4 +1,4 @@
-defmodule Spk.Kernel do
+defmodule Astro.Ephemeris.Kernel do
   @moduledoc """
   Parses JPL DE-series binary SPK ephemeris files (DAF/SPK format).
 
@@ -43,6 +43,7 @@ defmodule Spk.Kernel do
   and place it in priv/
 
   """
+  alias Astro.Math
 
   @record_size   1024
   @double_size      8
@@ -126,9 +127,9 @@ defmodule Spk.Kernel do
     cy = read_doubles_range(rec_bin, 2 + n, n, endian)
     cz = read_doubles_range(rec_bin, 2 + 2 * n, n, endian)
 
-    {Spk.Chebyshev.evaluate(cx, s),
-     Spk.Chebyshev.evaluate(cy, s),
-     Spk.Chebyshev.evaluate(cz, s)}
+    {Math.evaluate_chebyshev(cx, s),
+     Math.evaluate_chebyshev(cy, s),
+     Math.evaluate_chebyshev(cz, s)}
   end
 
   # ── Binary parsing ───────────────────────────────────────────────────────────

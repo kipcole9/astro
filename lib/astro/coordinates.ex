@@ -1,6 +1,7 @@
-defmodule Jpl.Coordinates do
+defmodule Astro.Coordinates do
   @moduledoc """
-  Coordinate transformations for high-precision lunar position calculations.
+  Coordinate transformations for high-precision lunar and solar
+  position calculations.
 
   Provides:
   - Conversion of UTC `DateTime` to TDB seconds past J2000.0 (the time

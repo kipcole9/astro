@@ -1,4 +1,4 @@
-defmodule MoonRiseSet2 do
+defmodule Astro.Lunar.MoonRiseSet do
   @moduledoc """
   Computes moonrise and moonset times using the JPL DE440s ephemeris and a
   fully topocentric bisection algorithm.
@@ -58,7 +58,7 @@ defmodule MoonRiseSet2 do
     * `:time_zone_resolver` — 1-arity fn `(%Geo.Point{}) → {:ok, String.t()}`
   """
 
-  alias Jpl.{Ephemeris, Coordinates}
+  alias Astro.{Ephemeris, Coordinates}
 
   # WGS-84 geodetic → geocentric latitude conversion factor.
   @geodetic_factor 0.99664719

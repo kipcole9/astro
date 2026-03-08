@@ -1,4 +1,4 @@
-defmodule SunRiseSet do
+defmodule Astro.Solar.SunRiseSet do
   @moduledoc """
   Computes sunrise and sunset times using the JPL DE440s ephemeris and a
   scan-and-bisect algorithm, replacing `Astro.sunrise/3` and `Astro.sunset/3`.
@@ -41,7 +41,7 @@ defmodule SunRiseSet do
     * `:time_zone_resolver` — 1-arity fn `(%Geo.Point{}) → {:ok, String.t()}`
   """
 
-  alias Jpl.{Ephemeris, Coordinates}
+  alias Astro.{Ephemeris, Coordinates}
 
   # Coarse scan step (seconds). The Sun is always visible for at least a few
   # minutes when it rises, so 24-minute steps bracket the event reliably.
