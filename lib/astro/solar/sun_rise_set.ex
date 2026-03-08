@@ -28,8 +28,8 @@ defmodule SunRiseSet do
   ## Required setup
 
       {:ok, kernel} = Spk.Kernel.load("priv/de440s.bsp")
-      {:ok, dt} = SunRiseSet.sunrise(kernel, {151.2093, -33.8688}, ~D[2026-03-08])
-      {:ok, dt} = SunRiseSet.sunset(kernel,  {151.2093, -33.8688}, ~D[2026-03-08])
+      {:ok, dt} = SunRiseSet.sunrise({151.2093, -33.8688}, ~D[2026-03-08])
+      {:ok, dt} = SunRiseSet.sunset( {151.2093, -33.8688}, ~D[2026-03-08])
 
   `de440s.bsp` (~32 MB):
   https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
@@ -41,7 +41,7 @@ defmodule SunRiseSet do
     * `:time_zone_resolver` — 1-arity fn `(%Geo.Point{}) → {:ok, String.t()}`
   """
 
-  alias Jpl.{Ephemeris, Coordinates}
+  alias Astro.{Ephemeris, Coordinates}
 
   # Coarse scan step (seconds). The Sun is always visible for at least a few
   # minutes when it rises, so 24-minute steps bracket the event reliably.
@@ -77,10 +77,10 @@ defmodule SunRiseSet do
   the solar position from the JPL DE440s ephemeris rather than the
   Chapront truncated series.
   """
-  @spec sunrise(Spk.Kernel.t(), Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec sunrise(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def sunrise(kernel, location, date, options \\ []) do
-    sun_event(kernel, location, to_date(date), :rise, options)
+  def sunrise(location, date, options \\ []) do
+    sun_event(location, to_date(date), :rise, options)
   end
 
   @doc """
@@ -89,15 +89,15 @@ defmodule SunRiseSet do
   Mirrors `Astro.sunset/3` in signature and return value, but derives
   the solar position from the JPL DE440s ephemeris.
   """
-  @spec sunset(Spk.Kernel.t(), Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec sunset(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def sunset(kernel, location, date, options \\ []) do
-    sun_event(kernel, location, to_date(date), :set, options)
+  def sunset(location, date, options \\ []) do
+    sun_event(location, to_date(date), :set, options)
   end
 
   # ── Core ─────────────────────────────────────────────────────────────────────
 
-  defp sun_event(kernel, location, date, event, options) do
+  defp sun_event(location, date, event, options) do
     %Geo.PointZ{coordinates: {lng, lat, _elev_m}} =
       Astro.Location.normalize_location(location)
 
@@ -108,7 +108,7 @@ defmodule SunRiseSet do
     scan_pairs =
       Stream.iterate(et_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= et_end))
-      |> Enum.map(fn et -> {et, altitude_f(kernel, et, lat, lng)} end)
+      |> Enum.map(fn et -> {et, altitude_f(et, lat, lng)} end)
 
     brackets =
       scan_pairs
@@ -122,7 +122,7 @@ defmodule SunRiseSet do
 
     result =
       Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
-        et_event = bisect(kernel, et_lo, f_lo, et_hi, f_hi, lat, lng, @bisect_max)
+        et_event = bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, @bisect_max)
         utc_dt   = Coordinates.et_to_utc(et_event)
 
         case apply_time_zone(utc_dt, location, options) do
@@ -144,8 +144,8 @@ defmodule SunRiseSet do
   # Event occurs at f = 0, i.e. when the Sun's geometric altitude equals h0.
   # Positive f: Sun above the event threshold.
   # Negative f: Sun below the event threshold.
-  defp altitude_f(kernel, et, lat, lng) do
-    {:ok, {ra, dec, _dist}} = Ephemeris.sun_position_et(kernel, et)
+  defp altitude_f(et, lat, lng) do
+    {:ok, {ra, dec, _dist}} = Ephemeris.sun_position_et(et)
 
     gast = Coordinates.gast(et)
     h    = fmod(gast + lng - ra, 360.0)
@@ -161,20 +161,20 @@ defmodule SunRiseSet do
 
   # ── Bisection ────────────────────────────────────────────────────────────────
 
-  defp bisect(_kernel, et_lo, _f_lo, et_hi, _f_hi, _lat, _lng, 0),
+  defp bisect(et_lo, _f_lo, et_hi, _f_hi, _lat, _lng, 0),
     do: (et_lo + et_hi) / 2.0
 
-  defp bisect(kernel, et_lo, f_lo, et_hi, f_hi, lat, lng, iters) do
+  defp bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, iters) do
     if et_hi - et_lo <= @bisect_tol_s do
       (et_lo + et_hi) / 2.0
     else
       et_mid = (et_lo + et_hi) / 2.0
-      f_mid  = altitude_f(kernel, et_mid, lat, lng)
+      f_mid  = altitude_f(et_mid, lat, lng)
 
       if f_lo * f_mid <= 0.0 do
-        bisect(kernel, et_lo, f_lo, et_mid, f_mid, lat, lng, iters - 1)
+        bisect(et_lo, f_lo, et_mid, f_mid, lat, lng, iters - 1)
       else
-        bisect(kernel, et_mid, f_mid, et_hi, f_hi, lat, lng, iters - 1)
+        bisect(et_mid, f_mid, et_hi, f_hi, lat, lng, iters - 1)
       end
     end
   end

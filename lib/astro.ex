@@ -780,8 +780,7 @@ defmodule Astro do
   def moonrise(location, date, options \\ default_options())
 
   def moonrise(location, date, options) when is_list(options) do
-    options = Keyword.put(options, :rise_or_set, :rise) |> Map.new()
-    Lunar.moon_rise_or_set(location, date, options)
+    Lunar.MoonRiseSet.moonrise(location, date, options)
   end
 
   @spec moonset(location, date, options) ::
@@ -790,8 +789,7 @@ defmodule Astro do
   def moonset(location, date, options \\ default_options())
 
   def moonset(location, date, options) when is_list(options) do
-     options = Keyword.put(options, :rise_or_set, :set) |> Map.new()
-    Lunar.moon_rise_or_set(location, date, options)
+    Lunar.MoonRiseSet.moonset(location, date, options)
   end
 
   @doc """
