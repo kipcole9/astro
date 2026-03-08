@@ -1,0 +1,37 @@
+city,country,latitude,longitude,timezone,utc_offset_hours,date,moonrise_hour,moonrise_minute,moonset_hour,moonset_minute,moon_phase,illumination_pct,notes,source
+New York,USA,40.7128,-74.0060,America/New_York,-4,2026-03-01,,,5,37,Waning Gibbous,98.0,DST active (UTC-4) from Mar 8; moonrise before midnight of prior day,timeanddate.com
+New York,USA,40.7128,-74.0060,America/New_York,-5,2026-03-04,19,23,6,50,Full Moon / Waning Gibbous,99.4,Standard time (UTC-5) until Mar 8,timeanddate.com
+New York,USA,40.7128,-74.0060,America/New_York,-4,2026-03-08,,,9,22,Waning Gibbous,77.4,First day of DST; clocks spring forward 1 hour — no moonrise this calendar day,timeanddate.com
+New York,USA,40.7128,-74.0060,America/New_York,-4,2026-03-09,0,41,9,54,Waning Gibbous,68.7,,timeanddate.com
+New York,USA,40.7128,-74.0060,America/New_York,-4,2026-03-11,2,42,11,18,Waning Crescent,49.6,,timeanddate.com
+New York,USA,40.7128,-74.0060,America/New_York,-4,2026-03-18,6,44,18,56,New Moon,0.2,New Moon — extremely low illumination,timeanddate.com
+New York,USA,40.7128,-74.0060,America/New_York,-4,2026-03-20,7,31,21,24,Waxing Crescent,3.9,,timeanddate.com
+New York,USA,40.7128,-74.0060,America/New_York,-4,2026-03-25,,,2,23,Waxing Gibbous,52.0,Moonrise before midnight of prior day,timeanddate.com
+New York,USA,40.7128,-74.0060,America/New_York,-4,2026-03-31,,,5,54,Waxing Gibbous,96.1,Moonrise before midnight of prior day,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,0,2026-03-01,,,6,10,Waning Gibbous,97.3,GMT (UTC+0) throughout most of March; BST begins Mar 29,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,0,2026-03-04,19,17,6,52,Waning Gibbous,99.7,,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,0,2026-03-08,,,7,43,Waning Gibbous,79.1,No moonrise this calendar day,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,0,2026-03-09,0,19,8,3,Waning Gibbous,70.6,,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,0,2026-03-11,2,37,9,10,Waning Crescent,51.6,,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,0,2026-03-18,5,51,17,44,New Moon,0.4,New Moon — extremely low illumination,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,0,2026-03-20,6,16,20,35,Waxing Crescent,3.0,,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,1,2026-03-29,,,5,34,Waxing Gibbous,89.4,BST begins (UTC+1); first day of summer time,timeanddate.com
+London,UK,51.5074,-0.1278,Europe/London,1,2026-03-31,,,6,0,Waxing Gibbous,95.2,,timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-01,,,3,50,Waning Gibbous,95.5,AEDT (UTC+11),timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-04,19,47,7,10,Full Moon,100.0,Full moon at peak illumination,timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-08,21,37,11,11,Waning Gibbous,82.4,,timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-11,23,39,14,7,Waning Crescent,55.7,,timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-13,0,32,15,47,Waning Crescent,36.2,,timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-19,6,48,19,4,New Moon,0.0,New Moon — zero illumination,timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-20,7,55,19,33,Waxing Crescent,1.5,,timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-25,13,50,23,22,Waxing Gibbous,44.6,,timeanddate.com
+Sydney,Australia,-33.8688,151.2093,Australia/Sydney,11,2026-03-31,,,4,58,Waxing Gibbous,97.5,,timeanddate.com
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-01,15,12,4,48,Waning Gibbous,93.4,JST (UTC+9); no DST observed,time.now
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-04,18,31,6,19,Full Moon / Waning Gibbous,99.5,Full Moon Mar 3 at 20:37 JST,time.now
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-08,22,36,8,2,Waning Gibbous,79.3,,time.now
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-09,23,37,8,33,Waning Gibbous,71.0,,time.now
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-11,0,35,9,53,Waning Crescent,52.8,Last Quarter at 18:38 JST,time.now
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-19,5,40,18,7,New Moon,0.0,New Moon at 10:23 JST — zero illumination,time.now
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-20,6,7,19,17,Waxing Crescent,1.6,,time.now
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-25,9,35,0,8,Waxing Gibbous,42.4,,time.now
+Tokyo,Japan,35.6762,139.6503,Asia/Tokyo,9,2026-03-31,4,21,16,18,Waxing Gibbous,96.0,,time.now
