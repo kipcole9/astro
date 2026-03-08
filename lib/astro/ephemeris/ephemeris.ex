@@ -21,8 +21,8 @@ defmodule Astro.Ephemeris do
 
   Load the kernel once at application startup and pass it to all calls:
 
-      {:ok, kernel} = Spk.Kernel.load("priv/de440s.bsp")
-      {:ok, {ra, dec, dist}} = Jpl.Ephemeris.moon_position(kernel, utc_dt)
+      {:ok, kernel} = Astro.Ephemeris.Kernel.load("priv/de440s.bsp")
+      {:ok, {ra, dec, dist}} = Astro.Ephemeris.moon_position(kernel, utc_dt)
 
   ## Accuracy
 
@@ -55,11 +55,14 @@ defmodule Astro.Ephemeris do
 
   `ra_deg` is in [0, 360), `dec_deg` in [-90, 90].
   """
-  @spec moon_position(Kernel.t(), DateTime.t()) ::
+  @doc since: "2.0.0"
+  @spec moon_position(DateTime.t()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
-  def moon_position(kernel, %DateTime{} = utc_dt) do
-    et = Coordinates.utc_to_et(utc_dt)
-    moon_position_et(kernel, et)
+
+  def moon_position(%DateTime{} = utc_date_time) do
+    utc_date_time
+    |> Coordinates.utc_to_et()
+    |> moon_position_et()
   end
 
   @doc """
@@ -68,13 +71,13 @@ defmodule Astro.Ephemeris do
 
   Returns `{:ok, {ra_deg, dec_deg, distance_km}}`.
   """
-  @spec moon_position_et(Kernel.t(), float()) ::
+  @spec moon_position_et(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
-  def moon_position_et(kernel, et) do
-    with {:ok, seg_moon}  <- Kernel.find_segment(kernel, @moon_id, @emb_id, et),
-         {:ok, seg_earth} <- Kernel.find_segment(kernel, @earth_id, @emb_id, et) do
-      {mx, my, mz} = Kernel.position(kernel, seg_moon,  et)
-      {ex, ey, ez} = Kernel.position(kernel, seg_earth, et)
+  def moon_position_et(et) do
+    with {:ok, seg_moon}  <- Kernel.find_segment(@moon_id, @emb_id, et),
+         {:ok, seg_earth} <- Kernel.find_segment( @earth_id, @emb_id, et) do
+      {mx, my, mz} = Kernel.position(seg_moon,  et)
+      {ex, ey, ez} = Kernel.position(seg_earth, et)
 
       # Moon relative to Earth (geocentric), ICRF/J2000 Cartesian (km)
       geo = {mx - ex, my - ey, mz - ez}
@@ -104,11 +107,11 @@ defmodule Astro.Ephemeris do
 
   Sun relative to Earth = Sun/SSB − EMB/SSB + Earth/EMB.
   """
-  @spec sun_position(Kernel.t(), DateTime.t()) ::
+  @spec sun_position(DateTime.t()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
-  def sun_position(kernel, %DateTime{} = utc_dt) do
-    et = Coordinates.utc_to_et(utc_dt)
-    sun_position_et(kernel, et)
+  def sun_position(%DateTime{} = utc_date_time) do
+    et = Coordinates.utc_to_et(utc_date_time)
+    sun_position_et(et)
   end
 
   @doc """
@@ -117,15 +120,15 @@ defmodule Astro.Ephemeris do
 
   Returns `{:ok, {ra_deg, dec_deg, distance_km}}`.
   """
-  @spec sun_position_et(Kernel.t(), float()) ::
+  @spec sun_position_et(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
-  def sun_position_et(kernel, et) do
-    with {:ok, seg_sun}   <- Kernel.find_segment(kernel, @sun_id,   @ssb_id, et),
-         {:ok, seg_emb}   <- Kernel.find_segment(kernel, @emb_id,   @ssb_id, et),
-         {:ok, seg_earth} <- Kernel.find_segment(kernel, @earth_id, @emb_id, et) do
-      {sx, sy, sz} = Kernel.position(kernel, seg_sun,   et)
-      {bx, by, bz} = Kernel.position(kernel, seg_emb,   et)
-      {ex, ey, ez} = Kernel.position(kernel, seg_earth, et)
+  def sun_position_et(et) do
+    with {:ok, seg_sun}   <- Kernel.find_segment(@sun_id,   @ssb_id, et),
+         {:ok, seg_emb}   <- Kernel.find_segment(@emb_id,   @ssb_id, et),
+         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, et) do
+      {sx, sy, sz} = Kernel.position(seg_sun,   et)
+      {bx, by, bz} = Kernel.position(seg_emb,   et)
+      {ex, ey, ez} = Kernel.position(seg_earth, et)
 
       # Sun relative to Earth (geocentric), ICRF/J2000 Cartesian (km):
       #   Sun/SSB − (EMB/SSB − Earth/EMB) = Sun/SSB − EMB/SSB + Earth/EMB

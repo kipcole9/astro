@@ -49,6 +49,7 @@ defmodule Astro.Ephemeris.Kernel do
   @double_size      8
   # SPK always has ND=2, NI=6; summary = 5 doubles = 40 bytes
   @summary_bytes   40
+  @ephemeris_key {Astro, :ephemeris}
 
   defstruct [:path, :endian, :data, :segments]
 
@@ -71,13 +72,24 @@ defmodule Astro.Ephemeris.Kernel do
     end
   end
 
+  def ephemeris do
+    :persistent_term.get(@ephemeris_key)
+  end
+
+  @doc false
+  def ephemeris_key do
+    @ephemeris_key
+  end
+
   @doc """
   Returns the first segment matching `target` and `centre` NAIF IDs that
   covers the given `et`, or the first matching segment if `et` is `nil`.
   """
-  @spec find_segment(t(), integer(), integer(), float() | nil) ::
+  @spec find_segment(integer(), integer(), float() | nil) ::
           {:ok, map()} | {:error, :not_found}
-  def find_segment(%__MODULE__{segments: segs}, target, centre, et \\ nil) do
+  def find_segment(target, centre, et \\ nil) do
+    %__MODULE__{segments: segs} = ephemeris()
+
     match =
       Enum.find(segs, fn seg ->
         seg.target == target and seg.centre == centre and
@@ -94,8 +106,10 @@ defmodule Astro.Ephemeris.Kernel do
   Evaluates a Type 2 segment at TDB epoch `et` (seconds past J2000.0).
   Returns `{x, y, z}` in km relative to the segment's centre body.
   """
-  @spec position(t(), map(), float()) :: {float(), float(), float()}
-  def position(%__MODULE__{data: data, endian: endian}, segment, et) do
+  @spec position(map(), float()) :: {float(), float(), float()}
+  def position(segment, et) do
+    %__MODULE__{data: data, endian: endian} = ephemeris()
+
     %{
       start_addr: start_addr,
       init_et:    init_et,

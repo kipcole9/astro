@@ -15,7 +15,7 @@ defmodule Astro.Supervisor do
   supervisor called Astro.Supervisor.
 
   """
-  def start(_type \\ [], _args \\ []) do
+  def start_link(_type \\ [], _args \\ []) do
     children = [
       TzWorld.Backend.DetsWithIndexCache
     ]

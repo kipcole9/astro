@@ -45,11 +45,8 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   ## Required setup
 
-      {:ok, kernel} = Spk.Kernel.load("priv/de440s.bsp")
-      {:ok, dt} = MoonRiseSet2.moonrise(kernel, {151.2093, -33.8688}, ~D[2026-03-08])
-
-  `de440s.bsp` (~32 MB):
-  https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
+    * Ephemeris data needs to be downloaded into the `priv/` directory. The
+      URL to download is https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
 
   ## Options
 
@@ -81,21 +78,21 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   # ── Public API ───────────────────────────────────────────────────────────────
 
-  @spec moonrise(Spk.Kernel.t(), Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec moonrise(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def moonrise(kernel, location, date, options \\ []) do
-    moon_event(kernel, location, to_date(date), :rise, options)
+  def moonrise(location, date, options \\ []) do
+    moon_event(location, to_date(date), :rise, options)
   end
 
-  @spec moonset(Spk.Kernel.t(), Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec moonset(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def moonset(kernel, location, date, options \\ []) do
-    moon_event(kernel, location, to_date(date), :set, options)
+  def moonset(location, date, options \\ []) do
+    moon_event(location, to_date(date), :set, options)
   end
 
   # ── Core ─────────────────────────────────────────────────────────────────────
 
-  defp moon_event(kernel, location, date, event, options) do
+  defp moon_event(location, date, event, options) do
     %Geo.PointZ{coordinates: {lng, lat, elev_m}} = Astro.Location.normalize_location(location)
 
     {rho_sin_phi, rho_cos_phi} = geocentric_observer(lat, elev_m)
@@ -110,7 +107,7 @@ defmodule Astro.Lunar.MoonRiseSet do
       Stream.iterate(et_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= et_end))
       |> Enum.map(fn et ->
-        {et, topocentric_f(kernel, et, lat, lng, rho_sin_phi, rho_cos_phi)}
+        {et, topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi)}
       end)
 
     # Find the first bracket with the correct sign change polarity.
@@ -129,8 +126,7 @@ defmodule Astro.Lunar.MoonRiseSet do
         {:error, :no_time}
 
       [{et_lo, f_lo}, {et_hi, f_hi}] ->
-        et_event = bisect(kernel, et_lo, f_lo, et_hi, f_hi,
-                          lat, lng, rho_sin_phi, rho_cos_phi, @bisect_max)
+        et_event = bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, @bisect_max)
         utc_dt = Coordinates.et_to_utc(et_event)
         apply_time_zone(utc_dt, location, options)
     end
@@ -145,8 +141,8 @@ defmodule Astro.Lunar.MoonRiseSet do
   #
   # Positive f: Moon is above the horizon.
   # Negative f: Moon is below the horizon.
-  defp topocentric_f(kernel, et, lat, lng, rho_sin_phi, rho_cos_phi) do
-    {:ok, {ra_geo, dec_geo, dist_km}} = Ephemeris.moon_position_et(kernel, et)
+  defp topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi) do
+    {:ok, {ra_geo, dec_geo, dist_km}} = Ephemeris.moon_position_et(et)
 
     semi_diam = :math.asin(@moon_radius_km / dist_km) * 180.0 / :math.pi()
 
@@ -210,23 +206,23 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   # ── Bisection ────────────────────────────────────────────────────────────────
 
-  defp bisect(_kernel, et_lo, _f_lo, et_hi, _f_hi,
+  defp bisect(et_lo, _f_lo, et_hi, _f_hi,
               _lat, _lng, _rsp, _rcp, 0),
     do: (et_lo + et_hi) / 2.0
 
-  defp bisect(kernel, et_lo, f_lo, et_hi, f_hi,
+  defp bisect(et_lo, f_lo, et_hi, f_hi,
               lat, lng, rho_sin_phi, rho_cos_phi, iters) do
     if et_hi - et_lo <= @bisect_tol_s do
       (et_lo + et_hi) / 2.0
     else
       et_mid = (et_lo + et_hi) / 2.0
-      f_mid  = topocentric_f(kernel, et_mid, lat, lng, rho_sin_phi, rho_cos_phi)
+      f_mid  = topocentric_f(et_mid, lat, lng, rho_sin_phi, rho_cos_phi)
 
       if f_lo * f_mid <= 0.0 do
-        bisect(kernel, et_lo, f_lo, et_mid, f_mid,
+        bisect(et_lo, f_lo, et_mid, f_mid,
                lat, lng, rho_sin_phi, rho_cos_phi, iters - 1)
       else
-        bisect(kernel, et_mid, f_mid, et_hi, f_hi,
+        bisect(et_mid, f_mid, et_hi, f_hi,
                lat, lng, rho_sin_phi, rho_cos_phi, iters - 1)
       end
     end
@@ -302,7 +298,7 @@ defmodule Astro.Lunar.MoonRiseSet do
   end
 
   defp shift_zone(utc_dt, tz, :configured), do: DateTime.shift_zone(utc_dt, tz)
-  defp shift_zone(utc_dt, tz, tz_db),       do: DateTime.shift_zone(utc_dt, tz, tz_db)
+  defp shift_zone(utc_dt, tz, tz_db), do: DateTime.shift_zone(utc_dt, tz, tz_db)
 
   # ── Math helpers ─────────────────────────────────────────────────────────────
 

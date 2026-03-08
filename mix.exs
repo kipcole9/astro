@@ -54,6 +54,7 @@ defmodule Astro.MixProject do
 
   def application do
     [
+      mod: {Astro.Application, [strategy: :one_for_one, name: Money.Supervisor]},
       extra_applications: [:logger]
     ]
   end
