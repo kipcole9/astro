@@ -128,7 +128,13 @@ defmodule Astro.Lunar.MoonRiseSet do
       [{et_lo, f_lo}, {et_hi, f_hi}] ->
         et_event = bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, @bisect_max)
         utc_dt = Coordinates.et_to_utc(et_event)
-        apply_time_zone(utc_dt, location, options)
+        {:ok, local_dt} = apply_time_zone(utc_dt, location, options)
+
+        if Date.compare(local_dt, date) == :eq do
+          {:ok, local_dt}
+        else
+          {:error, :no_time}
+        end
     end
   end
 
