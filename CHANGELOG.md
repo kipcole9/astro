@@ -14,6 +14,10 @@ This is the changelog for Astro version 2.0.0 released on ______.  For older cha
 
 * Adds `Astro.moonrise/3` and `Astro.moonset/3`.
 
+* Adds `Astro.date_time_new_moon_nearest/1` (takes a date or date time parameter)
+
+* Adds `Astro.Lunar.date_time_new_moon_nearest/1` (takes a moment parameter)
+
 * Adds `Astro.Time.date_from_julian_days/1`.
 
 ## Astro version 1.1.2

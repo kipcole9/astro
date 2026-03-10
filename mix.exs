@@ -93,6 +93,9 @@ defmodule Astro.MixProject do
       # If using tzdata
       {:tzdata, "~> 1.1", optional: true},
 
+      # For Um Al-Qura tests
+      {:table_rex, "~> 4.0", only: :dev},
+
       # If usuing tz
       {:tz, "~> 0.26", optional: true},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},

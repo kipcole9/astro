@@ -85,7 +85,7 @@ defmodule Astro.Time do
   @minutes_per_hour 60.0
   @hours_per_day 24.0
 
-  # Mean synodic month in days
+  # Mean synodic month in days. Meeus Ch. 49
   @mean_synodic_month 29.530588861
 
   # Mean tropical year in days
@@ -442,6 +442,7 @@ defmodule Astro.Time do
     {:ok, date} = Date.new(year, month, day)
     {:ok, time} = Time.new( hours,minutes, seconds)
     {:ok, naive_datetime} = NaiveDateTime.new(date, time)
+
     datetime_in_utc(naive_datetime)
   end
 
@@ -455,7 +456,7 @@ defmodule Astro.Time do
 
   ### Returns
 
-  * a `t:Date.t/0`
+  * a `t:Date.t/0`.
 
   ## Example
 

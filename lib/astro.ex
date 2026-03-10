@@ -289,7 +289,7 @@ defmodule Astro do
 
   ### Example
 
-      iex> Astro.date_time_new_moon_before ~D[2021-08-23]
+      iex> Astro.date_time_new_moon_before(~D[2021-08-23])
       {:ok, ~U[2021-08-08 13:49:07.000000Z]}
 
   """
@@ -320,6 +320,53 @@ defmodule Astro do
 
   @doc """
   Returns the date time of the new
+  moon nearest to a given date or date time.
+
+  ### Arguments
+
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
+    any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
+
+  ### Returns
+
+  * `{:ok, date_time}` at which the new moon occurs or
+
+  * `{:error, {module, reason}}`
+
+  ### Example
+
+      iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
+      {:ok, ~U[2021-08-08 13:49:07.000000Z]}
+
+  """
+  @doc since: "2.0.0"
+  @spec(
+    date_time_new_moon_nearest(date()) ::
+      {:ok, Calendar.datetime()},
+    {:error, {module(), String.t()}}
+  )
+
+  def date_time_new_moon_nearest(unquote(Guards.datetime()) = date_time) do
+    _ = calendar
+
+    date_time
+    |> Time.date_time_to_moment()
+    |> Lunar.date_time_new_moon_nearest()
+    |> Time.date_time_from_moment()
+  end
+
+  def date_time_new_moon_nearest(unquote(Guards.date()) = date) do
+    _ = calendar
+
+    date
+    |> Date.to_gregorian_days()
+    |> Lunar.date_time_new_moon_nearest()
+    |> Time.date_time_from_moment()
+  end
+
+  @doc """
+  Returns the date time of the new
   moon at or after a given date or
   date time.
 
@@ -337,7 +384,7 @@ defmodule Astro do
 
   ### Example
 
-      iex> Astro.date_time_new_moon_at_or_after ~D[2021-08-23]
+      iex> Astro.date_time_new_moon_at_or_after(~D[2021-08-23])
       {:ok, ~U[2021-09-07 00:50:43.000000Z]}
 
   """

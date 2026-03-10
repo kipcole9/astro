@@ -110,8 +110,7 @@ defmodule Astro.Lunar do
 
   @doc """
   Returns the date time of the new
-  moon at or after a given date or
-  date time.
+  moon at or after a given moment.
 
   ## Arguments
 
@@ -125,7 +124,7 @@ defmodule Astro.Lunar do
 
   ## Example
 
-      iex> Astro.Lunar.date_time_new_moon_at_or_after 738390
+      iex> Astro.Lunar.date_time_new_moon_at_or_after(738390)
       738405.0352292997
 
   """
@@ -140,9 +139,43 @@ defmodule Astro.Lunar do
   end
 
   @doc """
-  Returns the lunar phase as a
-  float number of degrees at a given
-  moment.
+  Returns the moment of the new
+  moon nearest to a given moment.
+
+  ## Arguments
+
+  * `t` is a `t:Astro.Time.moment/0` float number of days
+    since `0000-01-01`.
+
+  ## Returns
+
+  * a `t:Astro.Time.moment/0` which is a float number of days
+    since `0000-01-01`
+
+  ## Example
+
+      iex> Astro.Lunar.date_time_new_moon_nearest(738390)
+      738405.0352292997
+
+  """
+  @doc since: "2.0.0"
+  @spec date_time_new_moon_nearest(t :: Time.moment()) :: Time.moment()
+  def date_time_new_moon_nearest(t) when is_number(t) do
+    new_moon = new_moon_phase()
+
+    at_or_before = date_time_lunar_phase_at_or_before(t, new_moon)
+    at_or_after = date_time_lunar_phase_at_or_before(t, new_moon)
+
+    if abs(t - at_or_before) < abs(t - at_or_after) do
+      at_or_before
+    else
+      at_or_after
+    end
+  end
+
+  @doc """
+  Returns the lunar phase as a float number of degrees at
+  a given moment.
 
   ## Arguments
 
@@ -156,10 +189,10 @@ defmodule Astro.Lunar do
 
   ## Example
 
-      iex> Astro.Lunar.lunar_phase_at 738389.5007195644
+      iex> Astro.Lunar.lunar_phase_at(738389.5007195644)
       180.00001498208536
 
-      iex> Astro.Lunar.lunar_phase_at 738346.0544609067
+      iex> Astro.Lunar.lunar_phase_at(738346.0544609067)
       0.021567106773019873
 
   """
