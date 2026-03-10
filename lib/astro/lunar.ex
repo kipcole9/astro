@@ -155,7 +155,7 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.date_time_new_moon_nearest(738390)
-      738405.0352292997
+      738375.5757797237
 
   """
   @doc since: "2.0.0"

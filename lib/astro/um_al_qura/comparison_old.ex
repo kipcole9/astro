@@ -1,4 +1,4 @@
-defmodule Astro.UmmAlQura.Comparison do
+defmodule Astro.UmmAlQura.Comparison.Old do
   @moduledoc """
   Runs the Umm al-Qura first-day calculation against the complete reference
   dataset and emits a formatted comparison table to stdout, followed by a
@@ -122,7 +122,7 @@ defmodule Astro.UmmAlQura.Comparison do
     if mismatches == [] do
       IO.puts("All calculated dates match the reference data exactly. ✓\n")
     else
-      IO.puts("Discrepancy details:\n")
+      IO.puts("Discrepancy details (with astronomical condition evaluation):\n")
 
       Enum.each(mismatches, fn row ->
         IO.puts("  #{row.hijri_year} AH / Month #{row.hijri_month} (#{row.month_name})")
@@ -132,6 +132,27 @@ defmodule Astro.UmmAlQura.Comparison do
           IO.puts("    Error      : #{inspect(row.error)}")
         else
           IO.puts("    Calculated : #{Date.to_iso8601(row.calculated_date)}  (Δ #{format_delta(row.delta_days)} day(s))")
+
+          # Re-evaluate the 29th-day conditions and print them for diagnosis.
+          candidate_29 = Date.add(row.reference_date, -1)
+
+          case UmmAlQura.evaluate_conditions(candidate_29) do
+            {:ok, eval} ->
+              conj  = format_datetime(eval.conjunction_utc)
+              sset  = format_datetime(eval.sunset_mecca)
+              mset  = if eval.moonset_mecca == :no_time, do: "no moonset", else: format_datetime(eval.moonset_mecca)
+
+              IO.puts("    29th day conditions (date = #{Date.to_iso8601(candidate_29)}):")
+              IO.puts("      Conjunction  : #{conj}")
+              IO.puts("      Sunset Mecca : #{sset}")
+              IO.puts("      Moonset Mecca: #{mset}")
+              IO.puts("      Conj < Sunset: #{eval.conjunction_before_sunset?}")
+              IO.puts("      Moon > Sunset: #{eval.moonset_after_sunset?}")
+              IO.puts("      → New month next day: #{eval.new_month_starts_next_day?}")
+
+            {:error, reason} ->
+              IO.puts("    (Could not evaluate 29th-day conditions: #{inspect(reason)})")
+          end
         end
 
         IO.puts("")
@@ -141,4 +162,10 @@ defmodule Astro.UmmAlQura.Comparison do
 
   defp format_delta(d) when d > 0, do: "+#{d}"
   defp format_delta(d),             do: Integer.to_string(d)
+
+  defp format_datetime(%DateTime{} = dt) do
+    "#{dt.year}-#{pad2(dt.month)}-#{pad2(dt.day)} #{pad2(dt.hour)}:#{pad2(dt.minute)} UTC"
+  end
+
+  defp pad2(n), do: String.pad_leading(Integer.to_string(n), 2, "0")
 end
