@@ -31,3 +31,6 @@ erl_crash.dump
 
 # Mise
 mise.toml
+
+# Claude
+/.claude
