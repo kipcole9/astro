@@ -96,14 +96,16 @@ defmodule Astro.UmmAlQura do
     with {:ok, conjunction} <- Astro.date_time_new_moon_nearest(date),
          {:ok, sunset_at_mecca} <- sunset_utc_at_mecca(date) do
       moonset_at_mecca =
-        moonset_utc_at_mecca(date)
+        moonset_utc_at_mecca(sunset_at_mecca)
 
       conjunction_before_sunset? =
         DateTime.compare(conjunction, sunset_at_mecca) == :lt
 
       moonset_after_sunset? =
         case moonset_at_mecca do
-          {:ok, moonset} -> DateTime.compare(moonset, sunset_at_mecca) == :gt
+          {:ok, moonset} ->
+            DateTime.compare(moonset, sunset_at_mecca) == :gt
+            && DateTime.to_date(moonset) == date
           {:error, :no_time} -> false
           _other -> false
         end
@@ -171,12 +173,9 @@ defmodule Astro.UmmAlQura do
   end
 
   # Returns the UTC DateTime of sunset in Mecca on `date`.
-  # Astro.Solar.sunset/2 takes a {longitude, latitude} pair and a Date.
-  # The moonrise branch keeps the same Solar API.
-  defp sunset_utc_at_mecca(%Date{} = date) do
+  defp sunset_utc_at_mecca(date) do
     case Astro.sunset(@mecca_location, date) do
       {:ok, sunset_local} ->
-        # Convert to UTC for unambiguous comparison.
         {:ok, DateTime.shift_zone!(sunset_local, "Etc/UTC")}
 
       error ->
@@ -185,8 +184,7 @@ defmodule Astro.UmmAlQura do
   end
 
   # Returns the UTC DateTime of moonset in Mecca on `date`.
-  # Astro.moonset/2 was introduced in the moonrise branch.
-  defp moonset_utc_at_mecca(%Date{} = date) do
+  defp moonset_utc_at_mecca(date) do
     case Astro.moonset(@mecca_location, date) do
       {:ok, moonset_local} ->
         {:ok, DateTime.shift_zone!(moonset_local, "Etc/UTC")}
