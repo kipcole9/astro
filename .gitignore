@@ -29,3 +29,5 @@ erl_crash.dump
 # JPL Ephemeris data
 /priv/de440s.bsp
 
+# Mise
+mise.toml
