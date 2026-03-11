@@ -37,7 +37,7 @@ defmodule Astro.UmmAlQura.ReferenceData do
         ]
   def umm_al_qura_dates do
     dates =
-      to_gregorian(official_data(), [@hijri_start_date])
+      to_gregorian(akmal_data(), [@hijri_start_date])
       |> Enum.reverse()
 
     dates
@@ -54,10 +54,11 @@ defmodule Astro.UmmAlQura.ReferenceData do
   # ---------------------------------------------------------------------------
 
   # From https://gist.github.com/akmalxxx/6492017
-  # Each number is a cumulative "days since an epoch" counter.  Consecutive
+  # Each number is a cumulative since an epoch.  Consecutive
   # differences give the length (29 or 30 days) of each Hijri month, starting
   # at 1 Muharram 1356 AH (14 March 1937 CE).
-  defp official_data do
+  @doc false
+  def akmal_data do
     [
       28607,28636,28665,28695,28724,28754,28783,28813,28843,28872,28901,28931,28960,28990,29019,29049,29078,29108,29137,29167,
       29196,29226,29255,29285,29315,29345,29375,29404,29434,29463,29492,29522,29551,29580,29610,29640,29669,29699,29729,29759,

@@ -69,7 +69,8 @@ defmodule Astro.Lunar.MoonRiseSet do
   # duration of any lunar appearance above the horizon (always ≥ 6 h).
   @scan_step_s 1_440
 
-  # Event condition matching the USNO / timeanddate.com standard (see RST_defs):
+  # Event condition matching the USNO / timeanddate.com standard
+  # (see [RST_defs](https://aa.usno.navy.mil/faq/docs/RST_defs.php)):
   #   geometric zenith distance of centre = 90° + refraction + semi_diam − h_parallax
   # In topocentric geometric altitude this reduces to:
   #   alt_geom = −(refraction + semi_diam)

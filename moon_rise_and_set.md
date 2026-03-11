@@ -16,6 +16,8 @@ The implementation of Astro is based primarily on these sources:
 
 * Ephemeris data for moonrise and moonset is from [JPL de440s](https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440.bsp). These ephemeris contain the most up-to-date data for the Moon. It would be also reasonable to use later ephemeris however these later versions do not update the ephemerides for the Moon.
 
+* The calculations are calibrated to return moonrise in Mecca that aligns with the requirements of the [Umm al-Qura calendar](https://webspace.science.uu.nl/~gent0113/islam/ummalqura.htm) in use in Saudi Arabia. The only change to bring the data into alignment is to use a refraction angle of 35 arcminutes instead of the USNO standard 34 arcminutes. This change does not materially affect the accuracy of moonrise and moonset calculations.
+
 ---
 
 ## Algorithm overview
@@ -264,7 +266,7 @@ same; only the interaction with USNO's rounding differs.
 
 ### Refraction constant
 
-The USNO standard uses 34 arcminutes. This module uses 35 arcminutes,
+The USNO standard uses 34 arcminutes. `Astro.Lunar.MoonRiseSet` uses 35 arcminutes,
 calibrated against the Umm al-Qura reference dataset (1423–1500 AH, KACST
 reference). The 1-arcminute difference shifts the altitude threshold by 1′,
 which at a typical horizon-crossing rate of 10–12 arcmin/min corresponds to
