@@ -33,7 +33,7 @@ defmodule Astro.Ephemeris do
   - Topocentric correction residuals at high solar-altitude latitudes
 
   This represents a 10–100× improvement over the truncated Chapront series
-  used by the `astro` library.
+  used by in Meeus.
   """
 
   alias Astro.Ephemeris.Kernel
