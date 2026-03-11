@@ -1,4 +1,4 @@
-defmodule Astro.UmmAlQura.Astronimical do
+defmodule Astro.UmmAlQura.Astronomical do
   @moduledoc """
   Implements the Umm al-Qura calendar rule for determining the first day of each
   Hijri month.

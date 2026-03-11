@@ -40,7 +40,7 @@ defmodule Astro.UmmAlQura.Comparison do
   # ---------------------------------------------------------------------------
 
   defp evaluate_row({hijri_year, hijri_month, reference_date}) do
-    month_name = ReferenceData.month_name(hijri_month)
+    month_name = Astro.UmmAlQura.MonthNames.month_name(hijri_month)
 
     result =
       case UmmAlQura.first_day_of_month(hijri_year, hijri_month) do

@@ -1,4 +1,4 @@
-defmodule Astro.UmmAlQura.Comparison.Old do
+defmodule Astro.UmmAlQura.Comparison.Astronomical do
   @moduledoc """
   Runs the Umm al-Qura first-day calculation against the complete reference
   dataset and emits a formatted comparison table to stdout, followed by a
@@ -8,10 +8,11 @@ defmodule Astro.UmmAlQura.Comparison.Old do
   Run from the project root with:
 
       mix run -e "UmmAlQura.Comparison.run()"
+
   """
 
-  alias Astro.UmmAlQura.ReferenceData
   alias Astro.UmmAlQura
+  alias Astro.UmmAlQura.ReferenceData
 
   @doc """
   Executes the comparison and prints results to stdout.
@@ -40,7 +41,7 @@ defmodule Astro.UmmAlQura.Comparison.Old do
   # ---------------------------------------------------------------------------
 
   defp evaluate_row({hijri_year, hijri_month, reference_date}) do
-    month_name = ReferenceData.month_name(hijri_month)
+    month_name = Astro.UmmAlQura.MonthNames.month_name(hijri_month)
 
     result =
       case UmmAlQura.first_day_of_month(hijri_year, hijri_month) do
@@ -136,7 +137,7 @@ defmodule Astro.UmmAlQura.Comparison.Old do
           # Re-evaluate the 29th-day conditions and print them for diagnosis.
           candidate_29 = Date.add(row.reference_date, -1)
 
-          case UmmAlQura.evaluate_conditions(candidate_29) do
+          case UmmAlQura.Astronomical.evaluate_conditions(candidate_29) do
             {:ok, eval} ->
               conj  = format_datetime(eval.conjunction_utc)
               sset  = format_datetime(eval.sunset_mecca)
@@ -168,4 +169,5 @@ defmodule Astro.UmmAlQura.Comparison.Old do
   end
 
   defp pad2(n), do: String.pad_leading(Integer.to_string(n), 2, "0")
+
 end
