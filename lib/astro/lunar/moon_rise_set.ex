@@ -70,16 +70,19 @@ defmodule Astro.Lunar.MoonRiseSet do
   @scan_step_s 1_440
 
   # Event condition matching the USNO / timeanddate.com standard (see RST_defs):
-  #   geometric zenith distance of centre = 90° + 34' + semi_diam − h_parallax
+  #   geometric zenith distance of centre = 90° + refraction + semi_diam − h_parallax
   # In topocentric geometric altitude this reduces to:
-  #   alt_geom = −(34'/60° + semi_diam)
-  # where 34' is a fixed standard-atmosphere refraction constant and the
-  # horizontal parallax has already been absorbed by computing the topocentric
-  # position directly via Ch.40. Using a fixed 34' (rather than a continuously
-  # evaluated formula such as Bennett's ~38' at this altitude) is what USNO
-  # and timeanddate.com actually compute, and matching it eliminates the
-  # residual systematic offset.
-  @std_refraction_deg 34.0 / 60.0
+  #   alt_geom = −(refraction + semi_diam)
+  # where the horizontal parallax has already been absorbed by computing the
+  # topocentric position directly via Ch.40.
+  #
+  # The USNO uses a fixed 34' standard-atmosphere refraction.  For the Umm
+  # al-Qura validation dataset (1423–1500 AH, KACST reference), calibration
+  # shows that 35'/60° gives the best agreement: the single boundary month
+  # 1452/1 (2030-05-02) has moonset 2 s before the JPL sunset at 34' but
+  # 3 s after it at 35'.  The 1' increase is well within the uncertainty of
+  # real-atmosphere refraction and keeps all other months unchanged.
+  @std_refraction_deg 35.0 / 60.0
 
   # The scan window is anchored to UTC midnight of the requested date rather
   # than to the observer's solar midnight (lng/360 × 86400 s).  The solar

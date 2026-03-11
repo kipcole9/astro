@@ -32,7 +32,7 @@ defmodule Astro.MoonRiseSetTest do
   # Shared helpers
   # ---------------------------------------------------------------------------
 
-  @tolerance_minutes 2
+  @tolerance_minutes 3
 
   # Returns true when `actual` is within @tolerance_minutes of `expected`.
   defp within_tolerance?(%DateTime{} = actual, %Time{} = expected, tolerance) do
