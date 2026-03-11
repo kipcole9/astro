@@ -69,7 +69,7 @@ defmodule Astro.Coordinates do
     jd_tt = et / @seconds_per_day + @jd_j2000
     jd_utc = jd_tt - @delta_t_seconds / @seconds_per_day
     unix_float = (jd_utc - @jd_unix_epoch) * @seconds_per_day
-    unix_seconds = round(unix_float / 60) * 60
+    unix_seconds = round(unix_float)
     DateTime.from_unix!(unix_seconds, :second)
   end
 

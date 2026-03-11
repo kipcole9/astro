@@ -164,7 +164,7 @@ defmodule Astro.Lunar do
     new_moon = new_moon_phase()
 
     at_or_before = date_time_lunar_phase_at_or_before(t, new_moon)
-    at_or_after = date_time_lunar_phase_at_or_before(t, new_moon)
+    at_or_after = date_time_lunar_phase_at_or_after(t, new_moon)
 
     if abs(t - at_or_before) < abs(t - at_or_after) do
       at_or_before

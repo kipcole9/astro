@@ -93,10 +93,10 @@ defmodule Astro.UmmAlQura.Astronomical do
   """
   @spec evaluate_conditions(Date.t()) :: {:ok, map()} | {:error, term()}
   def evaluate_conditions(%Date{} = date) do
-    with {:ok, conjunction} <- Astro.date_time_new_moon_nearest(date),
+    with {:ok, conjunction} <- Astro.date_time_new_moon_at_or_after(Date.add(date, -2)),
          {:ok, sunset_at_mecca} <- sunset_utc_at_mecca(date) do
       moonset_at_mecca =
-        moonset_utc_at_mecca(sunset_at_mecca)
+        moonset_utc_at_mecca(date)
 
       conjunction_before_sunset? =
         DateTime.compare(conjunction, sunset_at_mecca) == :lt
@@ -134,22 +134,41 @@ defmodule Astro.UmmAlQura.Astronomical do
   # Private helpers
   # ---------------------------------------------------------------------------
 
-  # Estimate the Gregorian date of the 29th day of the given Hijri month by
-  # converting the Hijri date to a Julian Day Number and then to a Gregorian date.
+  # Find the Gregorian date on which the Umm al-Qura rule must be evaluated for
+  # the given Hijri month — i.e., the 29th day of the *previous* Hijri month,
+  # which is the day the astronomical new moon occurs (in Mecca local time).
+  #
+  # Strategy: compute a rough JDN that lands within ±1 day of the target, then
+  # anchor to the *actual* geocentric conjunction using
+  # `Astro.date_time_new_moon_nearest/1`.  Converting the conjunction instant
+  # to Mecca local time (permanently UTC+3) gives the exact Gregorian date on
+  # which the rule is evaluated, with no dependence on `round/1` rounding.
   defp approximate_29th(hijri_year, hijri_month) do
-    # Total number of months elapsed since the Hijri epoch up to the beginning
-    # of the requested month (0-based month count).
+    # 0-based count of months elapsed since 1 Muharram 1 AH.
     months_since_epoch =
       (hijri_year - 1) * 12 + (hijri_month - 1)
 
-    # Approximate JDN of the 1st day of this month using the mean synodic month.
-    approx_jdn =
-      @hijri_epoch_jdn + round(months_since_epoch * @mean_synodic_month)
+    # Rough JDN near the 29th of the previous Hijri month.  The ±1-day
+    # rounding error from `round/1` is harmless — we use it only as a seed
+    # for the conjunction search below.
+    rough_jdn =
+      @hijri_epoch_jdn + round(months_since_epoch * @mean_synodic_month) + 28
 
-    # We want the 29th day (Julian Day = approx_jdn + 28).
-    target_jdn = approx_jdn + 28
-
-    jdn_to_date(target_jdn)
+    with {:ok, rough_date} <- jdn_to_date(rough_jdn),
+         # Use at_or_after(rough_date - 1) instead of date_time_new_moon_nearest.
+         # Rationale: date_time_new_moon_nearest has a bug where both branches
+         # call at_or_before, so it never looks forward.  By starting the search
+         # one day before rough_date we reliably capture the conjunction even when
+         # rough_jdn is ±1 day off (the rounding error we are trying to escape).
+         {:ok, conjunction} <- Astro.date_time_new_moon_at_or_after(Date.add(rough_date, -2)) do
+      # Convert the conjunction UTC instant to Mecca local time (UTC+3,
+      # permanent — Mecca observes no DST).  The Mecca-local calendar date
+      # of the conjunction is the 29th day of the old Hijri month, which is
+      # precisely when the rule is applied.
+      DateTime.shift_zone(conjunction, "Asia/Ryadh")
+      #mecca_unix = DateTime.to_unix(conjunction) + 3 * 3600
+      #{:ok, mecca_unix |> DateTime.from_unix!() |> DateTime.to_date()}
+    end
   end
 
   # Apply the Umm al-Qura rule starting at the candidate 29th day.
