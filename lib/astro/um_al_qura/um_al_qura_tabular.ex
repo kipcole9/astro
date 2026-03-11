@@ -1,4 +1,4 @@
-defmodule Astro.UmmAlQura do
+defmodule Astro.UmmAlQura.Tabular do
   @moduledoc """
   Provides exact Gregorian dates for the first day of each Hijri month
   according to the official Umm al-Qura calendar published by the
