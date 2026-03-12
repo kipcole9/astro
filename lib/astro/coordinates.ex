@@ -99,11 +99,11 @@ defmodule Astro.Coordinates do
     theta_a = arcsec_to_rad(2004.3109 * t - 0.85330 * t * t - 0.000217 * t * t * t)
     z_a = arcsec_to_rad(2306.2181 * t + 3.04480 * t * t + 0.000510 * t * t * t)
 
-    # Precession rotation matrix P = Rz(-zA) · Ry(θA) · Rz(-ζA)
-    # Apply as three successive rotations to the vector.
+    # Precession matrix P (Meeus Ch.21) in standard math convention:
+    # P = Rz(zA) · Ry(-θA) · Rz(ζA)
     {x1, y1, z1} = rot_z({x, y, z}, zeta_a)
     {x2, y2, z2} = rot_y({x1, y1, z1}, -theta_a)
-    {x3, y3, z3} = rot_z({x2, y2, z2}, -z_a)
+    {x3, y3, z3} = rot_z({x2, y2, z2}, z_a)
 
     # Nutation
     {d_psi, d_eps, eps0} = nutation(t)
@@ -111,9 +111,9 @@ defmodule Astro.Coordinates do
     eps = eps0 + d_eps
 
     # Nutation rotation N = Rx(-ε) · Rz(-Δψ) · Rx(ε0)
-    {x4, y4, z4} = rot_x({x3, y3, z3}, -eps0)
-    {x5, y5, z5} = rot_z({x4, y4, z4}, d_psi)
-    {x6, y6, z6} = rot_x({x5, y5, z5}, eps)
+    {x4, y4, z4} = rot_x({x3, y3, z3}, eps0)
+    {x5, y5, z5} = rot_z({x4, y4, z4}, -d_psi)
+    {x6, y6, z6} = rot_x({x5, y5, z5}, -eps)
 
     {x6, y6, z6}
   end
@@ -168,7 +168,7 @@ defmodule Astro.Coordinates do
     deps = deps_units * 0.0001 / @arcsec_per_deg * :math.pi() / 180.0
 
     # Mean obliquity of the ecliptic (Meeus eq 22.2), arcseconds → radians
-    eps0_arcsec = 84_381.448 - 4_680.93 * t - 1.55 * t * t + 1_999.25 * t * t * t
+    eps0_arcsec = 84_381.448 - 46.8150 * t - 0.00059 * t * t + 0.001813 * t * t * t
     eps0 = eps0_arcsec / @arcsec_per_deg * :math.pi() / 180.0
 
     {dpsi, deps, eps0}
@@ -237,24 +237,27 @@ defmodule Astro.Coordinates do
   # ── Rotation helpers ─────────────────────────────────────────────────────────
 
   # Right-handed rotation about the X axis by angle `a` (radians).
+  # Rx(a) = [[1,0,0],[0,cos,-sin],[0,sin,cos]]
   defp rot_x({x, y, z}, a) do
     ca = :math.cos(a)
     sa = :math.sin(a)
-    {x, ca * y + sa * z, -sa * y + ca * z}
+    {x, ca * y - sa * z, sa * y + ca * z}
   end
 
   # Right-handed rotation about the Y axis by angle `a` (radians).
+  # Ry(a) = [[cos,0,sin],[0,1,0],[-sin,0,cos]]
   defp rot_y({x, y, z}, a) do
     ca = :math.cos(a)
     sa = :math.sin(a)
-    {ca * x - sa * z, y, sa * x + ca * z}
+    {ca * x + sa * z, y, -sa * x + ca * z}
   end
 
   # Right-handed rotation about the Z axis by angle `a` (radians).
+  # Rz(a) = [[cos,-sin,0],[sin,cos,0],[0,0,1]]
   defp rot_z({x, y, z}, a) do
     ca = :math.cos(a)
     sa = :math.sin(a)
-    {ca * x + sa * y, -sa * x + ca * y, z}
+    {ca * x - sa * y, sa * x + ca * y, z}
   end
 
   defp arcsec_to_rad(arcsec) do

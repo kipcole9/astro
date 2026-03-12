@@ -77,13 +77,8 @@ defmodule Astro.Lunar.MoonRiseSet do
   # where the horizontal parallax has already been absorbed by computing the
   # topocentric position directly via Ch.40.
   #
-  # The USNO uses a fixed 34' standard-atmosphere refraction.  For the Umm
-  # al-Qura validation dataset (1423–1500 AH, KACST reference), calibration
-  # shows that 35'/60° gives the best agreement: the single boundary month
-  # 1452/1 (2030-05-02) has moonset 2 s before the JPL sunset at 34' but
-  # 3 s after it at 35'.  The 1' increase is well within the uncertainty of
-  # real-atmosphere refraction and keeps all other months unchanged.
-  @std_refraction_deg 35.0 / 60.0
+  # Standard atmospheric refraction at the horizon (USNO convention: 34').
+  @std_refraction_deg 34.0 / 60.0
 
   # The scan window is anchored to UTC midnight of the requested date rather
   # than to the observer's solar midnight (lng/360 × 86400 s).  The solar
@@ -126,16 +121,16 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     {rho_sin_phi, rho_cos_phi} = geocentric_observer(lat, elev_m)
 
-    # Scan a 52-hour window anchored 14 hours before UTC midnight of the
-    # requested date. This guarantees that the full civil day is contained
-    # regardless of the observer's UTC offset (which ranges from −12 to +14).
-    #
-    # Using a solar-longitude offset instead (round(lng/360 × 86400 s)) would
-    # start the window at "mean solar midnight", which can differ from civil
-    # midnight by up to 3 hours due to timezone boundaries and DST. Events in
-    # that gap are silently missed. The New York case illustrates this: on a
-    # DST date the solar midnight at lng −74° is 04:56 UTC, but civil midnight
-    # (EDT) is 04:00 UTC, so a moonrise at 04:41 UTC goes unreported.
+    # Build the altitude function. When :interpolation is :lagrange, we use
+    # three-point Lagrange quadratic interpolation of the Moon's geocentric
+    # position (sampled at 0h TT for T-1, T, T+1) to approximate RA, Dec,
+    # and distance at intermediate times. This reproduces the Meeus Ch.15
+    # approach used by the USNO.
+    interpolation = Keyword.get(options, :interpolation, :direct)
+
+    # Always use direct ephemeris for the coarse scan
+    direct_fn = fn et -> topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi) end
+
     {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
     et_start = Coordinates.utc_to_et(utc_midnight) - @scan_pre_window_s
     et_end = et_start + @scan_window_s
@@ -144,13 +139,9 @@ defmodule Astro.Lunar.MoonRiseSet do
     scan_pairs =
       Stream.iterate(et_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= et_end))
-      |> Enum.map(fn et ->
-        {et, topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi)}
-      end)
+      |> Enum.map(fn et -> {et, direct_fn.(et)} end)
 
-    # Collect every bracket with the correct sign-change polarity.  The Moon
-    # rises at most once per ~24.8 h, so at most two or three events appear in
-    # the 52-hour window; we want the one whose LOCAL date matches `date`.
+    # Collect every bracket with the correct sign-change polarity.
     brackets =
       scan_pairs
       |> Enum.chunk_every(2, 1, :discard)
@@ -163,8 +154,24 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     result =
       Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
-        et_event =
-          bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, @bisect_max)
+        # For Lagrange mode, build an interpolator centred on the bracket
+        # midpoint and use it for bisection refinement.
+        alt_fn =
+          case interpolation do
+            :lagrange ->
+              et_mid = (et_lo + et_hi) / 2.0
+              interp = build_lagrange_interpolator(date, et_mid)
+              fn et -> lagrange_topocentric_f(et, interp, lat, lng, rho_sin_phi, rho_cos_phi) end
+
+            :direct ->
+              direct_fn
+          end
+
+        # Re-evaluate bracket endpoints with the chosen function
+        f_lo_b = alt_fn.(et_lo)
+        f_hi_b = alt_fn.(et_hi)
+
+        et_event = bisect_with_fn(et_lo, f_lo_b, et_hi, f_hi_b, alt_fn, @bisect_max)
 
         utc_dt = Coordinates.et_to_utc(et_event)
 
@@ -232,22 +239,119 @@ defmodule Astro.Lunar.MoonRiseSet do
     alt_geom + semi_diam + @std_refraction_deg
   end
 
+  # ── Lagrange interpolation ───────────────────────────────────────────────────
+
+  # Lagrange interpolation interval (seconds).
+  # Using 2-hour intervals for the three-point quadratic gives much tighter
+  # approximation than the classical Meeus Ch.15 daily tabulation.
+  @lagrange_interval_s 7_200
+
+  # Build a Lagrange interpolator from 3 tabular positions.
+  # The tabular points are spaced by @lagrange_interval_s seconds, centred
+  # on the midpoint of the given bracket [et_lo, et_hi].
+  defp build_lagrange_interpolator(_date, et_center \\ nil) do
+    # Default: centre on 12h UTC of the date
+    et_center = et_center || raise("must provide et_center")
+    et0 = et_center - @lagrange_interval_s
+    et2 = et_center + @lagrange_interval_s
+
+    {:ok, {ra0, dec0, dist0}} = Ephemeris.moon_position_et(et0)
+    {:ok, {ra1, dec1, dist1}} = Ephemeris.moon_position_et(et_center)
+    {:ok, {ra2, dec2, dist2}} = Ephemeris.moon_position_et(et2)
+
+    # Fix RA discontinuities near 0/360 boundary
+    {ra0, ra1, ra2} = fix_ra_wrap(ra0, ra1, ra2)
+
+    %{
+      et_center: et_center,
+      interval: @lagrange_interval_s * 1.0,
+      ra: {ra0, ra1, ra2},
+      dec: {dec0, dec1, dec2},
+      dist: {dist0, dist1, dist2}
+    }
+  end
+
+  defp fix_ra_wrap(ra0, ra1, ra2) do
+    ra0 = if ra1 - ra0 > 180.0, do: ra0 + 360.0, else: ra0
+    ra0 = if ra0 - ra1 > 180.0, do: ra0 - 360.0, else: ra0
+    ra2 = if ra1 - ra2 > 180.0, do: ra2 + 360.0, else: ra2
+    ra2 = if ra2 - ra1 > 180.0, do: ra2 - 360.0, else: ra2
+    {ra0, ra1, ra2}
+  end
+
+  # Three-point Lagrange quadratic interpolation.
+  # n is the interpolation parameter: n=0 at et_center, n=±1 at the
+  # adjacent tabular points. Meeus eq 3.3.
+  defp lagrange_3pt(n, {y1, y2, y3}) do
+    a = y2 - y1
+    b = y3 - y2
+    c = b - a
+    y2 + n / 2.0 * (a + b + n * c)
+  end
+
+  # Altitude function using Lagrange-interpolated Moon position.
+  # This mimics the Meeus Ch.15 approach where the Moon's geocentric
+  # RA, Dec, and distance are interpolated from 3 daily tabular points.
+  defp lagrange_topocentric_f(et, interp, lat, lng, rho_sin_phi, rho_cos_phi) do
+    n = (et - interp.et_center) / interp.interval
+
+    ra_geo = lagrange_3pt(n, interp.ra)
+    dec_geo = lagrange_3pt(n, interp.dec)
+    dist_km = lagrange_3pt(n, interp.dist)
+
+    # Normalize RA to [0, 360)
+    ra_geo = :math.fmod(ra_geo, 360.0)
+    ra_geo = if ra_geo < 0, do: ra_geo + 360.0, else: ra_geo
+
+    semi_diam = :math.asin(@moon_radius_km / dist_km) * 180.0 / :math.pi()
+    parallax = Ephemeris.equatorial_horizontal_parallax(dist_km)
+    sin_pi = :math.sin(to_rad(parallax))
+
+    gast = Coordinates.gast(et)
+    h_geo = fmod(gast + lng - ra_geo, 360.0)
+    h_geo = if h_geo > 180.0, do: h_geo - 360.0, else: h_geo
+
+    # Meeus Ch.40 topocentric correction
+    delta_alpha_rad =
+      :math.atan2(
+        -rho_cos_phi * sin_pi * sin_d(h_geo),
+        cos_d(dec_geo) - rho_cos_phi * sin_pi * cos_d(h_geo)
+      )
+
+    dec_topo_rad =
+      :math.atan2(
+        (sin_d(dec_geo) - rho_sin_phi * sin_pi) * :math.cos(delta_alpha_rad),
+        cos_d(dec_geo) - rho_cos_phi * sin_pi * cos_d(h_geo)
+      )
+
+    h_topo = h_geo - delta_alpha_rad * 180.0 / :math.pi()
+
+    sin_alt =
+      sin_d(lat) * :math.sin(dec_topo_rad) +
+        cos_d(lat) * :math.cos(dec_topo_rad) * cos_d(h_topo)
+
+    alt_geom = :math.asin(sin_alt) * 180.0 / :math.pi()
+
+    alt_geom + semi_diam + @std_refraction_deg
+  end
+
   # ── Bisection ────────────────────────────────────────────────────────────────
 
-  defp bisect(et_lo, _f_lo, et_hi, _f_hi, _lat, _lng, _rsp, _rcp, 0),
+  # Bisection using a generic altitude function (for :lagrange and :direct modes)
+  defp bisect_with_fn(et_lo, _f_lo, et_hi, _f_hi, _f, 0),
     do: (et_lo + et_hi) / 2.0
 
-  defp bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, iters) do
+  defp bisect_with_fn(et_lo, f_lo, et_hi, f_hi, f, iters) do
     if et_hi - et_lo <= @bisect_tol_s do
       (et_lo + et_hi) / 2.0
     else
       et_mid = (et_lo + et_hi) / 2.0
-      f_mid = topocentric_f(et_mid, lat, lng, rho_sin_phi, rho_cos_phi)
+      f_mid = f.(et_mid)
 
       if f_lo * f_mid <= 0.0 do
-        bisect(et_lo, f_lo, et_mid, f_mid, lat, lng, rho_sin_phi, rho_cos_phi, iters - 1)
+        bisect_with_fn(et_lo, f_lo, et_mid, f_mid, f, iters - 1)
       else
-        bisect(et_mid, f_mid, et_hi, f_hi, lat, lng, rho_sin_phi, rho_cos_phi, iters - 1)
+        bisect_with_fn(et_mid, f_mid, et_hi, f_hi, f, iters - 1)
       end
     end
   end

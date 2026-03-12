@@ -22,12 +22,10 @@ defmodule Astro.MoonRiseSetTest do
     - `{:ok, Time.t()}`   — event occurs on this calendar day in local time
     - `{:error, :no_time}` — the moon does not cross the horizon on this day
 
-  A tolerance of ±2 or ±3 minutes is applied to all time comparisons.
-  The wider ±3 window arises from the combination of USNO's nearest-minute
-  rounding (DE430) with the Moon's shallow horizon-crossing angle —
-  especially at higher latitudes where the diurnal arc is most oblique.
-  A ±4 minute tolerance is used for a handful of London moonrise events where
-  the Moon's oblique diurnal arc at 51.5 °N produces the widest model spread.
+  A tolerance of ±1 minute is applied to all time comparisons.
+  This is achievable because our algorithm uses JPL DE440s ephemerides with
+  correct IAU 1976/1980 precession and nutation, yielding a mean absolute
+  error of ~16 seconds against USNO (DE430-based, nearest-minute rounding).
   """
 
   use ExUnit.Case, async: true
@@ -36,9 +34,7 @@ defmodule Astro.MoonRiseSetTest do
   # Shared helpers
   # ---------------------------------------------------------------------------
 
-  @two_minutes_tolerance 2
-  @three_minutes_tolerance 3
-  @four_minutes_tolerance 4
+  @one_minute_tolerance 1
 
   defp within_tolerance?(%DateTime{} = actual, %Time{} = expected, tolerance) do
     actual_mins = actual.hour * 60 + actual.minute
@@ -54,7 +50,7 @@ defmodule Astro.MoonRiseSetTest do
          lon,
          expected_hour,
          expected_minute,
-         tolerance \\ @two_minutes_tolerance
+         tolerance \\ @one_minute_tolerance
        ) do
     expected = time!(expected_hour, expected_minute)
 
@@ -75,7 +71,7 @@ defmodule Astro.MoonRiseSetTest do
          lon,
          expected_hour,
          expected_minute,
-         tolerance \\ @two_minutes_tolerance
+         tolerance \\ @one_minute_tolerance
        ) do
     expected = time!(expected_hour, expected_minute)
 
@@ -134,7 +130,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-04: standard time (UTC-5); USNO moonrise 19:24, moonset 06:50
     test "2026-03-04 moonrise — standard time, near-full moon" do
-      assert_moonrise(~D[2026-03-04], @new_york_lat, @new_york_lon, 19, 24, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-04], @new_york_lat, @new_york_lon, 19, 24, @one_minute_tolerance)
     end
 
     test "2026-03-04 moonset — standard time, near-full moon" do
@@ -152,7 +148,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-09: DST active (UTC-4); USNO moonrise 00:42, moonset 09:54
     test "2026-03-09 moonrise — DST active (UTC-4)" do
-      assert_moonrise(~D[2026-03-09], @new_york_lat, @new_york_lon, 0, 42, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-09], @new_york_lat, @new_york_lon, 0, 42, @one_minute_tolerance)
     end
 
     test "2026-03-09 moonset — DST active (UTC-4)" do
@@ -161,11 +157,11 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-11: waning crescent; USNO moonrise 02:43, moonset 11:19
     test "2026-03-11 moonrise — waning crescent" do
-      assert_moonrise(~D[2026-03-11], @new_york_lat, @new_york_lon, 2, 43, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-11], @new_york_lat, @new_york_lon, 2, 43, @one_minute_tolerance)
     end
 
     test "2026-03-11 moonset — waning crescent" do
-      assert_moonset(~D[2026-03-11], @new_york_lat, @new_york_lon, 11, 19, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-11], @new_york_lat, @new_york_lon, 11, 19, @one_minute_tolerance)
     end
 
     # 2026-03-18: new moon; USNO moonrise 06:45, moonset 18:57
@@ -174,7 +170,7 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-18 moonset — new moon" do
-      assert_moonset(~D[2026-03-18], @new_york_lat, @new_york_lon, 18, 57, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-18], @new_york_lat, @new_york_lon, 18, 57, @one_minute_tolerance)
     end
 
     # 2026-03-20: waxing crescent; USNO moonrise 07:32, moonset 21:24
@@ -183,17 +179,17 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-20 moonset — waxing crescent" do
-      assert_moonset(~D[2026-03-20], @new_york_lat, @new_york_lon, 21, 24, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-20], @new_york_lat, @new_york_lon, 21, 24, @one_minute_tolerance)
     end
 
     # 2026-03-25: USNO moonset 02:24
     test "2026-03-25 moonset — waxing gibbous" do
-      assert_moonset(~D[2026-03-25], @new_york_lat, @new_york_lon, 2, 24, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-25], @new_york_lat, @new_york_lon, 2, 24, @one_minute_tolerance)
     end
 
     # 2026-03-31: USNO moonrise 18:09, moonset 05:54
     test "2026-03-31 moonrise — waxing gibbous, 96%" do
-      assert_moonrise(~D[2026-03-31], @new_york_lat, @new_york_lon, 18, 9, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-31], @new_york_lat, @new_york_lon, 18, 9, @one_minute_tolerance)
     end
 
     test "2026-03-31 moonset — waxing gibbous, 96%" do
@@ -203,7 +199,7 @@ defmodule Astro.MoonRiseSetTest do
 
   # ---------------------------------------------------------------------------
   # London  (Europe/London — UTC+0 GMT until 2026-03-29, UTC+1 BST from 2026-03-29)
-  # Several moonrise events need ±4 min: the Moon's oblique diurnal arc at 51.5 °N
+  # London (51.5 °N) — higher latitude with oblique diurnal arc
   # amplifies the DE440s-vs-DE430 residual on dates of high lunar declination.
   # ---------------------------------------------------------------------------
 
@@ -215,7 +211,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-04: USNO moonrise 19:18, moonset 06:52
     test "2026-03-04 moonrise — near-full moon, GMT" do
-      assert_moonrise(~D[2026-03-04], @london_lat, @london_lon, 19, 18, @four_minutes_tolerance)
+      assert_moonrise(~D[2026-03-04], @london_lat, @london_lon, 19, 18, @one_minute_tolerance)
     end
 
     test "2026-03-04 moonset — near-full moon, GMT" do
@@ -233,7 +229,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-09: USNO moonrise 00:20, moonset 08:04
     test "2026-03-09 moonrise" do
-      assert_moonrise(~D[2026-03-09], @london_lat, @london_lon, 0, 20, @four_minutes_tolerance)
+      assert_moonrise(~D[2026-03-09], @london_lat, @london_lon, 0, 20, @one_minute_tolerance)
     end
 
     test "2026-03-09 moonset" do
@@ -242,7 +238,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-11: USNO moonrise 02:37, moonset 09:11
     test "2026-03-11 moonrise — waning crescent" do
-      assert_moonrise(~D[2026-03-11], @london_lat, @london_lon, 2, 37, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-11], @london_lat, @london_lon, 2, 37, @one_minute_tolerance)
     end
 
     test "2026-03-11 moonset — waning crescent" do
@@ -255,7 +251,7 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-18 moonset — new moon" do
-      assert_moonset(~D[2026-03-18], @london_lat, @london_lon, 17, 45, @four_minutes_tolerance)
+      assert_moonset(~D[2026-03-18], @london_lat, @london_lon, 17, 45, @one_minute_tolerance)
     end
 
     # 2026-03-20: waxing crescent; USNO moonrise 06:17, moonset 20:35
@@ -264,7 +260,7 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-20 moonset — waxing crescent" do
-      assert_moonset(~D[2026-03-20], @london_lat, @london_lon, 20, 35, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-20], @london_lat, @london_lon, 20, 35, @one_minute_tolerance)
     end
 
     # 2026-03-23: no moonset
@@ -274,7 +270,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-29: first day of BST; USNO moonrise 15:22, moonset 05:34
     test "2026-03-29 moonrise — first day of BST" do
-      assert_moonrise(~D[2026-03-29], @london_lat, @london_lon, 15, 22, @four_minutes_tolerance)
+      assert_moonrise(~D[2026-03-29], @london_lat, @london_lon, 15, 22, @one_minute_tolerance)
     end
 
     test "2026-03-29 moonset — first day of BST" do
@@ -283,7 +279,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-31: USNO moonrise 17:59, moonset 06:00
     test "2026-03-31 moonrise — waxing gibbous, 97%" do
-      assert_moonrise(~D[2026-03-31], @london_lat, @london_lon, 17, 59, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-31], @london_lat, @london_lon, 17, 59, @one_minute_tolerance)
     end
 
     test "2026-03-31 moonset — waxing gibbous, 97%" do
@@ -303,7 +299,7 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-01 moonset — waning gibbous, 96%" do
-      assert_moonset(~D[2026-03-01], @sydney_lat, @sydney_lon, 3, 50, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-01], @sydney_lat, @sydney_lon, 3, 50, @one_minute_tolerance)
     end
 
     # 2026-03-04: full moon (100%); USNO moonrise 19:47, moonset 07:10
@@ -312,7 +308,7 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-04 moonset — full moon" do
-      assert_moonset(~D[2026-03-04], @sydney_lat, @sydney_lon, 7, 10, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-04], @sydney_lat, @sydney_lon, 7, 10, @one_minute_tolerance)
     end
 
     # 2026-03-08: USNO moonrise 21:37, moonset 11:11
@@ -321,7 +317,7 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-08 moonset — waning gibbous" do
-      assert_moonset(~D[2026-03-08], @sydney_lat, @sydney_lon, 11, 11, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-08], @sydney_lat, @sydney_lon, 11, 11, @one_minute_tolerance)
     end
 
     # 2026-03-11: USNO moonrise 23:39, moonset 14:07
@@ -330,12 +326,12 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-11 moonset — waning crescent" do
-      assert_moonset(~D[2026-03-11], @sydney_lat, @sydney_lon, 14, 7, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-11], @sydney_lat, @sydney_lon, 14, 7, @one_minute_tolerance)
     end
 
     # 2026-03-13: USNO moonrise 00:32, moonset 15:48
     test "2026-03-13 moonrise — waning crescent" do
-      assert_moonrise(~D[2026-03-13], @sydney_lat, @sydney_lon, 0, 32, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-13], @sydney_lat, @sydney_lon, 0, 32, @one_minute_tolerance)
     end
 
     test "2026-03-13 moonset — waning crescent" do
@@ -344,7 +340,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-19: new moon (0% illumination); USNO moonrise 06:49, moonset 19:05
     test "2026-03-19 moonrise — new moon" do
-      assert_moonrise(~D[2026-03-19], @sydney_lat, @sydney_lon, 6, 49, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-19], @sydney_lat, @sydney_lon, 6, 49, @one_minute_tolerance)
     end
 
     test "2026-03-19 moonset — new moon" do
@@ -353,7 +349,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-20: waxing crescent (1.5%); USNO moonrise 07:56, moonset 19:34
     test "2026-03-20 moonrise — waxing crescent" do
-      assert_moonrise(~D[2026-03-20], @sydney_lat, @sydney_lon, 7, 56, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-20], @sydney_lat, @sydney_lon, 7, 56, @one_minute_tolerance)
     end
 
     test "2026-03-20 moonset — waxing crescent" do
@@ -362,11 +358,11 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-25: waxing gibbous; USNO moonrise 13:50, moonset 23:23
     test "2026-03-25 moonrise — waxing gibbous" do
-      assert_moonrise(~D[2026-03-25], @sydney_lat, @sydney_lon, 13, 50, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-25], @sydney_lat, @sydney_lon, 13, 50, @one_minute_tolerance)
     end
 
     test "2026-03-25 moonset — waxing gibbous" do
-      assert_moonset(~D[2026-03-25], @sydney_lat, @sydney_lon, 23, 23, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-25], @sydney_lat, @sydney_lon, 23, 23, @one_minute_tolerance)
     end
 
     # 2026-03-31: USNO moonrise 17:49, moonset 04:58
@@ -386,7 +382,7 @@ defmodule Astro.MoonRiseSetTest do
   describe "Tokyo — moonrise and moonset" do
     # 2026-03-01: USNO moonrise 15:11, moonset 04:51
     test "2026-03-01 moonrise — waning gibbous, 93%" do
-      assert_moonrise(~D[2026-03-01], @tokyo_lat, @tokyo_lon, 15, 11, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-01], @tokyo_lat, @tokyo_lon, 15, 11, @one_minute_tolerance)
     end
 
     test "2026-03-01 moonset — waning gibbous, 93%" do
@@ -395,7 +391,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-04: full moon; USNO moonrise 18:30, moonset 06:21
     test "2026-03-04 moonrise — full moon" do
-      assert_moonrise(~D[2026-03-04], @tokyo_lat, @tokyo_lon, 18, 30, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-04], @tokyo_lat, @tokyo_lon, 18, 30, @one_minute_tolerance)
     end
 
     test "2026-03-04 moonset — full moon" do
@@ -404,7 +400,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-08: USNO moonrise 22:35, moonset 08:04
     test "2026-03-08 moonrise — waning gibbous" do
-      assert_moonrise(~D[2026-03-08], @tokyo_lat, @tokyo_lon, 22, 35, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-08], @tokyo_lat, @tokyo_lon, 22, 35, @one_minute_tolerance)
     end
 
     test "2026-03-08 moonset — waning gibbous" do
@@ -413,7 +409,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-09: USNO moonrise 23:36, moonset 08:35
     test "2026-03-09 moonrise — waning gibbous" do
-      assert_moonrise(~D[2026-03-09], @tokyo_lat, @tokyo_lon, 23, 36, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-09], @tokyo_lat, @tokyo_lon, 23, 36, @one_minute_tolerance)
     end
 
     test "2026-03-09 moonset — waning gibbous" do
@@ -422,7 +418,7 @@ defmodule Astro.MoonRiseSetTest do
 
     # 2026-03-11: USNO moonrise 00:34, moonset 09:55
     test "2026-03-11 moonrise — last quarter" do
-      assert_moonrise(~D[2026-03-11], @tokyo_lat, @tokyo_lon, 0, 34, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-11], @tokyo_lat, @tokyo_lon, 0, 34, @one_minute_tolerance)
     end
 
     test "2026-03-11 moonset — last quarter" do
@@ -435,7 +431,7 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-19 moonset — new moon" do
-      assert_moonset(~D[2026-03-19], @tokyo_lat, @tokyo_lon, 18, 10, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-19], @tokyo_lat, @tokyo_lon, 18, 10, @one_minute_tolerance)
     end
 
     # 2026-03-20: waxing crescent (1.6%); USNO moonrise 06:06, moonset 19:19
@@ -444,21 +440,21 @@ defmodule Astro.MoonRiseSetTest do
     end
 
     test "2026-03-20 moonset — waxing crescent" do
-      assert_moonset(~D[2026-03-20], @tokyo_lat, @tokyo_lon, 19, 19, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-20], @tokyo_lat, @tokyo_lon, 19, 19, @one_minute_tolerance)
     end
 
     # 2026-03-25: waxing gibbous; USNO moonrise 09:34, moonset 00:10
     test "2026-03-25 moonrise — waxing gibbous" do
-      assert_moonrise(~D[2026-03-25], @tokyo_lat, @tokyo_lon, 9, 34, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-25], @tokyo_lat, @tokyo_lon, 9, 34, @one_minute_tolerance)
     end
 
     test "2026-03-25 moonset — waxing gibbous (early hours)" do
-      assert_moonset(~D[2026-03-25], @tokyo_lat, @tokyo_lon, 0, 10, @three_minutes_tolerance)
+      assert_moonset(~D[2026-03-25], @tokyo_lat, @tokyo_lon, 0, 10, @one_minute_tolerance)
     end
 
     # 2026-03-31: USNO moonrise 16:18, moonset 04:23
     test "2026-03-31 moonrise — waxing gibbous, 96%" do
-      assert_moonrise(~D[2026-03-31], @tokyo_lat, @tokyo_lon, 16, 18, @three_minutes_tolerance)
+      assert_moonrise(~D[2026-03-31], @tokyo_lat, @tokyo_lon, 16, 18, @one_minute_tolerance)
     end
 
     test "2026-03-31 moonset — waxing gibbous, 96%" do
