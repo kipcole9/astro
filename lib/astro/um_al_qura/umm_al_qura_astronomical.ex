@@ -138,59 +138,6 @@ defmodule Astro.UmmAlQura.Astronomical do
   def first_day_of_month(_year, _month),
     do: {:error, :year_out_of_range}
 
-  @doc """
-  Returns a map with the detailed astronomical data used in evaluating the
-  Umm al-Qura rule for the given Gregorian date (which should be the 29th day
-  of the current Hijri month).
-
-  Returned map keys:
-    - `:date`               – the candidate 29th Gregorian date
-    - `:conjunction_utc`    – `DateTime` of geocentric conjunction (new moon)
-    - `:sunset_mecca`       – `DateTime` of sunset in Mecca (UTC)
-    - `:moonset_mecca`      – `DateTime` of moonset in Mecca (UTC), or `:no_time`
-    - `:conjunction_before_sunset` – boolean
-    - `:moonset_after_sunset`      – boolean
-    - `:new_month_starts_next_day` – boolean (true iff both conditions are met)
-  """
-  @spec evaluate_conditions(Date.t()) :: {:ok, map()} | {:error, term()}
-  def evaluate_conditions(%Date{} = date) do
-    with {:ok, conjunction} <- Astro.date_time_new_moon_at_or_after(Date.add(date, -2)),
-         {:ok, sunset_at_mecca} <- sunset_utc_at_mecca(date) do
-      moonset_at_mecca =
-        moonset_utc_at_mecca(date)
-
-      conjunction_before_sunset? =
-        DateTime.compare(conjunction, sunset_at_mecca) == :lt
-
-      moonset_after_sunset? =
-        case moonset_at_mecca do
-          {:ok, moonset} ->
-            DateTime.compare(moonset, sunset_at_mecca) == :gt
-            && DateTime.to_date(moonset) == date
-          {:error, :no_time} -> false
-          _other -> false
-        end
-
-      moonset_value =
-        case moonset_at_mecca do
-          {:ok, ms} -> ms
-          _         -> :no_time
-        end
-
-      result = %{
-        date: date,
-        conjunction_utc: conjunction,
-        sunset_mecca: sunset_at_mecca,
-        moonset_mecca: moonset_value,
-        conjunction_before_sunset?: conjunction_before_sunset?,
-        moonset_after_sunset?: moonset_after_sunset?,
-        new_month_starts_next_day?: conjunction_before_sunset? and moonset_after_sunset?
-      }
-
-      {:ok, result}
-    end
-  end
-
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
@@ -275,7 +222,7 @@ defmodule Astro.UmmAlQura.Astronomical do
   # If conditions are not met on day 29, the month has 30 days, so the new
   # month starts on day 31 (i.e. candidate + 2).
   defp apply_umm_al_qura_rule(candidate_29) do
-    with {:ok, eval} <- evaluate_conditions(candidate_29) do
+    with {:ok, eval} <- evaluate_era_4_conditions(candidate_29) do
       first_day =
         if eval.new_month_starts_next_day? do
           Date.add(candidate_29, 1)
@@ -285,6 +232,59 @@ defmodule Astro.UmmAlQura.Astronomical do
         end
 
       {:ok, first_day}
+    end
+  end
+
+  @doc """
+  Returns a map with the detailed astronomical data used in evaluating the
+  Umm al-Qura rule for the given Gregorian date (which should be the 29th day
+  of the current Hijri month).
+
+  Returned map keys:
+    - `:date`               – the candidate 29th Gregorian date
+    - `:conjunction_utc`    – `DateTime` of geocentric conjunction (new moon)
+    - `:sunset_mecca`       – `DateTime` of sunset in Mecca (UTC)
+    - `:moonset_mecca`      – `DateTime` of moonset in Mecca (UTC), or `:no_time`
+    - `:conjunction_before_sunset` – boolean
+    - `:moonset_after_sunset`      – boolean
+    - `:new_month_starts_next_day` – boolean (true iff both conditions are met)
+  """
+  @spec evaluate_era_4_conditions(Date.t()) :: {:ok, map()} | {:error, term()}
+  def evaluate_era_4_conditions(%Date{} = date) do
+    with {:ok, conjunction} <- Astro.date_time_new_moon_at_or_after(Date.add(date, -2)),
+         {:ok, sunset_at_mecca} <- sunset_utc_at_mecca(date) do
+      moonset_at_mecca =
+        moonset_utc_at_mecca(date)
+
+      conjunction_before_sunset? =
+        DateTime.compare(conjunction, sunset_at_mecca) == :lt
+
+      moonset_after_sunset? =
+        case moonset_at_mecca do
+          {:ok, moonset} ->
+            DateTime.compare(moonset, sunset_at_mecca) == :gt
+            && DateTime.to_date(moonset) == date
+          {:error, :no_time} -> false
+          _other -> false
+        end
+
+      moonset_value =
+        case moonset_at_mecca do
+          {:ok, ms} -> ms
+          _         -> :no_time
+        end
+
+      result = %{
+        date: date,
+        conjunction_utc: conjunction,
+        sunset_mecca: sunset_at_mecca,
+        moonset_mecca: moonset_value,
+        conjunction_before_sunset?: conjunction_before_sunset?,
+        moonset_after_sunset?: moonset_after_sunset?,
+        new_month_starts_next_day?: conjunction_before_sunset? and moonset_after_sunset?
+      }
+
+      {:ok, result}
     end
   end
 
