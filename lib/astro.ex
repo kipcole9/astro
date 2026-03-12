@@ -725,13 +725,8 @@ defmodule Astro do
           {:ok, DateTime.t()}
           | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
 
-  def sunrise(location, date, options \\ default_options()) when is_list(options) do
-    if Keyword.has_key?(options, :solar_elevation) do
-      options = Keyword.put(options, :rise_or_set, :rise)
-      Solar.sun_rise_or_set(location, date, options)
-    else
-      Solar.SunRiseSet.sunrise(location, date, options)
-    end
+  def sunrise(location, date, options \\ []) when is_list(options) do
+    Solar.SunRiseSet.sunrise(location, date, options)
   end
 
   @doc """
@@ -841,13 +836,8 @@ defmodule Astro do
           {:ok, DateTime.t()}
           | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
 
-  def sunset(location, date, options \\ default_options()) when is_list(options) do
-    if Keyword.has_key?(options, :solar_elevation) do
-      options = Keyword.put(options, :rise_or_set, :set)
-      Solar.sun_rise_or_set(location, date, options)
-    else
-      Solar.SunRiseSet.sunset(location, date, options)
-    end
+  def sunset(location, date, options \\ []) when is_list(options) do
+    Solar.SunRiseSet.sunset(location, date, options)
   end
 
   @spec moonrise(location, date, options) ::
