@@ -151,7 +151,39 @@ defmodule Astro.UmmAlQura.ReferenceData do
     ]
   end
 
-  # Dates extracted from https://webspace.science.uu.nl/~gent0113/islam/ummalqura.htm
+  @doc """
+  Alternative cumulative day-count dataset extracted from R.H. van Gent's
+  Umm al-Qura tables at Utrecht University.
+
+  Source: <https://webspace.science.uu.nl/~gent0113/islam/ummalqura.htm>
+
+  ## Comparison with `akmal_data/0`
+
+  The two datasets are identical for **1,738 of 1,741 months** (99.8 %).
+  All differences fall within Era 4 (≥ 1423 AH) and involve extreme
+  boundary cases where moonset and sunset at Mecca are within seconds
+  of each other:
+
+  | Hijri date | Month | akmal | ghent | Margin |
+  |---|---|---|---|---|
+  | 1427/6 | Jumada al-Thani | 2006-06-26 | 2006-06-27 | conjunction 75 s before sunset |
+  | 1446/6 | Jumada al-Thani | 2024-12-03 | 2024-12-02 | moonset 5 s before sunset |
+  | 1485/10 | **Shawwal (Eid al-Fitr)** | 2063-01-31 | 2063-01-30 | moonset 8 s before sunset |
+
+  The discrepancies are caused by differences in the underlying
+  astronomical algorithms (ephemeris model, atmospheric refraction,
+  lunar parallax). At these razor-thin margins a few arcseconds of
+  difference in the moon's computed position flips the binary
+  moonset-before/after-sunset decision.
+
+  The 1485/10 case is the most consequential: 1 Shawwal determines
+  **Eid al-Fitr** (end of Ramadan). However, it is a future date
+  (2063) and both values are predictions; the official determination
+  has not yet been made.
+
+  Era 2 (1392–1419 AH) and Era 3 (1420–1422 AH) are identical
+  across both datasets.
+  """
   def ghent_data do
     [
       28607,28636,28665,28695,28724,28754,28783,28813,28843,28872,28901,28931,28960,28990,29019,29049,29078,29108,29137,29167,
