@@ -10,6 +10,8 @@ This is the changelog for Astro version 2.0.0 released on ______.  For older cha
 
 * Rename `Astro.Lunar.full_moon/0` to `Astro.Lunar.full_moon_phase/0` (the same for the `Astro.Lunar.{new_moon, first_quarter, last_quarter}/0`).
 
+* `Astro.Earth.nutation/1` now returns a 3-tuple instead of a single scalar value. The first element in the tuple has the same purpose as the return value of the original function. However its value may be slightly different due to the new underlying algoriths.
+
 ### Enhancements
 
 * Adds `Astro.moonrise/3` and `Astro.moonset/3`.

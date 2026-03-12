@@ -125,17 +125,18 @@ defmodule Astro.Earth do
 
   ### Returns
 
-  * The mean obliquity as a float angle in degrees.
+  * The mean obliquity as a float angle in degrees
+    at j2000.
 
   """
-  @spec obliquity :: Astro.angle()
-  def obliquity do
+  @spec obliquity_j2000 :: Astro.angle()
+  def obliquity_j2000 do
     @obliquity
   end
 
   @doc """
-  Computes IAU 1980 [nutation](https://en.wikipedia.org/wiki/Astronomical_nutation#:~:text=Earth's%20nutation,-Learn%20more&text=Nutation%20(N)%20of%20the%20Earth,spherical%20figure%20of%20the%20Earth.)) in longitude and obliquity, and the
-  mean obliquity.
+  Computes IAU 1980 [nutation](https://en.wikipedia.org/wiki/Astronomical_nutation#:~:text=Earth's%20nutation,-Learn%20more&text=Nutation%20(N)%20of%20the%20Earth,spherical%20figure%20of%20the%20Earth.))
+  in longitude and obliquity, and the mean obliquity.
 
   ### Arguments
 
@@ -144,7 +145,8 @@ defmodule Astro.Earth do
 
   ### Returns
 
-  * `{delta_psi_rad, delta_eps_rad, eps0_rad}`
+  * `{delta_psi_rad, delta_eps_rad, eps0_rad}` representing
+    the longitude, obliquity and mean obliquiy.
 
   """
   @spec nutation(c :: Time.julian_centuries) :: {float(), float(), float()}
@@ -202,11 +204,12 @@ defmodule Astro.Earth do
 
   ### Arguments
 
-  * `elevation` is elevation in meters.
+  * `elevation` is the observer's elevation in meters.
 
   ### Returns
 
-  * The solar elevation angle adjusted for the elevation.
+  * The solar elevation angle adjusted for the observer's
+    elevation.
 
   """
   def elevation_adjustment(elevation) do
