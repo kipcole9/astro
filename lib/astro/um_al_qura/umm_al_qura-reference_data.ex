@@ -11,9 +11,16 @@ defmodule Astro.UmmAlQura.ReferenceData do
   Hijri month start, from which successive first-day Gregorian dates are derived
   by taking consecutive differences.  The series begins at 1 Muharram 1356 AH
   (14 March 1937 CE) and covers approximately 145 years.
+
+  Note that they reference data here could be encoded in a much more efficient
+  way. For example, it could be encoded as a bitstring where each bit indicates
+  if the month is 29 or 30 days. Each year could be extracted as the 12 bits
+  offset by ((year - 1) * 12) from the start of the bitstring. This way calculating
+  firt_day_of_month would be O(1) for any date in the range of the data.
+
   """
 
-  # The Hijri year and month of the first entry in official_data/0.
+  # The Hijri year and month of the first entry in akmal_data/0 and van_gent_data/0
   @hijri_start_year 1356
   @hijri_start_month 1
   @hijri_start_date Date.new!(1937, 3, 14)
@@ -29,8 +36,8 @@ defmodule Astro.UmmAlQura.ReferenceData do
     marking the start of each Hijiri month. There are two source
     available in this module:
 
-    * `akamal_data()` (the default) and
-    * `van_gent_data()`
+    * `akamal_data/0` (the default) and
+    * `van_gent_data/0`
 
   Each map has three keys:
     - `:hijri_year`  — Hijri year (integer)
@@ -41,7 +48,7 @@ defmodule Astro.UmmAlQura.ReferenceData do
   (#{@hijri_start_date}) and covers approximately 145 years.
 
   """
-  @spec umm_al_qura_dates(hijiri_list_of_days_since_epoch :: [integer]) :: [
+  @spec umm_al_qura_dates(hijiri_list_of_days_since_epoch :: [pos_integer]) :: [
           %{hijri_year: pos_integer(), hijri_month: 1..12, gregorian: Date.t()}
         ]
   def umm_al_qura_dates(hijiri_list_of_days_since_epoch \\ akmal_data()) do
