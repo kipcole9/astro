@@ -123,16 +123,16 @@ defmodule Astro.Coordinates do
 
   Returns `{delta_psi_rad, delta_eps_rad, eps0_rad}`.
 
-  `t` is Julian centuries from J2000.0.
+  `c` is Julian centuries from J2000.0.
   """
-  @spec nutation(float()) :: {float(), float(), float()}
-  def nutation(t) do
+  @spec nutation(c :: Astro.Time.julian_centuries) :: {float(), float(), float()}
+  def nutation(c) do
     # Fundamental arguments (degrees, Meeus Ch.22)
-    d = 297.85036 + 445_267.111480 * t - 0.0019142 * t * t + t * t * t / 189_474.0
-    m = 357.52772 + 35_999.050340 * t - 0.0001603 * t * t - t * t * t / 300_000.0
-    mp = 134.96298 + 477_198.867398 * t + 0.0086972 * t * t + t * t * t / 56_250.0
-    f = 93.27191 + 483_202.017538 * t - 0.0036825 * t * t + t * t * t / 327_270.0
-    om = 125.04452 - 1_934.136261 * t + 0.0020708 * t * t + t * t * t / 450_000.0
+    d = 297.85036 + 445_267.111480 * c - 0.0019142 * c * c + c * c * c / 189_474.0
+    m = 357.52772 + 35_999.050340 * c - 0.0001603 * c * c - c * c * c / 300_000.0
+    mp = 134.96298 + 477_198.867398 * c + 0.0086972 * c * c + c * c * c / 56_250.0
+    f = 93.27191 + 483_202.017538 * c - 0.0036825 * c * c + c * c * c / 327_270.0
+    om = 125.04452 - 1_934.136261 * c + 0.0020708 * c * c + c * c * c / 450_000.0
 
     # Top 17 terms of the IAU 1980 nutation series.
     # Format: {D, M, M', F, Om, dpsi_s (0.0001"), deps_c (0.0001")}
@@ -168,7 +168,7 @@ defmodule Astro.Coordinates do
     deps = deps_units * 0.0001 / @arcsec_per_deg * :math.pi() / 180.0
 
     # Mean obliquity of the ecliptic (Meeus eq 22.2), arcseconds → radians
-    eps0_arcsec = 84_381.448 - 46.8150 * t - 0.00059 * t * t + 0.001813 * t * t * t
+    eps0_arcsec = 84_381.448 - 46.8150 * c - 0.00059 * c * c + 0.001813 * c * c * c
     eps0 = eps0_arcsec / @arcsec_per_deg * :math.pi() / 180.0
 
     {dpsi, deps, eps0}
