@@ -7,21 +7,6 @@
 
 Astro is a library to provide basic astromonomical functions with a focus on functions that support solar, lunar and lunisolar calendars such as the Islamic, Chinese, Hebrew and Persian calendars.
 
-## Astro version 2 rise and set algorithms
-
-The implementation of the sun and moon rise and set calculations in Astro 2.0 is a JPL DE440s ephemeris scan-and-bisect algorithm. Specifically:
-
-* Astro verison 1.x: was a NOAA/Meeus analytical solar position (polynomial + periodic-term approximation of the Sun's coordinates, with three-point interpolation for the rise/set crossing). There was no moon rise/set calculation in Astro 1.x.
-
-* Astro version 2: JPL DE440s ephemeris with coarse-scan and binary-search — the Sun's (or Moon's) position is computed directly from the JPL Development Ephemeris at each evaluation point, and the altitude zero-crossing is found by:
-  * Coarse scan — sampling altitude at regular intervals (24-minute steps for the Sun, shorter for the Moon) to bracket sign changes
-  * Bisection — narrowing each bracket to ~1 second precision
-
-For the Moon, it's additionally fully topocentric — the observer's geocentric displacement is applied to the Moon's position before computing altitude, rather than using the Meeus h0 = 0.7275π − 0.5667° parallax-in-altitude approximation.
-
-There is a [comparison document](rise_and_set_comparisons.md) demonstrating how Astro's calculations for rise and set compare with Skyfield (JPL DE440s), USNO (DE430),
-and [timeanddate.com](https://timeanddate.com).
-
 ## Usage
 
 **NOTE: It's important to install and configure `Astro` correctly before use. See the [installation](#installation) notes below.**
@@ -38,6 +23,8 @@ The primary functions are:
 
 ### Lunar functions
 
+* `Astro.moonrise/3`
+* `Astro.moonset/3`
 * `Astro.moon_position_at/1`
 * `Astro.illuminated_fraction_of_moon_at/1`
 * `Astro.date_time_new_moon_at_or_after/1`
@@ -48,11 +35,11 @@ The primary functions are:
 ```elixir
   # Sunrise in Sydney on December 4th
   iex> Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
-  {:ok, #DateTime<2019-12-04 05:37:00.000000+11:00 AEDT Australia/Sydney>}
+  {:ok, #DateTime<2019-12-04 05:37:09+11:00 AEDT Australia/Sydney>}
 
   # Sunset in Sydney on December 4th
   iex> Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
-  {:ok, #DateTime<2019-12-04 19:53:00.000000+11:00 AEDT Australia/Sydney>}
+  {:ok, #DateTime<2019-12-04 19:53:21+11:00 AEDT Australia/Sydney>}
 
   # Sunset in the town of Alert in Nunavut, Canada
   # ...doesn't exist since there is no sunset in summer
@@ -65,7 +52,7 @@ The primary functions are:
 
   # Hours of daylight on December 7th in Sydney
   iex> Astro.hours_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-07]
-  {:ok, ~T[14:18:45]}
+  {:ok, ~T[14:18:44]}
 
   # No sunset in summer at high latitudes
   iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-06-07]
@@ -103,9 +90,9 @@ The desired location of sunrise or sunset can be specified as either:
 
 For this implementation, the latitude and longitude of the functions in `Astro` are specified as follows:
 
-* Longitude is `+` for eastern longitudes and `-` for western longitudes and specified in degrees
-* Latitude is `+` for northern latitudes and `-` for southern latitudes and specified in degrees
-* Elevation is specified in meters
+* Longitude is `+` for eastern longitudes and `-` for western longitudes and specified in degrees.
+* Latitude is `+` for northern latitudes and `-` for southern latitudes and specified in degrees.
+* Elevation is specified in meters.
 
 ## References
 
@@ -115,9 +102,9 @@ For this implementation, the latitude and longitude of the functions in `Astro` 
 
 * For the intersection of calendars and astronomy, [Calendrical Calculations](https://www.amazon.com/Calendrical-Calculations-Ultimate-Edward-Reingold/dp/1107683165) by Nachum Dershowitz and Edward M. Reingold remains the standard reference.
 
-* On the web, [timeanddate.com](https://www.timeanddate.com/astronomy/) is a great reference. The sunrise/sunset calculations in this library are tested to return times within 1 minute of timeanddate.com results.
+* [SkyField](https://rhodesmill.org/skyfield/) is a powerful astronomy library for Python. The sunrise/sunset calculations in Astro 2.0 are tested to return times within 1 minute of Skyfield's results. On average the [deviation](rise_and_set_comparisons.md) is 3.8 seconds for sunrise/sunset and 2.5 seconds for moonrise/moonset.
 
-* [Wikipedia](https://wikipedia.com) for content to help describe the understanding behind some of the functions
+* [timeanddate.com](https://www.timeanddate.com/astronomy/) is a also a great web reference.
 
 ## Installation
 
@@ -212,3 +199,18 @@ The Astro test suite requires a functioning tz_world database to be available in
 ```
 MIX_ENV=test mix tz_world.update
 ```
+
+## Astro version 2 rise and set algorithms
+
+The implementation of the sun and moon rise and set calculations in Astro 2.0 is a JPL DE440s ephemeris scan-and-bisect algorithm. Specifically:
+
+* Astro verison 1.x: was a NOAA/Meeus analytical solar position (polynomial + periodic-term approximation of the Sun's coordinates, with three-point interpolation for the rise/set crossing). There was no moon rise/set calculation in Astro 1.x.
+
+* Astro version 2: JPL DE440s ephemeris with coarse-scan and binary-search — the Sun's (or Moon's) position is computed directly from the JPL Development Ephemeris at each evaluation point, and the altitude zero-crossing is found by:
+  * Coarse scan — sampling altitude at regular intervals (24-minute steps for the Sun, shorter for the Moon) to bracket sign changes
+  * Bisection — narrowing each bracket to ~1 second precision
+
+For the Moon, it's additionally fully topocentric — the observer's geocentric displacement is applied to the Moon's position before computing altitude, rather than using the Meeus h0 = 0.7275π − 0.5667° parallax-in-altitude approximation.
+
+There is a [comparison document](rise_and_set_comparisons.md) demonstrating how Astro's calculations for rise and set compare with Skyfield (JPL DE440s), USNO (DE430),
+and [timeanddate.com](https://timeanddate.com).
