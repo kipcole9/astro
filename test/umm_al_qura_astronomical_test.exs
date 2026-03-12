@@ -2,47 +2,23 @@ defmodule Astro.UmmAlQura.AstronomicalTest do
   @moduledoc """
   ExUnit tests for `Astro.UmmAlQura.Astronomical.first_day_of_month/2`.
 
-  The module under test implements the **Umm al-Qura astronomical rule** that has
-  been used by KACST (King Abdulaziz City for Science and Technology) since
-  1 Muharram 1423 AH (15 March 2002).  The rule declares a new Hijri month when
-  both of the following conditions are met on the 29th day of the current month
-  (evaluated at sunset in Mecca):
+  The module under test implements the Umm al-Qura calendar across three
+  historical eras (van Gent numbering):
 
-    1. The geocentric conjunction (astronomical new moon) occurred before sunset.
-    2. Moonset occurs after sunset.
+  * **Era 2** (1392–1419 AH): conjunction < 3 h after 0 h UTC
+  * **Era 3** (1420–1422 AH): moonset after sunset only
+  * **Era 4** (1423 AH onward): conjunction before sunset AND moonset after sunset
 
   All expected dates are taken verbatim from
   `Astro.UmmAlQura.ReferenceData.umm_al_qura_dates/0`, which encodes the official
   KACST table and cross-references R. H. van Gent's independently-verified dataset
   (Utrecht University).
 
-  ## Test structure
-
-  * **Full-dataset sweep** — every Era 3 entry (1423–1500 AH, 937 months) is
-    checked in a single test.  The test reports every failure in one shot so that
-    the error list is complete even when the first failure is encountered.
-
-  * **Era-boundary spot checks** — the first month of the astronomical rule
-    (1423/1), the last month of 1423 (1423/12), and a selection of subsequent
-    years.
-
-  * **Former boundary-case regressions** — twelve historically-verified months
-    from 1424–1452 AH that failed before the two algorithm fixes:
-      (a) switching sunset from the Chapront series to the JPL DE440s ephemeris
-      (b) raising the moonset refraction constant from 34' to 35'
-    All twelve now pass and are pinned here to prevent regressions.
-
-  * **Structural invariants** — consecutive months must be exactly 29 or 30 days.
-
-  * **Error-handling** — years before 1423 AH and out-of-range month numbers must
-    return the documented error tuple.
-
   ## Performance note
 
   Computing moonset via the JPL ephemeris scan-and-bisect algorithm requires
-  O(~130) ephemeris evaluations per month.  The full-dataset test therefore takes
-  several minutes; the `:timeout` option is set accordingly.  Spot checks and
-  structural tests are fast and run in the default timeout.
+  O(~130) ephemeris evaluations per month.  Full-dataset sweeps therefore take
+  several minutes; the `:timeout` option is set accordingly.
   """
 
   use ExUnit.Case, async: false
@@ -51,47 +27,43 @@ defmodule Astro.UmmAlQura.AstronomicalTest do
 
   # ── Constants ────────────────────────────────────────────────────────────────
 
-  # First Hijri year covered by the astronomical rule.
-  @era3_start 1423
+  @era2_start 1392
+  @era3_start 1420
+  @era4_start 1423
 
-  # ── Full-dataset sweep ───────────────────────────────────────────────────────
+  # ── Full-dataset sweeps ────────────────────────────────────────────────────
 
   @tag timeout: :infinity
-  test "achieves 100% accuracy across all 937 Era 3 months in the KACST reference dataset" do
-    era3_entries =
+  test "Era 4 sweep: 100% accuracy across all 937 months (1423–1500 AH)" do
+    sweep_and_assert(fn %{hijri_year: y} -> y >= @era4_start end, 937)
+  end
+
+  @tag timeout: :infinity
+  test "Era 3 sweep: 100% accuracy across all 36 months (1420–1422 AH)" do
+    sweep_and_assert(
+      fn %{hijri_year: y} -> y >= @era3_start and y < @era4_start end,
+      36
+    )
+  end
+
+  @tag timeout: :infinity
+  test "Era 2 sweep: ≥ 96% accuracy across all 336 months (1392–1419 AH)" do
+    entries =
       ReferenceData.umm_al_qura_dates()
-      |> Enum.filter(fn %{hijri_year: y} -> y >= @era3_start end)
+      |> Enum.filter(fn %{hijri_year: y} -> y >= @era2_start and y < @era3_start end)
 
-    assert length(era3_entries) == 937,
-           "Expected 937 Era 3 entries (1423/1–1500/12); got #{length(era3_entries)}"
+    assert length(entries) == 336
 
-    failures =
-      Enum.flat_map(era3_entries, fn %{hijri_year: year, hijri_month: month, gregorian: expected} ->
-        case Astronomical.first_day_of_month(year, month) do
-          {:ok, ^expected} ->
-            []
-
-          {:ok, actual} ->
-            diff = Date.diff(actual, expected)
-            sign = if diff > 0, do: "+", else: ""
-            ["#{year}/#{month}: expected #{expected}, got #{actual} (diff #{sign}#{diff})"]
-
-          {:error, reason} ->
-            ["#{year}/#{month}: expected #{expected}, got {:error, #{inspect(reason)}}"]
-        end
+    correct =
+      Enum.count(entries, fn %{hijri_year: year, hijri_month: month, gregorian: expected} ->
+        match?({:ok, ^expected}, Astronomical.first_day_of_month(year, month))
       end)
 
-    correct = length(era3_entries) - length(failures)
+    accuracy = correct / length(entries) * 100
 
-    if failures != [] do
-      flunk("""
-      #{length(failures)} of #{length(era3_entries)} months failed \
-      (#{correct}/#{length(era3_entries)} correct, \
-      #{Float.round(correct / length(era3_entries) * 100, 1)}%):
-
-        #{Enum.join(failures, "\n  ")}
-      """)
-    end
+    assert accuracy >= 96.0,
+           "Era 2 accuracy #{Float.round(accuracy, 1)}% is below 96% threshold " <>
+             "(#{correct}/#{length(entries)} correct)"
   end
 
   # ── Era-boundary spot checks ─────────────────────────────────────────────────
@@ -274,19 +246,68 @@ defmodule Astro.UmmAlQura.AstronomicalTest do
     end
   end
 
+  # ── Era 2 spot checks (1392–1419: conjunction rule) ──────────────────────────
+
+  describe "Era 2 spot checks (1392–1419 AH: conjunction rule)" do
+    test "1 Muharram 1392 AH = 16 February 1972 (era start)" do
+      assert {:ok, ~D[1972-02-16]} = Astronomical.first_day_of_month(1392, 1)
+    end
+
+    test "1 Ramadan 1400 AH = 13 July 1980" do
+      assert {:ok, ~D[1980-07-13]} = Astronomical.first_day_of_month(1400, 9)
+    end
+
+    test "1 Muharram 1405 AH = 26 September 1984" do
+      assert {:ok, ~D[1984-09-26]} = Astronomical.first_day_of_month(1405, 1)
+    end
+
+    test "1 Dhu al-Hijja 1419 AH (last Era 2 month)" do
+      expected = ref_date(1419, 12)
+      assert {:ok, ^expected} = Astronomical.first_day_of_month(1419, 12)
+    end
+  end
+
+  # ── Era 3 spot checks (1420–1422: moonset-only rule) ───────────────────────
+
+  describe "Era 3 spot checks (1420–1422 AH: moonset after sunset)" do
+    test "1 Muharram 1420 AH (era start)" do
+      expected = ref_date(1420, 1)
+      assert {:ok, ^expected} = Astronomical.first_day_of_month(1420, 1)
+    end
+
+    test "1 Dhu al-Hijja 1422 AH (last month before Era 4)" do
+      expected = ref_date(1422, 12)
+      assert {:ok, ^expected} = Astronomical.first_day_of_month(1422, 12)
+    end
+  end
+
+  # ── Era-boundary structural invariants ─────────────────────────────────────
+
+  describe "structural invariant: era-boundary year lengths" do
+    test "1419–1420 AH (Era 2 → Era 3 boundary) span 354 or 355 days" do
+      {:ok, start_1419} = Astronomical.first_day_of_month(1419, 1)
+      {:ok, start_1420} = Astronomical.first_day_of_month(1420, 1)
+      assert Date.diff(start_1420, start_1419) in 354..355
+    end
+
+    test "1422–1423 AH (Era 3 → Era 4 boundary) span 354 or 355 days" do
+      {:ok, start_1422} = Astronomical.first_day_of_month(1422, 1)
+      {:ok, start_1423} = Astronomical.first_day_of_month(1423, 1)
+      assert Date.diff(start_1423, start_1422) in 354..355
+    end
+  end
+
   # ── Error handling ───────────────────────────────────────────────────────────
 
   describe "error cases" do
-    # The guard `hijri_year >= 1423` causes pre-era years to fall through to the
-    # catch-all clause which returns {:error, :rule_only_valid_from_1423_ah}.
-    test "year 1422 AH (one year before era start) returns :rule_only_valid_from_1423_ah" do
-      assert {:error, :rule_only_valid_from_1423_ah} =
-               Astronomical.first_day_of_month(1422, 12)
+    test "year 1391 AH (one year before Era 2) returns :year_out_of_range" do
+      assert {:error, :year_out_of_range} =
+               Astronomical.first_day_of_month(1391, 1)
     end
 
-    test "year 1356 AH (dataset start, before era) returns :rule_only_valid_from_1423_ah" do
-      assert {:error, :rule_only_valid_from_1423_ah} =
-               Astronomical.first_day_of_month(1356, 1)
+    test "year 1 AH returns :year_out_of_range" do
+      assert {:error, :year_out_of_range} =
+               Astronomical.first_day_of_month(1, 1)
     end
 
     test "month 0 returns an error for a valid year" do
@@ -311,5 +332,53 @@ defmodule Astro.UmmAlQura.AstronomicalTest do
       assert days in [29, 30],
              "#{hijri_year}/#{month} has #{days} days (expected 29 or 30)"
     end
+  end
+
+  # Sweeps all reference-data entries matching `filter_fn`, asserts the count
+  # matches `expected_count`, and reports every failure in one shot.
+  defp sweep_and_assert(filter_fn, expected_count) do
+    entries =
+      ReferenceData.umm_al_qura_dates()
+      |> Enum.filter(filter_fn)
+
+    assert length(entries) == expected_count,
+           "Expected #{expected_count} entries; got #{length(entries)}"
+
+    failures =
+      Enum.flat_map(entries, fn %{hijri_year: year, hijri_month: month, gregorian: expected} ->
+        case Astronomical.first_day_of_month(year, month) do
+          {:ok, ^expected} ->
+            []
+
+          {:ok, actual} ->
+            diff = Date.diff(actual, expected)
+            sign = if diff > 0, do: "+", else: ""
+            ["#{year}/#{month}: expected #{expected}, got #{actual} (diff #{sign}#{diff})"]
+
+          {:error, reason} ->
+            ["#{year}/#{month}: expected #{expected}, got {:error, #{inspect(reason)}}"]
+        end
+      end)
+
+    correct = length(entries) - length(failures)
+
+    if failures != [] do
+      flunk("""
+      #{length(failures)} of #{length(entries)} months failed \
+      (#{correct}/#{length(entries)} correct, \
+      #{Float.round(correct / length(entries) * 100, 1)}%):
+
+        #{Enum.join(failures, "\n  ")}
+      """)
+    end
+  end
+
+  # Look up the expected Gregorian date from the reference dataset.
+  defp ref_date(hijri_year, hijri_month) do
+    ReferenceData.umm_al_qura_dates()
+    |> Enum.find(fn %{hijri_year: y, hijri_month: m} ->
+      y == hijri_year and m == hijri_month
+    end)
+    |> Map.fetch!(:gregorian)
   end
 end
