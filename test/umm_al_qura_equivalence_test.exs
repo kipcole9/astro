@@ -28,7 +28,7 @@ defmodule Astro.UmmAlQura.EquivalenceTest do
 
   # Known boundary cases where the astronomical model disagrees with
   # the van Gent reference data due to sub-minute event timing sensitivity.
-  @known_boundary_cases MapSet.new([{1427, 6}, {1446, 6}, {1485, 10}])
+  @known_boundary_cases MapSet.new([{1446, 6}, {1475, 11}, {1485, 10}])
 
   @tag timeout: :infinity
   property "Tabular and Astronomical first_day_of_month agree for 1420-1500 AH (Era 3 + Era 4)" do

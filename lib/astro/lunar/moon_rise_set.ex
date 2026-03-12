@@ -128,8 +128,13 @@ defmodule Astro.Lunar.MoonRiseSet do
     # approach used by the USNO.
     interpolation = Keyword.get(options, :interpolation, :direct)
 
+    # Limb definition:
+    #   :upper (default) — upper limb on the apparent horizon (USNO standard)
+    #   :center          — centre of disk on the apparent horizon (Skyfield convention)
+    limb = Keyword.get(options, :limb, :upper)
+
     # Always use direct ephemeris for the coarse scan
-    direct_fn = fn et -> topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi) end
+    direct_fn = fn et -> topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
 
     {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
     et_start = Coordinates.utc_to_et(utc_midnight) - @scan_pre_window_s
@@ -161,7 +166,7 @@ defmodule Astro.Lunar.MoonRiseSet do
             :lagrange ->
               et_mid = (et_lo + et_hi) / 2.0
               interp = build_lagrange_interpolator(date, et_mid)
-              fn et -> lagrange_topocentric_f(et, interp, lat, lng, rho_sin_phi, rho_cos_phi) end
+              fn et -> lagrange_topocentric_f(et, interp, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
 
             :direct ->
               direct_fn
@@ -202,7 +207,7 @@ defmodule Astro.Lunar.MoonRiseSet do
   #
   # Positive f: Moon is above the horizon.
   # Negative f: Moon is below the horizon.
-  defp topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi) do
+  defp topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
     {:ok, {ra_geo, dec_geo, dist_km}} = Ephemeris.moon_position_et(et)
 
     semi_diam = :math.asin(@moon_radius_km / dist_km) * 180.0 / :math.pi()
@@ -236,7 +241,14 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     alt_geom = :math.asin(sin_alt) * 180.0 / :math.pi()
 
-    alt_geom + semi_diam + @std_refraction_deg
+    # Upper limb: moonset when upper edge touches apparent horizon
+    #   f = alt_geom + semi_diam + refraction
+    # Centre of disk: moonset when centre crosses apparent horizon
+    #   f = alt_geom + refraction
+    case limb do
+      :upper -> alt_geom + semi_diam + @std_refraction_deg
+      :center -> alt_geom + @std_refraction_deg
+    end
   end
 
   # ── Lagrange interpolation ───────────────────────────────────────────────────
@@ -292,7 +304,7 @@ defmodule Astro.Lunar.MoonRiseSet do
   # Altitude function using Lagrange-interpolated Moon position.
   # This mimics the Meeus Ch.15 approach where the Moon's geocentric
   # RA, Dec, and distance are interpolated from 3 daily tabular points.
-  defp lagrange_topocentric_f(et, interp, lat, lng, rho_sin_phi, rho_cos_phi) do
+  defp lagrange_topocentric_f(et, interp, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
     n = (et - interp.et_center) / interp.interval
 
     ra_geo = lagrange_3pt(n, interp.ra)
@@ -332,7 +344,10 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     alt_geom = :math.asin(sin_alt) * 180.0 / :math.pi()
 
-    alt_geom + semi_diam + @std_refraction_deg
+    case limb do
+      :upper -> alt_geom + semi_diam + @std_refraction_deg
+      :center -> alt_geom + @std_refraction_deg
+    end
   end
 
   # ── Bisection ────────────────────────────────────────────────────────────────

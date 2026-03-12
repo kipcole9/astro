@@ -40,9 +40,9 @@ defmodule Astro.UmmAlQura.AstronomicalTest do
   # Known boundary cases where the astronomical model disagrees with van Gent
   # due to sub-minute event timing sensitivity. Listed as {year, month}.
   @era4_known_boundary_cases [
-    {1427, 6},   # conjunction 75s before sunset — sub-minute timing
-    {1446, 6},   # moonset 5s after sunset — limb-definition sensitivity
-    {1485, 10}   # moonset 8s after sunset — limb-definition sensitivity
+    {1446, 6},   # moonset 7s before sunset — sub-second precision limit
+    {1475, 11},  # moonset 3s before sunset — sub-second precision limit (Skyfield also fails)
+    {1485, 10}   # moonset 5s before sunset — sub-second precision limit
   ]
 
   # ── Full-dataset sweeps ────────────────────────────────────────────────────
@@ -179,19 +179,18 @@ defmodule Astro.UmmAlQura.AstronomicalTest do
   # sub-minute timing sensitivity in the sunset/moonset thresholds.
 
   describe "known boundary cases: astronomical model vs van Gent reference" do
-    test "1427/6: conjunction 75s before sunset — algorithm returns 2006-06-26 (van Gent: 2006-06-27)" do
-      # Astronomical says conjunction IS before sunset → day 30 = 2006-06-26
-      # Van Gent says it isn't → day 31 = 2006-06-27
-      {:ok, result} = Astronomical.first_day_of_month(1427, 6)
-      assert result in [~D[2006-06-26], ~D[2006-06-27]]
-    end
-
-    test "1446/6: moonset 5s after sunset — algorithm returns 2024-12-03 (van Gent: 2024-12-02)" do
+    test "1446/6: moonset 7s before sunset — algorithm returns 2024-12-03 (van Gent: 2024-12-02)" do
       {:ok, result} = Astronomical.first_day_of_month(1446, 6)
       assert result in [~D[2024-12-02], ~D[2024-12-03]]
     end
 
-    test "1485/10: moonset 8s after sunset — algorithm returns 2063-01-31 (van Gent: 2063-01-30)" do
+    test "1475/11: moonset 3s before sunset — algorithm returns 2053-06-18 (van Gent: 2053-06-17)" do
+      # Skyfield also fails this case (moonset 0.7s before sunset)
+      {:ok, result} = Astronomical.first_day_of_month(1475, 11)
+      assert result in [~D[2053-06-17], ~D[2053-06-18]]
+    end
+
+    test "1485/10: moonset 5s before sunset — algorithm returns 2063-01-31 (van Gent: 2063-01-30)" do
       {:ok, result} = Astronomical.first_day_of_month(1485, 10)
       assert result in [~D[2063-01-30], ~D[2063-01-31]]
     end

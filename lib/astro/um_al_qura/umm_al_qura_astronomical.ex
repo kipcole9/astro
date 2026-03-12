@@ -31,22 +31,24 @@ defmodule Astro.UmmAlQura.Astronomical do
 
   ## Accuracy
 
-  The astronomical computation achieves 99.7 % agreement (933 of 936 months)
-  with the van Gent reference dataset for Era 4 (1423–1500 AH). The three
-  boundary-case months where the algorithm disagrees are:
+  The astronomical computation uses centre-of-disk sunset and centre-of-disk
+  moonset conventions (matching Skyfield/van Gent) and achieves 99.7 %
+  agreement (934 of 937 months) with the van Gent reference dataset for
+  Era 4 (1423–1500 AH). The three boundary-case months where the algorithm
+  disagrees are:
 
   | Hijri month | Gregorian (van Gent) | Gregorian (algorithm) | Root cause |
   |-------------|---------------------|-----------------------|------------|
-  | 1427/6      | 2006-06-27          | 2006-06-26            | Conjunction 75 s before sunset — sub-minute timing sensitivity |
-  | 1446/6      | 2024-12-02          | 2024-12-03            | Moonset 5 s after sunset — upper-limb vs centre-of-disk threshold |
-  | 1485/10     | 2063-01-30          | 2063-01-31            | Moonset 8 s after sunset — upper-limb vs centre-of-disk threshold |
+  | 1446/6      | 2024-12-02          | 2024-12-03            | Moonset 7 s before sunset |
+  | 1475/11     | 2053-06-17          | 2053-06-18            | Moonset 3 s before sunset (Skyfield also fails) |
+  | 1485/10     | 2063-01-30          | 2063-01-31            | Moonset 5 s before sunset |
 
-  These discrepancies arise from the inherent precision limits of any
-  rise/set calculation: atmospheric refraction models, limb-definition
-  conventions (upper limb vs centre of disk), and sub-second event timing.
-  The van Gent reference data — independently corroborated by the hijridate
-  package (dralshehri, sourced from KACST archival publications) — is used
-  as the canonical calendar via `Astro.UmmAlQura.ReferenceData`.
+  All three involve moonset-sunset gaps of less than 10 seconds — below
+  the precision floor of any rise/set calculation given atmospheric
+  refraction uncertainty (±2 arcmin ≈ ±10 s).  The van Gent reference
+  data — independently corroborated by the hijridate package (dralshehri,
+  sourced from KACST archival publications) — is used as the canonical
+  calendar via `Astro.UmmAlQura.ReferenceData`.
 
   ## Reference
 
@@ -319,7 +321,12 @@ defmodule Astro.UmmAlQura.Astronomical do
   # cleared the (true) sun.  Switching to the JPL-based computation collapses
   # those 68 failures to zero.
   defp sunset_utc_at_mecca(date) do
-    case Astro.Solar.SunRiseSet.sunset(@mecca_location, date) do
+    # Centre-of-disk sunset: h0 = -(34'/60) = -0.5667° (refraction only,
+    # no solar semi-diameter).  This matches the convention used by van Gent
+    # and Skyfield's `risings_and_settings(radius_degrees=0)`.
+    #
+    # solar_elevation: 90.5667 → h0 = -(90.5667 - 90) = -0.5667°
+    case Astro.Solar.SunRiseSet.sunset(@mecca_location, date, solar_elevation: 90.5667) do
       {:ok, sunset_local} ->
         {:ok, DateTime.shift_zone!(sunset_local, "Etc/UTC")}
 
@@ -329,8 +336,12 @@ defmodule Astro.UmmAlQura.Astronomical do
   end
 
   # Returns the UTC DateTime of moonset in Mecca on `date`.
+  #
+  # Centre-of-disk moonset: the moon's centre crosses the refraction-corrected
+  # horizon (no semi-diameter correction).  This matches the convention used by
+  # van Gent and Skyfield's `risings_and_settings(radius_degrees=0)`.
   defp moonset_utc_at_mecca(date) do
-    case Astro.moonset(@mecca_location, date) do
+    case Astro.Lunar.MoonRiseSet.moonset(@mecca_location, date, limb: :center) do
       {:ok, moonset_local} ->
         {:ok, DateTime.shift_zone!(moonset_local, "Etc/UTC")}
 
