@@ -11,7 +11,7 @@ agreement. The timeanddate.com data (used in the CSV test files) agrees with bot
 to within ±1 minute, with the 2 boundary cases at 61 seconds being a minute-rounding
 artefact.
 
-The test data uses dates from December 2019 across 5 cities (Sydney, Moscow, NYC, São Paulo, Beijing) with a total of 310 comparisons.
+The test data uses dates from December 2019 across 5 cities (Sydney, Moscow, NYC, São Paulo, Beijing) for a total of 310 comparisons.
 
 ### Overall
 
@@ -35,10 +35,10 @@ The test data uses dates from December 2019 across 5 cities (Sydney, Moscow, NYC
 
 The ~16 s mean difference against USNO is explained by two factors: USNO uses DE430
 (vs our DE440s), and USNO rounds to the nearest minute. Skyfield shows the same ~16 s
-offset against USNO, confirming this is an ephemeris version difference rather than an
+offset against USNO, suggesting this is an ephemeris version difference rather than an
 algorithmic error.
 
-The test data uses dates from March 2026 across 4 cities (NYC, London, Sydney, Tokyo) a total of 70 tests.
+The test data uses dates from March 2026 across 4 cities (NYC, London, Sydney, Tokyo) for a total of 70 comparisons.
 
 ### Overall
 

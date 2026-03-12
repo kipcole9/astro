@@ -42,7 +42,8 @@ defmodule Astro.MixProject do
       extras: [
         "README.md",
         "LICENSE.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "rise_and_set_comparisons.md"
       ],
       skip_undefined_reference_warnings_on: ["changelog", "CHANGELOG.md"]
     ]
