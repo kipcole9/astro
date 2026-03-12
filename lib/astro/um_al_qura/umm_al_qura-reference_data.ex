@@ -23,6 +23,15 @@ defmodule Astro.UmmAlQura.ReferenceData do
   @doc """
   Returns the complete sequence of Umm al-Qura first-day dates as a list of maps.
 
+  ### Arguments
+
+  * `hijiri_list_of_days_since_epoch` is a list of integers
+    marking the start of each Hijiri month. There are two source
+    available in this module:
+
+    * `akamal_data()` (the default) and
+    * `van_gent_data()`
+
   Each map has three keys:
     - `:hijri_year`  — Hijri year (integer)
     - `:hijri_month` — Hijri month number, 1–12 (1 = Muharram)
@@ -32,12 +41,12 @@ defmodule Astro.UmmAlQura.ReferenceData do
   (#{@hijri_start_date}) and covers approximately 145 years.
 
   """
-  @spec umm_al_qura_dates() :: [
+  @spec umm_al_qura_dates(hijiri_list_of_days_since_epoch :: [integer]) :: [
           %{hijri_year: pos_integer(), hijri_month: 1..12, gregorian: Date.t()}
         ]
-  def umm_al_qura_dates(data \\ akmal_data()) do
+  def umm_al_qura_dates(hijiri_list_of_days_since_epoch \\ akmal_data()) do
     dates =
-      to_gregorian(data, [@hijri_start_date])
+      to_gregorian(hijiri_list_of_days_since_epoch, [@hijri_start_date])
       |> Enum.reverse()
 
     dates
@@ -49,15 +58,16 @@ defmodule Astro.UmmAlQura.ReferenceData do
     end)
   end
 
-  # ---------------------------------------------------------------------------
-  # Private helpers
-  # ---------------------------------------------------------------------------
+  @doc """
+  Returns a table of days since epoch for Hikiri months
+  in the Umm al-Qura calendar.
 
-  # From https://gist.github.com/akmalxxx/6492017
-  # Each number is a cumulative since an epoch.  Consecutive
-  # differences give the length (29 or 30 days) of each Hijri month, starting
-  # at 1 Muharram 1356 AH (14 March 1937 CE).
-  @doc false
+  The data is sourced from https://gist.github.com/akmalxxx/6492017
+
+  Consecutive differences give the length (29 or 30 days) of each Hijri month, starting
+  at 1 Muharram 1356 AH (14 March 1937 CE).
+
+  """
   def akmal_data do
     [
       28607,28636,28665,28695,28724,28754,28783,28813,28843,28872,28901,28931,28960,28990,29019,29049,29078,29108,29137,29167,
@@ -152,7 +162,8 @@ defmodule Astro.UmmAlQura.ReferenceData do
   end
 
   @doc """
-  Alternative cumulative day-count dataset extracted from R.H. van Gent's
+  Returns an alternative table of days since epoch for Hikiri months
+  in the Umm al-Qura calendar sourced from R.H. van Gent's
   Umm al-Qura tables at Utrecht University.
 
   Source: <https://webspace.science.uu.nl/~gent0113/islam/ummalqura.htm>
@@ -170,7 +181,7 @@ defmodule Astro.UmmAlQura.ReferenceData do
   | 1446/6 | Jumada al-Thani | 2024-12-03 | 2024-12-02 | moonset 5 s before sunset |
   | 1485/10 | **Shawwal (Eid al-Fitr)** | 2063-01-31 | 2063-01-30 | moonset 8 s before sunset |
 
-  The discrepancies are caused by differences in the underlying
+  The discrepancies are likely caused by differences in the underlying
   astronomical algorithms (ephemeris model, atmospheric refraction,
   lunar parallax). At these razor-thin margins a few arcseconds of
   difference in the moon's computed position flips the binary
@@ -183,8 +194,15 @@ defmodule Astro.UmmAlQura.ReferenceData do
 
   Era 2 (1392–1419 AH) and Era 3 (1420–1422 AH) are identical
   across both datasets.
+
+  Since the first two dates are in the past, and the last one
+  is in the mid-future it is expected the discrepencies have
+  limited negative impact. However they are included here
+  as a reminder that not all data sets agree and astronomical
+  calculations are hard.
+
   """
-  def ghent_data do
+  def van_gent_data do
     [
       28607,28636,28665,28695,28724,28754,28783,28813,28843,28872,28901,28931,28960,28990,29019,29049,29078,29108,29137,29167,
       29196,29226,29255,29285,29315,29345,29375,29404,29434,29463,29492,29522,29551,29580,29610,29640,29669,29699,29729,29759,
