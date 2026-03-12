@@ -35,9 +35,9 @@ defmodule Astro.UmmAlQura.ReferenceData do
   @spec umm_al_qura_dates() :: [
           %{hijri_year: pos_integer(), hijri_month: 1..12, gregorian: Date.t()}
         ]
-  def umm_al_qura_dates(data \\ akmal_dates()) do
+  def umm_al_qura_dates(data \\ akmal_data()) do
     dates =
-      to_gregorian(akmal_data(), [@hijri_start_date])
+      to_gregorian(data, [@hijri_start_date])
       |> Enum.reverse()
 
     dates
