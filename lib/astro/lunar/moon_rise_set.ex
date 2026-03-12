@@ -153,7 +153,7 @@ defmodule Astro.Lunar.MoonRiseSet do
       end)
 
     result =
-      Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
+      Enum.find_value(brackets, fn [{et_lo, _f_lo}, {et_hi, _f_hi}] ->
         # For Lagrange mode, build an interpolator centred on the bracket
         # midpoint and use it for bisection refinement.
         alt_fn =
@@ -249,7 +249,7 @@ defmodule Astro.Lunar.MoonRiseSet do
   # Build a Lagrange interpolator from 3 tabular positions.
   # The tabular points are spaced by @lagrange_interval_s seconds, centred
   # on the midpoint of the given bracket [et_lo, et_hi].
-  defp build_lagrange_interpolator(_date, et_center \\ nil) do
+  defp build_lagrange_interpolator(_date, et_center) do
     # Default: centre on 12h UTC of the date
     et_center = et_center || raise("must provide et_center")
     et0 = et_center - @lagrange_interval_s
