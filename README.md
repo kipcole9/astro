@@ -7,6 +7,21 @@
 
 Astro is a library to provide basic astromonomical functions with a focus on functions that support solar, lunar and lunisolar calendars such as the Islamic, Chinese, Hebrew and Persian calendars.
 
+## Astro version 2 rise and set algorithms
+
+The implementation of the sun and moon rise and set calculations in Astro 2.0 is a JPL DE440s ephemeris scan-and-bisect algorithm. Specifically:
+
+* Astro verison 1.x: was a NOAA/Meeus analytical solar position (polynomial + periodic-term approximation of the Sun's coordinates, with three-point interpolation for the rise/set crossing). There was no moon rise/set calculation in Astro 1.x.
+
+* Astro version 2: JPL DE440s ephemeris with coarse-scan and binary-search — the Sun's (or Moon's) position is computed directly from the JPL Development Ephemeris at each evaluation point, and the altitude zero-crossing is found by:
+  * Coarse scan — sampling altitude at regular intervals (24-minute steps for the Sun, shorter for the Moon) to bracket sign changes
+  * Bisection — narrowing each bracket to ~1 second precision
+
+For the Moon, it's additionally fully topocentric — the observer's geocentric displacement is applied to the Moon's position before computing altitude, rather than using the Meeus h0 = 0.7275π − 0.5667° parallax-in-altitude approximation.
+
+There is a [comparison document](rise_and_set_comparisons.md) demonstrating how Astro's calculations for rise and set compare with Skyfield (JPL DE440s), USNO (DE430),
+and [timeanddate.com](https://timeanddate.com).
+
 ## Usage
 
 **NOTE: It's important to install and configure `Astro` correctly before use. See the [installation](#installation) notes below.**

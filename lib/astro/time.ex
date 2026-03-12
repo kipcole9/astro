@@ -902,7 +902,7 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts an `t:Astro.moment/0` into a `NaiveDateTime.t/0`.
+  Converts an `t:Astro.moment/0` into a `t:NaiveDateTime.t/0`.
 
   ### Arguments
 

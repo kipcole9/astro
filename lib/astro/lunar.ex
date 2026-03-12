@@ -192,7 +192,7 @@ defmodule Astro.Lunar do
 
   """
   @doc since: "0.5.0"
-  @spec lunar_phase_at(t :: Time.moment()) :: Astro.angle()
+  @spec lunar_phase_at(t :: Astro.Time.moment()) :: Astro.angle()
 
   def lunar_phase_at(t) when is_number(t) do
     phi = mod(lunar_longitude(t) - solar_longitude(t), 360)
