@@ -100,7 +100,8 @@ defmodule Astro.MixProject do
       # If usuing tz
       {:tz, "~> 0.26", optional: true},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
-      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false, optional: true}
+      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false, optional: true},
+      {:stream_data, "~> 1.0", only: [:test]}
     ]
   end
 
