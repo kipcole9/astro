@@ -36,8 +36,8 @@ defmodule Astro.UmmAlQura.ReferenceData do
     marking the start of each Hijiri month. There are two source
     available in this module:
 
-    * `akamal_data/0` (the default) and
-    * `van_gent_data/0`
+    * `van_gent_data/0` (the default) and
+    * `akmal_data/0`
 
   Each map has three keys:
     - `:hijri_year`  — Hijri year (integer)
@@ -51,7 +51,7 @@ defmodule Astro.UmmAlQura.ReferenceData do
   @spec umm_al_qura_dates(hijiri_list_of_days_since_epoch :: [pos_integer]) :: [
           %{hijri_year: pos_integer(), hijri_month: 1..12, gregorian: Date.t()}
         ]
-  def umm_al_qura_dates(hijiri_list_of_days_since_epoch \\ akmal_data()) do
+  def umm_al_qura_dates(hijiri_list_of_days_since_epoch \\ van_gent_data()) do
     dates =
       to_gregorian(hijiri_list_of_days_since_epoch, [@hijri_start_date])
       |> Enum.reverse()

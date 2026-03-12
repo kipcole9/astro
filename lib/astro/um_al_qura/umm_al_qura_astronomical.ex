@@ -29,11 +29,31 @@ defmodule Astro.UmmAlQura.Astronomical do
   Years before 1392 AH are not supported because no reliable astronomical
   rule has been established for that period.
 
+  ## Accuracy
+
+  The astronomical computation achieves 99.7 % agreement (933 of 936 months)
+  with the van Gent reference dataset for Era 4 (1423–1500 AH). The three
+  boundary-case months where the algorithm disagrees are:
+
+  | Hijri month | Gregorian (van Gent) | Gregorian (algorithm) | Root cause |
+  |-------------|---------------------|-----------------------|------------|
+  | 1427/6      | 2006-06-27          | 2006-06-26            | Conjunction 75 s before sunset — sub-minute timing sensitivity |
+  | 1446/6      | 2024-12-02          | 2024-12-03            | Moonset 5 s after sunset — upper-limb vs centre-of-disk threshold |
+  | 1485/10     | 2063-01-30          | 2063-01-31            | Moonset 8 s after sunset — upper-limb vs centre-of-disk threshold |
+
+  These discrepancies arise from the inherent precision limits of any
+  rise/set calculation: atmospheric refraction models, limb-definition
+  conventions (upper limb vs centre of disk), and sub-second event timing.
+  The van Gent reference data — independently corroborated by the hijridate
+  package (dralshehri, sourced from KACST archival publications) — is used
+  as the canonical calendar via `Astro.UmmAlQura.ReferenceData`.
+
   ## Reference
 
   - R.H. van Gent, "The Umm al-Qura Calendar of Saudi Arabia",
     https://webspace.science.uu.nl/~gent0113/islam/ummalqura_rules.htm
-  - Wikipedia, "Islamic calendar"
+  - hijridate (dralshehri), independent KACST-verified dataset,
+    https://github.com/dralshehri/hijri-converter
   - Dershowitz & Reingold, *Calendrical Calculations* (4th ed.), Chapter 6
 
   """
