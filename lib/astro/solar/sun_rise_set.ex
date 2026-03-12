@@ -53,7 +53,7 @@ defmodule Astro.Solar.SunRiseSet do
   @scan_window_s 52 * 3_600
 
   # Bisection precision target (seconds).
-  @bisect_tol_s 1.0
+  @bisect_tol_s 0.01
 
   # Maximum bisection iterations (safety cap).
   @bisect_max 60

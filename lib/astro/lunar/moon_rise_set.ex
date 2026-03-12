@@ -21,7 +21,7 @@ defmodule Astro.Lunar.MoonRiseSet do
      sign identify a rise or set event bracketed to within one scan step.
 
   2. **Binary search** — the bracket is bisected until its width falls below
-     `@bisect_tol_s` seconds (default: 1 s). Each probe evaluates one
+     `@bisect_tol_s` seconds (0.01 s). Each probe evaluates one
      ephemeris position, one Ch.40 topocentric correction, and one refraction
      call — no derivatives, no interpolation error.
 
@@ -94,8 +94,9 @@ defmodule Astro.Lunar.MoonRiseSet do
   # total scan duration
   @scan_window_s 52 * 3_600
 
-  # Bisection precision target (seconds).
-  @bisect_tol_s 1.0
+  # Bisection precision target (seconds).  Sub-second precision is needed
+  # for the Umm al-Qura calendar where moonset-sunset gaps can be < 10 s.
+  @bisect_tol_s 0.01
 
   # Maximum bisection iterations (safety cap; 60 iterations spans 10^18 s).
   @bisect_max 60
