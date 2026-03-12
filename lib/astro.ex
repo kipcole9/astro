@@ -194,7 +194,7 @@ defmodule Astro do
 
       iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
       %Geo.PointZ{
-        coordinates: {134.697888, 13.765243, 368409001.97178},
+        coordinates: {134.693504, 13.766486, 368409001.97178},
         properties: %{object: :moon, reference: :celestial},
         srid: nil
       }
@@ -246,10 +246,10 @@ defmodule Astro do
   ### Example
 
       iex> Astro.illuminated_fraction_of_moon_at(~D[2017-03-16])
-      0.8884442367681415
+      0.8884327359054092
 
       iex> Astro.illuminated_fraction_of_moon_at(~D[1992-04-12])
-      0.6786428237168787
+      0.6786067036248266
 
   """
   @doc since: "0.6.0"
@@ -432,10 +432,10 @@ defmodule Astro do
   ### Example
 
       iex> Astro.lunar_phase_at ~U[2021-08-22 12:01:02.170362Z]
-      180.00001498208536
+      180.00001498208474
 
       iex> Astro.lunar_phase_at(~U[2021-07-10 01:18:25.422335Z])
-      0.021567106773019873
+      0.021567106773062505
 
   """
 
@@ -1086,7 +1086,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.hours_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-07]
-      {:ok, ~T[14:18:45]}
+      {:ok, ~T[14:18:44]}
 
       # No sunset in summer
       iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-06-07]

@@ -6,7 +6,7 @@ defmodule Astro.Earth do
   """
   alias Astro.Time
 
-  import Astro.Math, only: [to_degrees: 1, poly: 2, deg: 1, sin: 1]
+  import Astro.Math, only: [to_degrees: 1]
 
   @meters_per_kilometer 1000.0
 
@@ -20,6 +20,9 @@ defmodule Astro.Earth do
 
   # Mean obliquity in degrees
   @obliquity 23.4397
+
+  # Arcseconds per degree
+  @arcsec_per_deg 3600.0
 
   # Equatorial radius in kilometers
   @earth_radius 6_378.1366
@@ -51,8 +54,8 @@ defmodule Astro.Earth do
   ```
   R = 1 / tan(0° + 7.31 / (0° + 4.4)) ≈ 34 arcminutes = 0.5667°
   ```
-  The [Astronomical Almanac](https://www.amazon.com/Astronomical-Almanac-2023-Comprehensive-Events/dp/B0BGZLFPF4/ref=sr_1_1) uses the same
-  value.
+  The [Astronomical Almanac](https://www.amazon.com/Astronomical-Almanac-2023-Comprehensive-Events/dp/B0BGZLFPF4/ref=sr_1_1)
+  uses the same value.
 
   """
   @spec refraction :: Astro.degrees()
@@ -131,12 +134,8 @@ defmodule Astro.Earth do
   end
 
   @doc """
-  Returns the [nutation](https://en.wikipedia.org/wiki/Astronomical_nutation#:~:text=Earth's%20nutation,-Learn%20more&text=Nutation%20(N)%20of%20the%20Earth,spherical%20figure%20of%20the%20Earth.)
-  correction at a given time.
-
-  Nutation is the variation over time of the orientation of the
-  axis of rotation of the Earth due primarily to gravitational
-  forces of the Moon acting upon the spinning Earth.
+  Computes IAU 1980 [nutation](https://en.wikipedia.org/wiki/Astronomical_nutation#:~:text=Earth's%20nutation,-Learn%20more&text=Nutation%20(N)%20of%20the%20Earth,spherical%20figure%20of%20the%20Earth.)) in longitude and obliquity, and the
+  mean obliquity.
 
   ### Arguments
 
@@ -145,14 +144,56 @@ defmodule Astro.Earth do
 
   ### Returns
 
-  * `nutation`, a float angle in degrees.
+  * `{delta_psi_rad, delta_eps_rad, eps0_rad}`
 
   """
-  @spec nutation(Time.julian_centuries()) :: Astro.angle()
-  def nutation(julian_centuries) do
-    a = poly(julian_centuries, Enum.map([124.90, -1934.134, 0.002063], &deg/1))
-    b = poly(julian_centuries, Enum.map([201.11, 72001.5377, 0.00057], &deg/1))
-    deg(-0.004778) * sin(a) + deg(-0.0003667) * sin(b)
+  @spec nutation(c :: Time.julian_centuries) :: {float(), float(), float()}
+  def nutation(c) do
+    # Fundamental arguments (degrees, Meeus Ch.22)
+    d = 297.85036 + 445_267.111480 * c - 0.0019142 * c * c + c * c * c / 189_474.0
+    m = 357.52772 + 35_999.050340 * c - 0.0001603 * c * c - c * c * c / 300_000.0
+    mp = 134.96298 + 477_198.867398 * c + 0.0086972 * c * c + c * c * c / 56_250.0
+    f = 93.27191 + 483_202.017538 * c - 0.0036825 * c * c + c * c * c / 327_270.0
+    om = 125.04452 - 1_934.136261 * c + 0.0020708 * c * c + c * c * c / 450_000.0
+
+    # Top 17 terms of the IAU 1980 nutation series.
+    # Format: {D, M, M', F, Om, dpsi_s (0.0001"), deps_c (0.0001")}
+    terms = [
+      {0, 0, 0, 0, 1, -171_996.0, 92_025.0},
+      {-2, 0, 0, 2, 2, -13_187.0, 5_736.0},
+      {0, 0, 0, 2, 2, -2_274.0, 977.0},
+      {0, 0, 0, 0, 2, 2_062.0, -895.0},
+      {0, 1, 0, 0, 0, 1_426.0, 54.0},
+      {0, 0, 1, 0, 0, 712.0, -7.0},
+      {-2, 1, 0, 2, 2, -517.0, 224.0},
+      {0, 0, 0, 2, 1, -386.0, 200.0},
+      {0, 0, 1, 2, 2, -301.0, 129.0},
+      {-2, -1, 0, 2, 2, 217.0, -95.0},
+      {-2, 0, 1, 0, 0, -158.0, 0.0},
+      {-2, 0, 0, 2, 1, 129.0, -70.0},
+      {0, 0, -1, 2, 2, 123.0, -53.0},
+      {2, 0, 0, 0, 0, 63.0, 0.0},
+      {0, 0, 1, 0, 1, 63.0, -33.0},
+      {2, 0, -1, 2, 2, -59.0, 26.0},
+      {0, 0, -1, 0, 1, -58.0, 32.0}
+    ]
+
+    {dpsi_units, deps_units} =
+      Enum.reduce(terms, {0.0, 0.0}, fn {td, tm, tmp, tf, tom, ds, dc}, {acc_psi, acc_eps} ->
+        arg_deg = td * d + tm * m + tmp * mp + tf * f + tom * om
+        arg_rad = :math.pi() / 180.0 * arg_deg
+        {acc_psi + ds * :math.sin(arg_rad), acc_eps + dc * :math.cos(arg_rad)}
+      end)
+
+    # Convert from 0.0001 arcseconds to radians
+    dpsi = dpsi_units * 0.0001 / @arcsec_per_deg * :math.pi() / 180.0
+    deps = deps_units * 0.0001 / @arcsec_per_deg * :math.pi() / 180.0
+
+    # Mean obliquity of the ecliptic (Meeus eq 22.2), arcseconds → radians
+    eps0_arcsec = 84_381.448 - 46.8150 * c - 0.00059 * c * c + 0.001813 * c * c * c
+    eps0 = eps0_arcsec / @arcsec_per_deg * :math.pi() / 180.0
+
+    {dpsi, deps, eps0}
   end
 
   @doc """

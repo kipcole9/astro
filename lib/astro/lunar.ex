@@ -43,11 +43,6 @@ defmodule Astro.Lunar do
       mean_synodic_month: 0
     ]
 
-  import Astro.Earth,
-    only: [
-      nutation: 1
-    ]
-
   @months_epoch_to_j2000 24_724
   @average_distance_earth_to_moon 385_000_560.0
   @meters_per_kilometer 1000.0
@@ -190,10 +185,10 @@ defmodule Astro.Lunar do
   ## Example
 
       iex> Astro.Lunar.lunar_phase_at(738389.5007195644)
-      180.00001498208536
+      180.00001498208474
 
       iex> Astro.Lunar.lunar_phase_at(738346.0544609067)
-      0.021567106773019873
+      0.021567106773062505
 
   """
   @doc since: "0.5.0"
@@ -718,7 +713,8 @@ defmodule Astro.Lunar do
       deg(1962 / 1_000_000) *
         sin(l - f)
 
-    mod(l + correction + venus + jupiter + flat_earth + nutation(c), 360)
+    {dpsi, _deps, _eps0} = Earth.nutation(c)
+    mod(l + correction + venus + jupiter + flat_earth + dpsi, 360)
   end
 
   @doc since: "0.6.0"

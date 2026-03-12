@@ -7,7 +7,7 @@ defmodule Astro.Solar do
 
   """
 
-  alias Astro.{Math, Earth, Time, Location}
+  alias Astro.{Math, Time, Earth, Location}
 
   import Time,
     only: [
@@ -24,11 +24,6 @@ defmodule Astro.Solar do
       sigma: 2,
       deg: 1,
       mod: 2
-    ]
-
-  import Astro.Earth,
-    only: [
-      nutation: 1
     ]
 
   @minutes_per_degree 4.0
@@ -558,8 +553,8 @@ defmodule Astro.Solar do
             [coefficients, addends, multipliers],
             fn [x, y, z] -> x * sin(y + z * julian_centuries) end
           )
-
-    mod(lambda + aberration(julian_centuries) + nutation(julian_centuries), 360.0)
+    {nutation, _, _} = Earth.nutation(julian_centuries)
+    mod(lambda + aberration(julian_centuries) + nutation, 360.0)
   end
 
   @doc false

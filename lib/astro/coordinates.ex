@@ -29,6 +29,8 @@ defmodule Astro.Coordinates do
   GAST:       Meeus Ch.12 with equation of the equinoxes.
   """
 
+  alias Astro.Earth
+
   # ΔT = TT − UTC in seconds (IERS observed, best estimate 2020–2030).
   # Revisit if using this module outside that range.
   @delta_t_seconds 69.2
@@ -106,7 +108,7 @@ defmodule Astro.Coordinates do
     {x3, y3, z3} = rot_z({x2, y2, z2}, z_a)
 
     # Nutation
-    {d_psi, d_eps, eps0} = nutation(t)
+    {d_psi, d_eps, eps0} = Earth.nutation(t)
     # true obliquity (radians)
     eps = eps0 + d_eps
 
@@ -116,62 +118,6 @@ defmodule Astro.Coordinates do
     {x6, y6, z6} = rot_x({x5, y5, z5}, -eps)
 
     {x6, y6, z6}
-  end
-
-  @doc """
-  Computes IAU 1980 nutation in longitude and obliquity, and the mean obliquity.
-
-  Returns `{delta_psi_rad, delta_eps_rad, eps0_rad}`.
-
-  `c` is Julian centuries from J2000.0.
-  """
-  @spec nutation(c :: Astro.Time.julian_centuries) :: {float(), float(), float()}
-  def nutation(c) do
-    # Fundamental arguments (degrees, Meeus Ch.22)
-    d = 297.85036 + 445_267.111480 * c - 0.0019142 * c * c + c * c * c / 189_474.0
-    m = 357.52772 + 35_999.050340 * c - 0.0001603 * c * c - c * c * c / 300_000.0
-    mp = 134.96298 + 477_198.867398 * c + 0.0086972 * c * c + c * c * c / 56_250.0
-    f = 93.27191 + 483_202.017538 * c - 0.0036825 * c * c + c * c * c / 327_270.0
-    om = 125.04452 - 1_934.136261 * c + 0.0020708 * c * c + c * c * c / 450_000.0
-
-    # Top 17 terms of the IAU 1980 nutation series.
-    # Format: {D, M, M', F, Om, dpsi_s (0.0001"), deps_c (0.0001")}
-    terms = [
-      {0, 0, 0, 0, 1, -171_996.0, 92_025.0},
-      {-2, 0, 0, 2, 2, -13_187.0, 5_736.0},
-      {0, 0, 0, 2, 2, -2_274.0, 977.0},
-      {0, 0, 0, 0, 2, 2_062.0, -895.0},
-      {0, 1, 0, 0, 0, 1_426.0, 54.0},
-      {0, 0, 1, 0, 0, 712.0, -7.0},
-      {-2, 1, 0, 2, 2, -517.0, 224.0},
-      {0, 0, 0, 2, 1, -386.0, 200.0},
-      {0, 0, 1, 2, 2, -301.0, 129.0},
-      {-2, -1, 0, 2, 2, 217.0, -95.0},
-      {-2, 0, 1, 0, 0, -158.0, 0.0},
-      {-2, 0, 0, 2, 1, 129.0, -70.0},
-      {0, 0, -1, 2, 2, 123.0, -53.0},
-      {2, 0, 0, 0, 0, 63.0, 0.0},
-      {0, 0, 1, 0, 1, 63.0, -33.0},
-      {2, 0, -1, 2, 2, -59.0, 26.0},
-      {0, 0, -1, 0, 1, -58.0, 32.0}
-    ]
-
-    {dpsi_units, deps_units} =
-      Enum.reduce(terms, {0.0, 0.0}, fn {td, tm, tmp, tf, tom, ds, dc}, {acc_psi, acc_eps} ->
-        arg_deg = td * d + tm * m + tmp * mp + tf * f + tom * om
-        arg_rad = :math.pi() / 180.0 * arg_deg
-        {acc_psi + ds * :math.sin(arg_rad), acc_eps + dc * :math.cos(arg_rad)}
-      end)
-
-    # Convert from 0.0001 arcseconds to radians
-    dpsi = dpsi_units * 0.0001 / @arcsec_per_deg * :math.pi() / 180.0
-    deps = deps_units * 0.0001 / @arcsec_per_deg * :math.pi() / 180.0
-
-    # Mean obliquity of the ecliptic (Meeus eq 22.2), arcseconds → radians
-    eps0_arcsec = 84_381.448 - 46.8150 * c - 0.00059 * c * c + 0.001813 * c * c * c
-    eps0 = eps0_arcsec / @arcsec_per_deg * :math.pi() / 180.0
-
-    {dpsi, deps, eps0}
   end
 
   # ── Spherical coordinates ────────────────────────────────────────────────────
@@ -226,7 +172,7 @@ defmodule Astro.Coordinates do
     # Equation of the equinoxes: Δψ · cos(ε), converted to degrees.
     # Nutation uses TDB centuries — consistent with the ephemeris frame.
     t_tdb = julian_centuries(et)
-    {dpsi, _deps, eps0} = nutation(t_tdb)
+    {dpsi, _deps, eps0} = Earth.nutation(t_tdb)
     eq_eq = dpsi * :math.cos(eps0) * 180.0 / :math.pi()
 
     gast = gmst + eq_eq
