@@ -369,7 +369,7 @@ defmodule Astro.Lunar.MoonRiseSet do
           case interpolation do
             :lagrange ->
               dt_mid = (dt_lo + dt_hi) / 2.0
-              interp = build_lagrange_interpolator(date, dt_mid)
+              interp = build_lagrange_interpolator(dt_mid)
 
               fn dynamical_time ->
                 lagrange_topocentric_f(
@@ -476,9 +476,7 @@ defmodule Astro.Lunar.MoonRiseSet do
   # Build a Lagrange interpolator from 3 tabular positions.
   # The tabular points are spaced by @lagrange_interval_s seconds, centred
   # on the midpoint of the given bracket [dt_lo, dt_hi].
-  defp build_lagrange_interpolator(_date, dt_center) do
-    # Default: centre on 12h UTC of the date
-    dt_center = dt_center || raise("must provide dt_center")
+  defp build_lagrange_interpolator(dt_center) do
     dt0 = dt_center - @lagrange_interval_s
     dt2 = dt_center + @lagrange_interval_s
 
