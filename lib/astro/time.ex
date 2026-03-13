@@ -76,8 +76,8 @@ defmodule Astro.Time do
   Atomic Time (TAI) by a fixed offset: TT = TAI + 32.184 s. For
   solar-system calculations at Earth's distance, TT ≈ TDB to within
   ~1.7 ms, and this library treats them as identical. The conversion
-  function `utc_datetime_from_dynamical_datetime/1` delegates to
-  `universal_from_dynamical/1` internally.
+  The `DateTime`-domain conversion `utc_datetime_from_dynamical_datetime/1`
+  delegates to `universal_from_dynamical/1` internally.
 
   ### Sidereal Time
 
@@ -865,21 +865,16 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a Terrestrial Time (TT) datetime to a UTC datetime.
+  Returns a UTC datetime for a given dynamical time datetime.
 
-  TT is the uniform atomic time scale on Earth's geoid, the modern
-  successor to Ephemeris Time (ET). This library treats TT as
-  identical to dynamical time (TDB), since the two differ by at most
-  ~1.7 ms — well below the precision of rise/set calculations.
-
-  Internally this converts the TT datetime to a moment, applies the
-  same ΔT subtraction as `universal_from_dynamical/1`, and converts
-  back to a UTC `DateTime`.
+  Converts a `DateTime` whose clock reading is in dynamical time
+  (TDB ≈ TT) to the corresponding UTC `DateTime` by subtracting
+  ΔT. Internally delegates to `universal_from_dynamical/1`.
 
   ### Arguments
 
-  * `datetime` is a `DateTime` whose clock reading is in Terrestrial
-    Time (equivalently, dynamical time).
+  * `datetime` is a `DateTime` whose clock reading is in dynamical
+    time (TDB seconds, equivalently Terrestrial Time).
 
   ### Returns
 
@@ -887,16 +882,16 @@ defmodule Astro.Time do
 
   ### Examples
 
-      iex> {:ok, tt} = Astro.Time.datetime_from_julian_days(2451545.0)
-      iex> {:ok, utc} = Astro.Time.utc_datetime_from_dynamical_datetime(tt)
+      iex> {:ok, dyn} = Astro.Time.datetime_from_julian_days(2451545.0)
+      iex> {:ok, utc} = Astro.Time.utc_datetime_from_dynamical_datetime(dyn)
       iex> DateTime.truncate(utc, :second)
       ~U[2000-01-01 11:58:56Z]
 
   """
   @spec utc_datetime_from_dynamical_datetime(Calendar.datetime()) :: {:ok, Calendar.datetime()}
   def utc_datetime_from_dynamical_datetime(datetime) do
-    tt_moment = date_time_to_moment(datetime)
-    utc_moment = universal_from_dynamical(tt_moment)
+    dyn_moment = date_time_to_moment(datetime)
+    utc_moment = universal_from_dynamical(dyn_moment)
     date_time_from_moment(utc_moment)
   end
 
