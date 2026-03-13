@@ -32,9 +32,11 @@ defmodule Astro.UmmAlQura.EquivalenceTest do
 
   @tag timeout: :infinity
   property "Tabular and Astronomical first_day_of_month agree for 1420-1500 AH (Era 3 + Era 4)" do
-    check all hijri_year <- integer(@min_year..@max_year),
-              hijri_month <- integer(1..12),
-              max_runs: 500 do
+    check all(
+            hijri_year <- integer(@min_year..@max_year),
+            hijri_month <- integer(1..12),
+            max_runs: 500
+          ) do
       {:ok, tabular_date} = Tabular.first_day_of_month(hijri_year, hijri_month)
       {:ok, astronomical_date} = Astronomical.first_day_of_month(hijri_year, hijri_month)
 

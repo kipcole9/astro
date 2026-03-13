@@ -136,7 +136,9 @@ defmodule Astro.Lunar.MoonRiseSet do
     limb = Keyword.get(options, :limb, :upper)
 
     # Always use direct ephemeris for the coarse scan
-    direct_fn = fn dynamical_time -> topocentric_f(dynamical_time, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
+    direct_fn = fn dynamical_time ->
+      topocentric_f(dynamical_time, lat, lng, rho_sin_phi, rho_cos_phi, limb)
+    end
 
     dt_midnight = Time.dynamical_time_from_moment(moment)
     dt_start = dt_midnight - @scan_pre_window_s
@@ -168,7 +170,18 @@ defmodule Astro.Lunar.MoonRiseSet do
             :lagrange ->
               dt_mid = (dt_lo + dt_hi) / 2.0
               interp = build_lagrange_interpolator(date, dt_mid)
-              fn dynamical_time -> lagrange_topocentric_f(dynamical_time, interp, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
+
+              fn dynamical_time ->
+                lagrange_topocentric_f(
+                  dynamical_time,
+                  interp,
+                  lat,
+                  lng,
+                  rho_sin_phi,
+                  rho_cos_phi,
+                  limb
+                )
+              end
 
             :direct ->
               direct_fn
@@ -441,5 +454,4 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   defp fmod(x, m) when x >= 0, do: :math.fmod(x, m)
   defp fmod(x, m), do: :math.fmod(x, m) + m
-
 end

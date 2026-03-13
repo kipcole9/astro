@@ -7,9 +7,9 @@ defmodule Astro.Ephemeris.Kernel do
 
   ## Usage
 
-      {:ok, kernel} = Spk.Kernel.load("priv/de440s.bsp")
-      {:ok, seg}    = Spk.Kernel.find_segment(kernel, 301, 3)   # Moon wrt EMB
-      {x, y, z}     = Spk.Kernel.position(kernel, seg, dynamical_time)
+      {:ok, kernel} = Astro.Ephemeris.Kernel("priv/de440s.bsp")
+      {:ok, seg}    = Astro.Ephemeris.Kernel.find_segment(kernel, 301, 3)   # Moon wrt EMB
+      {x, y, z}     = Astro.Ephemeris.Kernel.position(kernel, seg, dynamical_time)
 
   `dynamical_time` is TDB seconds past J2000.0 (2000-01-01T12:00:00 TT).
   Returned `{x, y, z}` are in km relative to the segment's centre body.
@@ -27,17 +27,19 @@ defmodule Astro.Ephemeris.Kernel do
   followed by a doubly-linked list of summary/name record pairs.
 
   Each segment descriptor (summary) contains:
-    - ND=2 doubles: start_et, end_et (TDB seconds past J2000.0)
+    - ND=2 doubles: start_dt, end_dt (dynamical time — TDB seconds past J2000.0)
     - NI=6 integers packed as raw int32 bytes: target, centre, frame,
       data_type, start_addr, end_addr
 
   Addresses are 1-based word (8-byte double) indices into the whole file.
 
   A Type 2 segment's data area contains N Chebyshev records followed by
-  4 metadata words [init_et, intlen, rsize, n] at the very end.
+  4 metadata words [init_dt (dynamical time), intlen, rsize, n] at the very end.
   Each Chebyshev record has `rsize` doubles:
+  ```
     [t_mid, t_half, cx_0..cx_d, cy_0..cy_d, cz_0..cz_d]
-  where d = degree = (rsize - 2) / 3 - 1.
+  ```
+  where `d = degree = (rsize - 2) / 3 - 1`.
 
   Download the data from https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
   and place it in priv/
@@ -93,7 +95,8 @@ defmodule Astro.Ephemeris.Kernel do
     match =
       Enum.find(segs, fn seg ->
         seg.target == target and seg.centre == centre and
-          (is_nil(dynamical_time) or (dynamical_time >= seg.start_et and dynamical_time <= seg.end_et))
+          (is_nil(dynamical_time) or
+             (dynamical_time >= seg.start_dt and dynamical_time <= seg.end_dt))
       end)
 
     case match do
@@ -112,7 +115,7 @@ defmodule Astro.Ephemeris.Kernel do
 
     %{
       start_addr: start_addr,
-      init_et: init_et,
+      init_dt: init_dt,
       intlen: intlen,
       rsize: rsize,
       n_records: n_records,
@@ -120,7 +123,7 @@ defmodule Astro.Ephemeris.Kernel do
     } = segment
 
     # Identify which Chebyshev record covers `dynamical_time` (0-based index).
-    idx = trunc((dynamical_time - init_et) / intlen)
+    idx = trunc((dynamical_time - init_dt) / intlen)
     idx = max(0, min(idx, n_records - 1))
 
     # Byte offset of this record in the file.
@@ -208,8 +211,8 @@ defmodule Astro.Ephemeris.Kernel do
 
   # Parses a single 40-byte summary binary into a segment map.
   # Layout (SPK, ND=2, NI=6):
-  #   bytes  0- 7: start_et  (double)
-  #   bytes  8-15: end_et    (double)
+  #   bytes  0- 7: start_dt  (double)
+  #   bytes  8-15: end_dt    (double)
   #   bytes 16-19: target    (int32)
   #   bytes 20-23: centre    (int32)
   #   bytes 24-27: frame     (int32)
@@ -217,8 +220,8 @@ defmodule Astro.Ephemeris.Kernel do
   #   bytes 32-35: start_addr(int32)
   #   bytes 36-39: end_addr  (int32)
   defp parse_summary(sum_bin, data, endian) do
-    start_et = read_double(sum_bin, 0, endian)
-    end_et = read_double(sum_bin, 1, endian)
+    start_dt = read_double(sum_bin, 0, endian)
+    end_dt = read_double(sum_bin, 1, endian)
     target = read_int32(sum_bin, 16, endian)
     centre = read_int32(sum_bin, 20, endian)
     frame = read_int32(sum_bin, 24, endian)
@@ -235,7 +238,7 @@ defmodule Astro.Ephemeris.Kernel do
       meta_byte = (end_addr - 4) * @double_size
       meta_bin = binary_part(data, meta_byte, 4 * @double_size)
 
-      init_et = read_double(meta_bin, 0, endian)
+      init_dt = read_double(meta_bin, 0, endian)
       intlen = read_double(meta_bin, 1, endian)
       rsize = trunc(read_double(meta_bin, 2, endian))
       n_records = trunc(read_double(meta_bin, 3, endian))
@@ -246,11 +249,11 @@ defmodule Astro.Ephemeris.Kernel do
         centre: centre,
         frame: frame,
         data_type: data_type,
-        start_et: start_et,
-        end_et: end_et,
+        start_dt: start_dt,
+        end_dt: end_dt,
         start_addr: start_addr,
         end_addr: end_addr,
-        init_et: init_et,
+        init_dt: init_dt,
         intlen: intlen,
         rsize: rsize,
         n_records: n_records,

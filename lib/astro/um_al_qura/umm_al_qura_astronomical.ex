@@ -62,7 +62,7 @@ defmodule Astro.UmmAlQura.Astronomical do
 
   # Geographic constants – Great Mosque of Mecca (al-Masjid al-Ḥarām)
   @mecca_longitude 39.8262
-  @mecca_latitude  21.4225
+  @mecca_latitude 21.4225
   @mecca_elevation 277.0
 
   @mecca_location {@mecca_longitude, @mecca_latitude, @mecca_elevation}
@@ -122,20 +122,20 @@ defmodule Astro.UmmAlQura.Astronomical do
 
   # Era 4: full Umm al-Qura rule (1423 AH onward)
   def first_day_of_month(hijri_year, hijri_month)
-      when is_integer(hijri_year) and hijri_year >= @era4_start
-      and is_integer(hijri_month) and hijri_month in 1..12 do
+      when is_integer(hijri_year) and hijri_year >= @era4_start and
+             is_integer(hijri_month) and hijri_month in 1..12 do
     with {:ok, candidate_29} <- approximate_29th(hijri_year, hijri_month),
-         {:ok, result}       <- apply_umm_al_qura_rule(candidate_29) do
+         {:ok, result} <- apply_umm_al_qura_rule(candidate_29) do
       {:ok, result}
     end
   end
 
   # Era 3: moonset-only rule (1420–1422 AH)
   def first_day_of_month(hijri_year, hijri_month)
-      when is_integer(hijri_year) and hijri_year >= @era3_start and hijri_year < @era4_start
-      and is_integer(hijri_month) and hijri_month in 1..12 do
+      when is_integer(hijri_year) and hijri_year >= @era3_start and hijri_year < @era4_start and
+             is_integer(hijri_month) and hijri_month in 1..12 do
     with {:ok, candidate_29} <- approximate_29th(hijri_year, hijri_month),
-         {:ok, result}       <- apply_moonset_only_rule(candidate_29) do
+         {:ok, result} <- apply_moonset_only_rule(candidate_29) do
       {:ok, result}
     end
   end
@@ -150,8 +150,8 @@ defmodule Astro.UmmAlQura.Astronomical do
   # one day, likely due to undocumented details in the historical KACST
   # determination process.
   def first_day_of_month(hijri_year, hijri_month)
-      when is_integer(hijri_year) and hijri_year >= @era2_start and hijri_year < @era3_start
-      and is_integer(hijri_month) and hijri_month in 1..12 do
+      when is_integer(hijri_year) and hijri_year >= @era2_start and hijri_year < @era3_start and
+             is_integer(hijri_month) and hijri_month in 1..12 do
     with {:ok, conjunction_utc} <- find_conjunction_utc(hijri_year, hijri_month) do
       {:ok, Date.add(DateTime.to_date(conjunction_utc), 1)}
     end
@@ -225,8 +225,8 @@ defmodule Astro.UmmAlQura.Astronomical do
       moonset_after_sunset? =
         case moonset_result do
           {:ok, moonset} ->
-            DateTime.compare(moonset, sunset) == :gt
-            && DateTime.to_date(moonset) == candidate_29
+            DateTime.compare(moonset, sunset) == :gt &&
+              DateTime.to_date(moonset) == candidate_29
 
           _ ->
             false
@@ -284,16 +284,20 @@ defmodule Astro.UmmAlQura.Astronomical do
       moonset_after_sunset? =
         case moonset_at_mecca do
           {:ok, moonset} ->
-            DateTime.compare(moonset, sunset_at_mecca) == :gt
-            && DateTime.to_date(moonset) == date
-          {:error, :no_time} -> false
-          _other -> false
+            DateTime.compare(moonset, sunset_at_mecca) == :gt &&
+              DateTime.to_date(moonset) == date
+
+          {:error, :no_time} ->
+            false
+
+          _other ->
+            false
         end
 
       moonset_value =
         case moonset_at_mecca do
           {:ok, ms} -> ms
-          _         -> :no_time
+          _ -> :no_time
         end
 
       result = %{
@@ -327,6 +331,7 @@ defmodule Astro.UmmAlQura.Astronomical do
     #
     # solar_elevation: 90.5667 → h0 = -(90.5667 - 90) = -0.5667°
     moment = Astro.Time.date_time_to_moment(date)
+
     case Astro.Solar.SunRiseSet.sunset(@mecca_location, moment, solar_elevation: 90.5667) do
       {:ok, sunset_local} ->
         {:ok, DateTime.shift_zone!(sunset_local, "Etc/UTC")}
@@ -343,6 +348,7 @@ defmodule Astro.UmmAlQura.Astronomical do
   # van Gent and Skyfield's `risings_and_settings(radius_degrees=0)`.
   defp moonset_utc_at_mecca(date) do
     moment = Astro.Time.date_time_to_moment(date)
+
     case Astro.Lunar.MoonRiseSet.moonset(@mecca_location, moment, limb: :center) do
       {:ok, moonset_local} ->
         {:ok, DateTime.shift_zone!(moonset_local, "Etc/UTC")}
@@ -358,14 +364,14 @@ defmodule Astro.UmmAlQura.Astronomical do
   # Converts a Julian Day Number (integer) to a proleptic Gregorian Date.
   # Algorithm: Richards (2013), via Dershowitz & Reingold Appendix C.
   defp jdn_to_date(jdn) when is_integer(jdn) do
-    f = jdn + 1_401 + div((div(4 * jdn + 274_277, 146_097) * 3), 4) - 38
+    f = jdn + 1_401 + div(div(4 * jdn + 274_277, 146_097) * 3, 4) - 38
     e = 4 * f + 3
     g = rem(e, 1_461) |> div(4)
     h = 5 * g + 2
 
-    day   = rem(h, 153) |> div(5) |> Kernel.+(1)
+    day = rem(h, 153) |> div(5) |> Kernel.+(1)
     month = rem(div(h, 153) + 2, 12) + 1
-    year  = div(e, 1_461) - 4_716 + div(14 - month, 12)
+    year = div(e, 1_461) - 4_716 + div(14 - month, 12)
 
     Date.new(year, month, day)
   end

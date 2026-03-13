@@ -20,7 +20,7 @@ defmodule AstroTest do
 
     {:ok, test_date} =
       DateTime.from_naive(
-        ~N[1945-11-12 16:39:07],
+        ~N[1945-11-12 16:39:06],
         "America/Chicago",
         Tzdata.TimeZoneDatabase
       )

@@ -1,16 +1,186 @@
 defmodule Astro.Time do
   @moduledoc """
-  Calculations converting between geometry and time
+  Time scales, conversions, and calendar utilities for astronomical calculations.
 
-  All public functions use degrees as their input
-  parameters
+  ## Moments
 
-  Time is a fraction of a day after UTC
+  A **moment** is the primary internal time representation used throughout
+  `Astro`. It is a floating-point number of days since the Gregorian epoch
+  (0000-01-01 00:00:00 UTC). The integer part identifies the calendar day;
+  the fractional part represents the elapsed fraction of that day since
+  midnight.
+
+  The public API in `Astro` accepts `Date` and `DateTime` parameters and
+  converts them to moments before delegating to the implementation modules
+  (`Astro.Solar`, `Astro.Lunar`, `Astro.Solar.SunRiseSet`,
+  `Astro.Lunar.MoonRiseSet`). Those modules work exclusively with moments
+  and should never convert back to `Date` or `DateTime` internally.
+
+  Use `date_time_to_moment/1` to convert a `Date` or `DateTime` to a
+  moment, and `date_time_from_moment/1` to convert a moment back to a
+  UTC `DateTime`.
+
+  ## Time scales
+
+  Six time scales appear in astronomical calculations. Each serves a
+  different purpose.
+
+  ### Universal Time (UTC)
+
+  The civil clock time standard. UTC is kept within one second of mean
+  solar time at 0° longitude by the occasional insertion of leap seconds.
+  It is the base time scale for moments: a moment is always in UTC.
+
+  Functions: `universal_from_local/2`, `universal_from_standard/2`,
+  `universal_from_dynamical/1`.
+
+  ### Standard Time
+
+  UTC adjusted for a named time zone (e.g. `"America/New_York"`),
+  including any daylight-saving offset. Standard time has discrete zone
+  boundaries and changes at politically determined transition points.
+
+  Functions: `standard_from_universal/2`, `universal_from_standard/2`.
+
+  ### Local (Mean Solar) Time
+
+  UTC adjusted purely by geographic longitude — what a sundial reads.
+  The offset is `longitude / 360` of a day, a smooth function of
+  position with no zone boundaries or daylight-saving rules.
+
+  Functions: `local_from_universal/2`, `universal_from_local/2`.
+
+  ### Dynamical Time
+
+  The uniform time scale used for computing planetary and lunar orbits.
+  In this library, "dynamical time" refers to TDB (Barycentric Dynamical
+  Time) — the time argument expected by JPL ephemerides.
+
+  Two representations coexist:
+
+    * **Moment-domain** — `dynamical_from_universal/1` adds ΔT (as a
+      fraction of a day) to a UTC moment, producing a dynamical moment
+      used by the Meeus-era polynomial series via
+      `julian_centuries_from_moment/1`.
+
+    * **Seconds-past-J2000.0** — `dynamical_time_from_moment/1` converts
+      a UTC moment to TDB seconds past J2000.0, the scale used directly
+      by the SPK kernel. `dynamical_time_to_moment/1` inverts it.
+
+  Both representations derive ΔT from the unified `delta_t/1` function.
+
+  ### Terrestrial Time (TT)
+
+  A uniform atomic time scale defined on Earth's geoid, the modern
+  successor to Ephemeris Time (ET). TT is related to International
+  Atomic Time (TAI) by a fixed offset: TT = TAI + 32.184 s. For
+  solar-system calculations at Earth's distance, TT ≈ TDB to within
+  ~1.7 ms, and this library treats them as identical.
+
+  Function: `utc_datetime_from_terrestrial_datetime/1`.
+
+  ### Sidereal Time
+
+  Measures Earth's rotation relative to the stars rather than the Sun.
+  A sidereal day is ~3 minutes 56 seconds shorter than a solar day.
+  Greenwich Mean Sidereal Time (GMST) is used to convert between
+  equatorial coordinates and the local horizon; Greenwich Apparent
+  Sidereal Time (GAST) adds the equation of the equinoxes (nutation
+  in right ascension).
+
+  Functions: `greenwich_mean_sidereal_time/1`,
+  `local_sidereal_time/2`, `mean_sidereal_from_moment/1`,
+  `apparent_sidereal_from_moment/1`. See also `Astro.Coordinates.gast/1`.
+
+  ## Time scale conversion table
+
+  The table below shows how to convert from one time scale (row) to
+  another (column). Each cell describes the conversion algorithm.
+  A dash (—) marks the identity diagonal.
+
+  | From \\ To      | UTC              | Standard            | Local               | Dynamical           | Terrestrial         | Sidereal              |
+  |:----------------|:-----------------|:--------------------|:--------------------|:--------------------|:--------------------|:----------------------|
+  | **UTC**         | —                | + zone offset       | + longitude/360     | + ΔT                | + ΔT (≈ dynamical)  | GMST polynomial in UTC |
+  | **Standard**    | − zone offset    | —                   | − zone + long/360   | − zone + ΔT         | − zone + ΔT         | via UTC then GMST     |
+  | **Local**       | − longitude/360  | − long/360 + zone   | —                   | − long/360 + ΔT     | − long/360 + ΔT     | via UTC then GMST     |
+  | **Dynamical**   | − ΔT             | − ΔT + zone         | − ΔT + long/360     | —                   | identity (≈)        | via UTC then GMST     |
+  | **Terrestrial** | − ΔT (≈ dyn)     | − ΔT + zone         | − ΔT + long/360     | identity (≈)        | —                   | via UTC then GMST     |
+  | **Sidereal**    | not invertible†  | not invertible†     | not invertible†     | not invertible†     | not invertible†     | —                     |
+
+  **Notes:**
+
+  * **zone offset** = UTC offset + DST offset for the named time zone,
+    looked up via the configured `TimeZoneDatabase`.
+  * **longitude/360** = fraction of a day corresponding to the observer's
+    geographic longitude (west negative).
+  * **ΔT** = TT − UTC in seconds, converted to fractional days by
+    dividing by 86400. Computed by `delta_t/1`.
+  * **Terrestrial ≈ Dynamical**: TT and TDB differ by at most ~1.7 ms;
+    this library treats them as identical.
+  * **† Sidereal → other**: sidereal time is not uniquely invertible
+    because multiple UTC instants map to the same sidereal angle within
+    a sidereal day. In practice, sidereal time is computed *from* UTC
+    for a known date, not converted back.
+
+  ## ΔT
+
+  ΔT (TT − UTC) is the difference between the uniform dynamical time
+  scale and civil clock time. It varies as Earth's rotation rate changes
+  due to tidal friction and other geophysical effects. The unified
+  `delta_t/1` function returns ΔT in seconds for a given decimal year,
+  drawing on IERS observations (1972–2025), the Meeus biennial table
+  (1620–1971), and polynomial approximations for earlier and later dates.
+
+  ## Julian day system
+
+  The Julian day system provides a continuous day count independent of
+  any calendar. It is the standard time-keeping framework in positional
+  astronomy.
+
+  ### Julian Day (JD)
+
+  A continuous count of days (and fractions) from an epoch set at
+  Greenwich noon on 1 January 4713 BC (Julian proleptic calendar).
+  Day boundaries fall at noon, not midnight — JD 2451545.0 corresponds
+  to 2000-01-01 12:00:00 TT.
+
+  Functions: `julian_day_from_date/1`, `datetime_from_julian_days/1`,
+  `date_from_julian_days/1`.
+
+  ### J2000.0
+
+  The standard astronomical epoch: 2000 January 1.5 TT (Julian Day
+  2451545.0). Precession angles, nutation series, and ephemeris
+  polynomials are all referenced to this epoch. Dynamical time in
+  this library is expressed as seconds past J2000.0.
+
+  Constant: `j2000/0` (returns the moment for J2000.0).
+
+  ### Modified Julian Day (MJD)
+
+  JD − 2400000.5. This shifts the day boundary from noon to midnight
+  and produces smaller numbers, convenient for modern dates. MJD 0
+  corresponds to 1858-11-17 00:00:00 UTC.
+
+  Function: `mjd/1`.
+
+  ### Julian Centuries
+
+  A Julian century is exactly 36525 days (100 Julian years of 365.25
+  days each). Precession and nutation polynomials are evaluated in
+  Julian centuries from J2000.0. Two conversion paths exist:
+
+    * `julian_centuries_from_julian_day/1` — converts a Julian day
+      directly.
+    * `julian_centuries_from_moment/1` — converts a UTC moment by
+      first applying ΔT to obtain a dynamical moment.
+    * `julian_centuries_from_dynamical_time/1` — converts dynamical
+      time (seconds past J2000.0) to Julian centuries.
 
   """
 
   alias Astro.{Math, Guards, Location}
-  import Astro.Math, only: [poly: 2, deg: 1, mod: 2]
+  import Astro.Math, only: [deg: 1, mod: 2]
 
   @typedoc """
   A time is a floating point number of
@@ -146,7 +316,10 @@ defmodule Astro.Time do
   """
   @spec dynamical_from_universal(time()) :: time()
   def dynamical_from_universal(t) do
-    t + ephemeris_correction(t)
+    %{year: year} = Date.from_gregorian_days(floor(t))
+    frac = (Date.new!(year, 7, 1) |> Date.to_gregorian_days()) - floor(t)
+    decimal_year = year + (0.5 - frac / 365.25)
+    t + delta_t(decimal_year) / @seconds_per_day
   end
 
   @doc """
@@ -167,7 +340,10 @@ defmodule Astro.Time do
   """
   @spec universal_from_dynamical(time()) :: time()
   def universal_from_dynamical(t) do
-    t - ephemeris_correction(t)
+    %{year: year} = Date.from_gregorian_days(floor(t))
+    frac = (Date.new!(year, 7, 1) |> Date.to_gregorian_days()) - floor(t)
+    decimal_year = year + (0.5 - frac / 365.25)
+    t - delta_t(decimal_year) / @seconds_per_day
   end
 
   @doc """
@@ -440,7 +616,7 @@ defmodule Astro.Time do
     seconds = trunc(60 * (m - minutes))
 
     {:ok, date} = Date.new(year, month, day)
-    {:ok, time} = Time.new( hours,minutes, seconds)
+    {:ok, time} = Time.new(hours, minutes, seconds)
     {:ok, naive_datetime} = NaiveDateTime.new(date, time)
 
     datetime_in_utc(naive_datetime)
@@ -467,14 +643,14 @@ defmodule Astro.Time do
   def date_from_julian_days(julian_days) do
     julian_days = round(julian_days)
 
-    f = julian_days + 1_401 + div((div(4 * julian_days + 274_277, 146_097) * 3), 4) - 38
+    f = julian_days + 1_401 + div(div(4 * julian_days + 274_277, 146_097) * 3, 4) - 38
     e = 4 * f + 3
     g = rem(e, 1_461) |> div(4)
     h = 5 * g + 2
 
-    day   = rem(h, 153) |> div(5) |> Kernel.+(1)
+    day = rem(h, 153) |> div(5) |> Kernel.+(1)
     month = rem(div(h, 153) + 2, 12) + 1
-    year  = div(e, 1_461) - 4_716 + div(14 - month, 12)
+    year = div(e, 1_461) - 4_716 + div(14 - month, 12)
 
     Date.new(year, month, day)
   end
@@ -513,48 +689,9 @@ defmodule Astro.Time do
   """
   @spec utc_datetime_from_terrestrial_datetime(Calendar.datetime()) :: {:ok, Calendar.datetime()}
   def utc_datetime_from_terrestrial_datetime(%{year: year} = datetime) do
-    t = (year - 2000) / 100.0
-    delta_seconds = trunc(delta_seconds_for_year(year, t))
+    decimal_year = year + (datetime.month - 1) / 12.0 + (datetime.day - 1) / 365.25
+    delta_seconds = trunc(delta_t(decimal_year))
     {:ok, DateTime.add(datetime, -delta_seconds, :second)}
-  end
-
-  @correction_first_year 1620
-  @correction_last_year 2002
-  @correction_lookup @correction_first_year..@correction_last_year
-
-  defp delta_seconds_for_year(year, _t) when year in @correction_lookup and rem(year, 2) == 0 do
-    elem(delta_seconds_1620_2002(), div(year - @correction_first_year, 2))
-  end
-
-  defp delta_seconds_for_year(year, t) when year in @correction_lookup do
-    (delta_seconds_for_year(year - 1, t) + delta_seconds_for_year(year + 1, t)) / 2
-  end
-
-  defp delta_seconds_for_year(year, t) when year < 948 do
-    2177 + 497 * t + 44.1 * :math.pow(t, 2)
-  end
-
-  defp delta_seconds_for_year(year, t) when year in 2000..2100 do
-    delta_t = 102 + 102 * t + 25.3 * :math.pow(t, 2)
-    delta_t + 0.37 * (year - 2100)
-  end
-
-  defp delta_seconds_for_year(year, t) when year >= 948 do
-    102 + 102 * t + 25.3 * :math.pow(t, 2)
-  end
-
-  defp delta_seconds_1620_2002 do
-    {121, 112, 103, 95, 88, 82, 77, 72, 68, 63, 60, 56, 53, 51, 48, 46, 44, 42, 40, 38, 35, 33,
-     31, 29, 26, 24, 22, 20, 18, 16, 14, 12, 11, 10, 9, 8, 7, 7, 7, 7, 7, 7, 8, 8, 9, 9, 9, 9, 9,
-     10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 14, 14, 14,
-     14, 15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 13, 13.1, 12.5, 12.2,
-     12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 11.9, 11.6, 11.0, 10.2, 9.2, 8.2, 7.1, 6.2, 5.6, 5.4,
-     5.3, 5.4, 5.6, 5.9, 6.2, 6.5, 6.8, 7.1, 7.3, 7.5, 7.6, 7.7, 7.3, 6.2, 5.2, 2.7, 1.4, -1.2,
-     -2.8, -3.8, -4.8, -5.5, -5.3, -5.6, -5.7, -5.9, -6.0, -6.3, -6.5, -6.2, -4.7, -2.8, -0.1,
-     2.6, 5.3, 7.7, 10.4, 13.3, 16.0, 18.2, 20.2, 21.1, 22.4, 23.5, 23.8, 24.3, 24.0, 23.9, 23.9,
-     23.7, 24.0, 24.3, 25.3, 26.2, 27.3, 28.2, 29.1, 30.0, 30.7, 31.4, 32.2, 33.1, 34.0, 35.0,
-     36.5, 38.3, 40.2, 42.2, 44.5, 46.5, 48.5, 50.5, 52.5, 53.8, 54.9, 55.8, 56.9, 58.3, 60.0,
-     61.6, 63.0, 63.8, 64.3}
   end
 
   @doc """
@@ -841,63 +978,373 @@ defmodule Astro.Time do
     time_zone_resolver.(location)
   end
 
-  @jan_1_1900 Date.new!(1900, 1, 1)
+  # ── Unified ΔT computation ────────────────────────────────────────────────
+
+  # IERS-observed ΔT values (TT − UT1 ≈ TT − UTC to within 0.9 s),
+  # one value per year at the year midpoint (July 1), 1972–2025.
+  # Source: IERS Earth Orientation Parameters, Bulletin A/B.
+  @iers_delta_t_table %{
+    1972 => 42.23,
+    1973 => 43.37,
+    1974 => 44.49,
+    1975 => 45.48,
+    1976 => 46.46,
+    1977 => 47.52,
+    1978 => 48.53,
+    1979 => 49.59,
+    1980 => 50.54,
+    1981 => 51.38,
+    1982 => 52.17,
+    1983 => 52.96,
+    1984 => 53.79,
+    1985 => 54.34,
+    1986 => 54.87,
+    1987 => 55.32,
+    1988 => 55.82,
+    1989 => 56.30,
+    1990 => 56.86,
+    1991 => 57.57,
+    1992 => 58.31,
+    1993 => 59.12,
+    1994 => 59.98,
+    1995 => 60.78,
+    1996 => 61.63,
+    1997 => 62.29,
+    1998 => 62.97,
+    1999 => 63.47,
+    2000 => 63.83,
+    2001 => 64.09,
+    2002 => 64.30,
+    2003 => 64.47,
+    2004 => 64.57,
+    2005 => 64.69,
+    2006 => 64.85,
+    2007 => 65.15,
+    2008 => 65.46,
+    2009 => 65.78,
+    2010 => 66.07,
+    2011 => 66.32,
+    2012 => 66.60,
+    2013 => 66.91,
+    2014 => 67.28,
+    2015 => 67.64,
+    2016 => 68.10,
+    2017 => 68.59,
+    2018 => 68.97,
+    2019 => 69.22,
+    2020 => 69.36,
+    2021 => 69.36,
+    2022 => 69.18,
+    2023 => 69.04,
+    2024 => 69.18,
+    2025 => 69.30
+  }
+
+  @iers_first_year 1972
+  @iers_last_year 2025
+  # Linear extrapolation rate beyond the IERS table (seconds/year).
+  @iers_extrap_rate 0.15
+
+  # Meeus biennial lookup table for 1620–2002 (ΔT in seconds, even years only).
+  # Source: Meeus, Astronomical Algorithms, Table 10.A.
+  @meeus_delta_t_tuple {
+    121,
+    112,
+    103,
+    95,
+    88,
+    82,
+    77,
+    72,
+    68,
+    63,
+    60,
+    56,
+    53,
+    51,
+    48,
+    46,
+    44,
+    42,
+    40,
+    38,
+    35,
+    33,
+    31,
+    29,
+    26,
+    24,
+    22,
+    20,
+    18,
+    16,
+    14,
+    12,
+    11,
+    10,
+    9,
+    8,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    8,
+    8,
+    9,
+    9,
+    9,
+    9,
+    9,
+    10,
+    10,
+    10,
+    10,
+    10,
+    10,
+    10,
+    10,
+    11,
+    11,
+    11,
+    11,
+    11,
+    12,
+    12,
+    12,
+    12,
+    13,
+    13,
+    13,
+    14,
+    14,
+    14,
+    14,
+    15,
+    15,
+    15,
+    15,
+    15,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    15,
+    15,
+    14,
+    13,
+    13.1,
+    12.5,
+    12.2,
+    12.0,
+    12.0,
+    12.0,
+    12.0,
+    12.0,
+    12.0,
+    11.9,
+    11.6,
+    11.0,
+    10.2,
+    9.2,
+    8.2,
+    7.1,
+    6.2,
+    5.6,
+    5.4,
+    5.3,
+    5.4,
+    5.6,
+    5.9,
+    6.2,
+    6.5,
+    6.8,
+    7.1,
+    7.3,
+    7.5,
+    7.6,
+    7.7,
+    7.3,
+    6.2,
+    5.2,
+    2.7,
+    1.4,
+    -1.2,
+    -2.8,
+    -3.8,
+    -4.8,
+    -5.5,
+    -5.3,
+    -5.6,
+    -5.7,
+    -5.9,
+    -6.0,
+    -6.3,
+    -6.5,
+    -6.2,
+    -4.7,
+    -2.8,
+    -0.1,
+    2.6,
+    5.3,
+    7.7,
+    10.4,
+    13.3,
+    16.0,
+    18.2,
+    20.2,
+    21.1,
+    22.4,
+    23.5,
+    23.8,
+    24.3,
+    24.0,
+    23.9,
+    23.9,
+    23.7,
+    24.0,
+    24.3,
+    25.3,
+    26.2,
+    27.3,
+    28.2,
+    29.1,
+    30.0,
+    30.7,
+    31.4,
+    32.2,
+    33.1,
+    34.0,
+    35.0,
+    36.5,
+    38.3,
+    40.2,
+    42.2,
+    44.5,
+    46.5,
+    48.5,
+    50.5,
+    52.5,
+    53.8,
+    54.9,
+    55.8,
+    56.9,
+    58.3,
+    60.0,
+    61.6,
+    63.0,
+    63.8,
+    64.3
+  }
+
+  @meeus_first_year 1620
+  @meeus_last_year 2002
 
   @doc """
-  Returns the adjustment necessary to various celestial
-  calculations at a given time.
+  Returns ΔT (TT − UTC) in seconds for the given decimal year.
 
-  The ajustment is required since the earth's orbit
-  of the sun is not completely uniform.
+  ΔT is the difference between Terrestrial Time (TT) and Universal
+  Time (UTC). It varies over time as Earth's rotation rate changes.
+
+  Uses the best available data for each era:
+  - **1972–2025**: IERS-observed annual values with linear interpolation
+  - **1620–1971**: Meeus biennial lookup table with interpolation
+  - **Pre-1620 and post-2025**: Polynomial approximations
+
+  ### Arguments
+
+  * `year` is a decimal year (e.g., 2024.5 for mid-2024)
+
+  ### Returns
+
+  * ΔT in seconds as a float
+
+  ## Examples
+
+      iex> Astro.Time.delta_t(2000.0)
+      63.83
+
+      iex> Float.round(Astro.Time.delta_t(2024.5), 2)
+      69.24
 
   """
-  @spec ephemeris_correction(moment()) :: seconds()
-  def ephemeris_correction(t) do
-    %{year: year} = Date.from_gregorian_days(floor(t))
-    c = Date.diff(Date.new!(year, 7, 1), @jan_1_1900) / @julian_days_per_century
-
+  @spec delta_t(float()) :: float()
+  def delta_t(year) when is_number(year) do
     cond do
-      year in 1988..2019 ->
-        (year - 1933) / @seconds_per_day
+      # IERS observed values — most accurate for modern dates
+      year >= @iers_first_year and year <= @iers_last_year ->
+        iers_delta_t(year)
 
-      year in [1900, 1987] ->
-        poly(c, [
-          -0.00002,
-          0.000297,
-          0.025184,
-          -0.181133,
-          0.553040,
-          -0.861938,
-          0.677066,
-          -0.212591
-        ])
+      # Post-IERS: extrapolate forward from last IERS entry
+      year > @iers_last_year ->
+        @iers_delta_t_table[@iers_last_year] + @iers_extrap_rate * (year - @iers_last_year)
 
-      year in 1800..1899 ->
-        poly(c, [
-          -0.000009,
-          0.003844,
-          0.083563,
-          0.865736,
-          4.867575,
-          15.845535,
-          31.332267,
-          38.291999,
-          28.316289,
-          11.636204,
-          2.043794
-        ])
+      # Meeus biennial table for 1620–1971
+      year >= @meeus_first_year ->
+        meeus_table_delta_t(year)
 
-      year in [1700, 1799] ->
-        poly(year - 1700, [8.118780842, -0.005092142, 0.003336121, -0.0000266484]) /
-          @seconds_per_day
-
-      year in 1600..1699 ->
-        poly(year - 1600, [196.58333, -4.0675, 0.0219167]) /
-          @seconds_per_day
+      # Pre-1620: Meeus polynomial approximations
+      year < 948 ->
+        t = (year - 2000) / 100.0
+        2177 + 497 * t + 44.1 * t * t
 
       true ->
-        x = hr(12) + Date.diff(Date.new!(year, 1, 1), Date.new!(1810, 1, 1))
-        (x * x / 41_048_480.0 - 15) / @seconds_per_day
+        # 948–1619
+        t = (year - 2000) / 100.0
+        102 + 102 * t + 25.3 * t * t
+    end
+  end
+
+  # IERS annual interpolation
+  defp iers_delta_t(year) do
+    y0 = trunc(year)
+    y1 = y0 + 1
+    frac = year - y0
+
+    v0 = @iers_delta_t_table[y0] || @iers_delta_t_table[@iers_first_year]
+    v1 = @iers_delta_t_table[y1] || @iers_delta_t_table[@iers_last_year]
+    v0 + frac * (v1 - v0)
+  end
+
+  # Meeus biennial table interpolation (even-year entries, 1620–2002)
+  defp meeus_table_delta_t(year) do
+    year_int = trunc(year)
+
+    cond do
+      year_int >= @meeus_first_year and year_int <= @meeus_last_year and rem(year_int, 2) == 0 ->
+        idx = div(year_int - @meeus_first_year, 2)
+        v0 = elem(@meeus_delta_t_tuple, idx)
+        # Interpolate fractional year within the 2-year bin
+        if year_int + 2 <= @meeus_last_year do
+          v1 = elem(@meeus_delta_t_tuple, idx + 1)
+          frac = (year - year_int) / 2.0
+          v0 + frac * (v1 - v0)
+        else
+          v0
+        end
+
+      year_int >= @meeus_first_year and year_int <= @meeus_last_year ->
+        # Odd year: average of neighboring even years
+        v_prev = meeus_table_delta_t(year_int - 1.0)
+        v_next = meeus_table_delta_t(year_int + 1.0)
+        frac = year - year_int
+        avg = (v_prev + v_next) / 2.0
+
+        if year_int + 1 <= @meeus_last_year do
+          avg + frac * (v_next - avg)
+        else
+          avg
+        end
+
+      true ->
+        # Shouldn't reach here, but fallback to polynomial
+        t = (year - 2000) / 100.0
+        102 + 102 * t + 25.3 * t * t
     end
   end
 
@@ -922,7 +1369,7 @@ defmodule Astro.Time do
   def dynamical_time_from_moment(moment) do
     jd_utc = moment + @jd_gregorian_epoch
     year = jd_to_decimal_year(jd_utc)
-    dt = Astro.Coordinates.delta_t(year)
+    dt = delta_t(year)
     jd_tt = jd_utc + dt / @seconds_per_day
     (jd_tt - @jd_j2000) * @seconds_per_day
   end
@@ -937,7 +1384,7 @@ defmodule Astro.Time do
   def dynamical_time_to_moment(dynamical_time) do
     jd_tt = dynamical_time / @seconds_per_day + @jd_j2000
     year = jd_to_decimal_year(jd_tt)
-    dt = Astro.Coordinates.delta_t(year)
+    dt = delta_t(year)
     jd_utc = jd_tt - dt / @seconds_per_day
     jd_utc - @jd_gregorian_epoch
   end
@@ -987,6 +1434,7 @@ defmodule Astro.Time do
 
     # Handle rounding that pushes past midnight
     us_per_day = 86_400_000_000
+
     {days, frac_us} =
       if frac_us >= us_per_day, do: {days + 1, frac_us - us_per_day}, else: {days, frac_us}
 
@@ -998,7 +1446,16 @@ defmodule Astro.Time do
 
     date = Elixir.Date.from_gregorian_days(days)
 
-    with {:ok, naive} <- NaiveDateTime.new(date.year, date.month, date.day, hours, minutes, seconds, {microseconds, 6}) do
+    with {:ok, naive} <-
+           NaiveDateTime.new(
+             date.year,
+             date.month,
+             date.day,
+             hours,
+             minutes,
+             seconds,
+             {microseconds, 6}
+           ) do
       datetime_in_utc(naive)
     end
   end
@@ -1015,13 +1472,6 @@ defmodule Astro.Time do
   """
   @spec date_time_to_moment(Calendar.date() | Calendar.datetime()) :: moment()
 
-  def date_time_to_moment(unquote(Guards.date()) = date) when not is_map_key(date, :hour) do
-    {days, {_numerator, _denominator}} =
-      calendar.naive_datetime_to_iso_days(date.year, date.month, date.day, 0, 0, 0, {0, 0})
-
-    days
-  end
-
   def date_time_to_moment(unquote(Guards.datetime()) = date_time) do
     utc_dt = DateTime.shift_zone!(date_time, "Etc/UTC")
     %{year: year, month: month, day: day, hour: hour} = utc_dt
@@ -1031,6 +1481,13 @@ defmodule Astro.Time do
       calendar.naive_datetime_to_iso_days(year, month, day, hour, minute, second, microsecond)
 
     days + numerator / denominator
+  end
+
+  def date_time_to_moment(unquote(Guards.date()) = date) do
+    {days, {_numerator, _denominator}} =
+      calendar.naive_datetime_to_iso_days(date.year, date.month, date.day, 0, 0, 0, {0, 0})
+
+    days
   end
 
   defp date_time_to_gregorian_seconds(datetime) do

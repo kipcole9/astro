@@ -137,7 +137,7 @@ defmodule Astro do
 
       iex> Astro.sun_position_at(~D[1992-10-13])
       %Geo.PointZ{
-        coordinates: {-161.6185428539835, -7.785325031528879, 149169604711.3518},
+        coordinates: {-161.61854343627374, -7.785324796344723, 149169604737.93973},
         properties: %{object: :sun, reference: :celestial},
         srid: nil
       }
@@ -194,7 +194,7 @@ defmodule Astro do
 
       iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
       %Geo.PointZ{
-        coordinates: {134.693504, 13.766486, 368409001.97178},
+        coordinates: {134.69343, 13.766512, 368409007.322444},
         properties: %{object: :moon, reference: :celestial},
         srid: nil
       }
@@ -246,10 +246,10 @@ defmodule Astro do
   ### Example
 
       iex> Astro.illuminated_fraction_of_moon_at(~D[2017-03-16])
-      0.8884327359054092
+      0.8884435601953284
 
       iex> Astro.illuminated_fraction_of_moon_at(~D[1992-04-12])
-      0.6786067036248266
+      0.6786061258040972
 
   """
   @doc since: "0.6.0"
@@ -290,7 +290,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_new_moon_before(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:49:07.193556Z]}
+      {:ok, ~U[2021-08-08 13:50:07.634598Z]}
 
   """
   @doc since: "0.5.0"
@@ -337,7 +337,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:49:07.368128Z]}
+      {:ok, ~U[2021-08-08 13:50:07.490242Z]}
 
   """
   @doc since: "2.0.0"
@@ -385,7 +385,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_new_moon_at_or_after(~D[2021-08-23])
-      {:ok, ~U[2021-09-07 00:50:43.811493Z]}
+      {:ok, ~U[2021-09-07 00:51:44.267320Z]}
 
   """
   @doc since: "0.5.0"
@@ -431,11 +431,11 @@ defmodule Astro do
 
   ### Example
 
-      iex> Astro.lunar_phase_at ~U[2021-08-22 12:01:02.170362Z]
-      180.00001498208474
+      iex> Astro.lunar_phase_at ~U[2021-08-22 12:02:02.816534Z]
+      180.00004404669988
 
-      iex> Astro.lunar_phase_at(~U[2021-07-10 01:18:25.422335Z])
-      0.021567106773062505
+      iex> Astro.lunar_phase_at(~U[2021-07-10 01:16:34.022607Z])
+      3.6600909621461326e-6
 
   """
 
@@ -492,7 +492,7 @@ defmodule Astro do
       iex> Astro.lunar_phase_emoji 360
       "🌑"
 
-      iex> ~U[2021-08-22 12:01:02.170362Z]
+      iex> ~U[2021-08-22 12:02:02.816534Z]
       ...> |> Astro.lunar_phase_at()
       ...> |> Astro.lunar_phase_emoji()
       "🌕"
@@ -536,7 +536,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
-      {:ok, ~U[2021-07-10 01:15:33.373067Z]}
+      {:ok, ~U[2021-07-10 01:16:34.022607Z]}
 
   """
 
@@ -589,7 +589,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
-      {:ok, ~U[2021-08-22 12:01:02.166993Z]}
+      {:ok, ~U[2021-08-22 12:02:02.816534Z]}
 
   """
 
@@ -878,9 +878,9 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.equinox 2019, :march
-      {:ok, ~U[2019-03-20 21:58:06Z]}
+      {:ok, ~U[2019-03-20 21:58:29Z]}
       iex> Astro.equinox 2019, :september
-      {:ok, ~U[2019-09-23 07:49:30Z]}
+      {:ok, ~U[2019-09-23 07:49:53Z]}
 
   ### Notes
 
@@ -921,9 +921,9 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.solstice 2019, :december
-      {:ok, ~U[2019-12-22 04:18:57Z]}
+      {:ok, ~U[2019-12-22 04:19:20Z]}
       iex> Astro.solstice 2019, :june
-      {:ok, ~U[2019-06-21 15:53:45Z]}
+      {:ok, ~U[2019-06-21 15:54:08Z]}
 
   ### Notes
 

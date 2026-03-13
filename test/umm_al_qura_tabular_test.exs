@@ -27,16 +27,27 @@ defmodule Astro.UmmAlQuraTest do
            "Reference data must not be empty — check Astro.UmmAlQura.ReferenceData"
 
     failures =
-      Enum.reduce(reference_data, [], fn %{hijri_year: year, hijri_month: month, gregorian: expected}, acc ->
+      Enum.reduce(reference_data, [], fn %{
+                                           hijri_year: year,
+                                           hijri_month: month,
+                                           gregorian: expected
+                                         },
+                                         acc ->
         case UmmAlQura.Tabular.first_day_of_month(year, month) do
           {:ok, ^expected} ->
             acc
 
           {:ok, actual} ->
-            ["#{year}/#{month}: expected #{Date.to_iso8601(expected)}, got #{Date.to_iso8601(actual)}" | acc]
+            [
+              "#{year}/#{month}: expected #{Date.to_iso8601(expected)}, got #{Date.to_iso8601(actual)}"
+              | acc
+            ]
 
           {:error, reason} ->
-            ["#{year}/#{month}: expected #{Date.to_iso8601(expected)}, got error #{inspect(reason)}" | acc]
+            [
+              "#{year}/#{month}: expected #{Date.to_iso8601(expected)}, got error #{inspect(reason)}"
+              | acc
+            ]
         end
       end)
 
@@ -143,7 +154,7 @@ defmodule Astro.UmmAlQuraTest do
   describe "structural invariants" do
     test "consecutive months in 1446 AH are 29 or 30 days apart" do
       for month <- 1..11 do
-        {:ok, first_of_month}      = UmmAlQura.Tabular.first_day_of_month(1446, month)
+        {:ok, first_of_month} = UmmAlQura.Tabular.first_day_of_month(1446, month)
         {:ok, first_of_next_month} = UmmAlQura.Tabular.first_day_of_month(1446, month + 1)
 
         diff = Date.diff(first_of_next_month, first_of_month)
@@ -184,7 +195,8 @@ defmodule Astro.UmmAlQuraTest do
     end
 
     test "returns error for month 13" do
-      assert {:error, :date_not_in_official_table} = UmmAlQura.Tabular.first_day_of_month(1446, 13)
+      assert {:error, :date_not_in_official_table} =
+               UmmAlQura.Tabular.first_day_of_month(1446, 13)
     end
   end
 

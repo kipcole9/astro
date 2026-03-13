@@ -40,9 +40,12 @@ defmodule Astro.UmmAlQura.AstronomicalTest do
   # Known boundary cases where the astronomical model disagrees with van Gent
   # due to sub-minute event timing sensitivity. Listed as {year, month}.
   @era4_known_boundary_cases [
-    {1446, 6},   # moonset 7s before sunset — sub-second precision limit
-    {1475, 11},  # moonset 3s before sunset — sub-second precision limit (Skyfield also fails)
-    {1485, 10}   # moonset 5s before sunset — sub-second precision limit
+    # moonset 7s before sunset — sub-second precision limit
+    {1446, 6},
+    # moonset 3s before sunset — sub-second precision limit (Skyfield also fails)
+    {1475, 11},
+    # moonset 5s before sunset — sub-second precision limit
+    {1485, 10}
   ]
 
   # ── Full-dataset sweeps ────────────────────────────────────────────────────
@@ -56,7 +59,12 @@ defmodule Astro.UmmAlQura.AstronomicalTest do
     assert length(entries) == 937
 
     {correct, failures} =
-      Enum.reduce(entries, {0, []}, fn %{hijri_year: year, hijri_month: month, gregorian: expected}, {c, f} ->
+      Enum.reduce(entries, {0, []}, fn %{
+                                         hijri_year: year,
+                                         hijri_month: month,
+                                         gregorian: expected
+                                       },
+                                       {c, f} ->
         case Astronomical.first_day_of_month(year, month) do
           {:ok, ^expected} ->
             {c + 1, f}

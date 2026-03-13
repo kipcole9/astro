@@ -125,7 +125,9 @@ defmodule Astro.Solar.SunRiseSet do
     scan_pairs =
       Stream.iterate(dt_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= dt_end))
-      |> Enum.map(fn dynamical_time -> {dynamical_time, altitude_f(dynamical_time, lat, lng, h0)} end)
+      |> Enum.map(fn dynamical_time ->
+        {dynamical_time, altitude_f(dynamical_time, lat, lng, h0)}
+      end)
 
     brackets =
       scan_pairs
@@ -264,5 +266,4 @@ defmodule Astro.Solar.SunRiseSet do
 
   defp fmod(x, m) when x >= 0, do: :math.fmod(x, m)
   defp fmod(x, m), do: :math.fmod(x, m) + m
-
 end

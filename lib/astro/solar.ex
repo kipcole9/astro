@@ -553,6 +553,7 @@ defmodule Astro.Solar do
             [coefficients, addends, multipliers],
             fn [x, y, z] -> x * sin(y + z * julian_centuries) end
           )
+
     {nutation, _, _} = Earth.nutation(julian_centuries)
     mod(lambda + aberration(julian_centuries) + nutation, 360.0)
   end

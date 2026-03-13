@@ -75,7 +75,7 @@ defmodule Astro.UmmAlQura.Tabular do
   def first_day_of_month(hijri_year, hijri_month)
       when is_integer(hijri_year) and is_integer(hijri_month) and hijri_month in 1..12 do
     case Map.get(@lookup_table, {hijri_year, hijri_month}) do
-      nil  -> {:error, :date_not_in_official_table}
+      nil -> {:error, :date_not_in_official_table}
       date -> {:ok, date}
     end
   end

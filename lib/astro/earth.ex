@@ -149,7 +149,7 @@ defmodule Astro.Earth do
     the longitude, obliquity and mean obliquiy.
 
   """
-  @spec nutation(c :: Time.julian_centuries) :: {float(), float(), float()}
+  @spec nutation(c :: Time.julian_centuries()) :: {float(), float(), float()}
   def nutation(c) do
     # Fundamental arguments (degrees, Meeus Ch.22)
     d = 297.85036 + 445_267.111480 * c - 0.0019142 * c * c + c * c * c / 189_474.0

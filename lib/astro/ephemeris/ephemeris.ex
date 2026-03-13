@@ -47,7 +47,7 @@ defmodule Astro.Ephemeris do
   @ssb_id 0
 
   @doc """
-  Computes the apparent geocentric position of the Moon for the given UTC
+  Computes the apparent geocentric position of the Moon for the given
   datetime.
 
   Returns `{:ok, {ra_deg, dec_deg, distance_km}}` in the true equator and
@@ -57,10 +57,10 @@ defmodule Astro.Ephemeris do
   """
   @doc since: "2.0.0"
   @spec moon_position(DateTime.t()) ::
-          {:ok, {float(), float(), float()}} | {:error, term()}
+          {:ok, {right_asention :: Astro.angle(), float(), float()}} | {:error, term()}
 
-  def moon_position(%DateTime{} = utc_date_time) do
-    utc_date_time
+  def moon_position(%DateTime{} = date_time) do
+    date_time
     |> Astro.Time.date_time_to_moment()
     |> Astro.Time.dynamical_time_from_moment()
     |> moon_position_dt()
@@ -93,7 +93,7 @@ defmodule Astro.Ephemeris do
   end
 
   @doc """
-  Computes the apparent geocentric position of the Sun for the given UTC
+  Computes the apparent geocentric position of the Sun for the given
   datetime.
 
   Returns `{:ok, {ra_deg, dec_deg, distance_km}}` in the true equator and
@@ -110,9 +110,9 @@ defmodule Astro.Ephemeris do
   """
   @spec sun_position(DateTime.t()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
-  def sun_position(%DateTime{} = utc_date_time) do
+  def sun_position(%DateTime{} = date_time) do
     dynamical_time =
-      utc_date_time
+      date_time
       |> Astro.Time.date_time_to_moment()
       |> Astro.Time.dynamical_time_from_moment()
 

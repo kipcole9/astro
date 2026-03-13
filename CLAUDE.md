@@ -39,11 +39,11 @@ The new rise/set modules use a **scan-and-bisect** algorithm: coarse-scan altitu
 
 - **`Astro.Ephemeris.Kernel`** — SPK/DAF binary parser; loads Chebyshev polynomial segments for Sun (NAIF 10), Moon (301), Earth (399), EMB (3).
 - **`Astro.Ephemeris`** — Moon geocentric position from kernel; chains Moon/EMB − Earth/EMB segments.
-- **`Astro.Coordinates`** — UTC↔TDB conversion, ΔT interpolation, IAU 1976 precession (Lieske) and IAU 1980 nutation (Wahr, 17-term), GAST, rotation matrices. Uses standard math rotation convention (R₃(α) = Rz(−α) in astronomy texts).
+- **`Astro.Coordinates`** — IAU 1976 precession (Lieske) and IAU 1980 nutation (Wahr, 17-term), GAST, rotation matrices. Uses standard math rotation convention (R₃(α) = Rz(−α) in astronomy texts).
 - **`Astro.Earth`** — Nutation (full IAU 1980 series returning `{Δψ, Δε, ε₀}`), obliquity, refraction/semi-diameter constants, adjusted solar elevation.
 - **`Astro.Solar.SunRiseSet`** — Sunrise/sunset via JPL ephemeris. Supports `:solar_elevation` option (`:geometric`, `:civil`, `:nautical`, `:astronomical`, or custom degrees).
 - **`Astro.Lunar.MoonRiseSet`** — Fully topocentric moonrise/moonset (corrects the ~2–3 min RA-parallax error in Meeus Ch.15). Event condition: altitude = −(34′ refraction + semi-diameter).
-- **`Astro.Time`** — Julian day, moment (fractional days since epoch), Julian centuries, sidereal time, timezone resolution.
+- **`Astro.Time`** — Julian day, moment (fractional days since epoch), Julian centuries, sidereal time, timezone resolution, unified ΔT computation (`delta_t/1`), dynamical time conversions (`dynamical_time_from_moment/1`, `dynamical_time_to_moment/1`, `julian_centuries_from_dynamical_time/1`).
 - **`Astro.Math`** — Trig in degrees, `mod/2`, polynomial evaluation (`poly/2`), angle normalization.
 
 ### Timezone resolution
@@ -57,7 +57,7 @@ Rise/set functions accept options:
 
 - **Location order**: `{longitude, latitude}` (matching `Geo.Point`). West/south negative.
 - **Angles**: degrees throughout; `to_radians/1` and `to_degrees/1` macros for conversion.
-- **Time scales**: moments (float days since 0000-01-01 epoch), Julian centuries from J2000.0, dynamical time (TDB seconds past J2000.0 for ephemeris).
+- **Time scales**: moments (float days since 0000-01-01 epoch), Julian centuries from J2000.0, dynamical time (TDB seconds past J2000.0 for ephemeris). All ΔT computation uses the unified `Astro.Time.delta_t/1` which combines IERS observations (1972–2025), Meeus biennial table (1620–1971), and polynomial approximations (pre-1620 and post-2025).
 - Use `Astro.Time.dynamical_time_from_moment/1` to convert a moment to dynamical time (TDB seconds past J2000.0)
 - Use `Astro.Time.dynamical_time_to_moment/1` to convert dynamical time back to a moment
 - Use `Astro.Time.julian_centuries_from_dynamical_time/1` to convert dynamical time to Julian centuries from J2000.0
