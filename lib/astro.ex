@@ -877,10 +877,12 @@ defmodule Astro do
 
   ### Examples
 
-      iex> Astro.equinox 2019, :march
-      {:ok, ~U[2019-03-20 21:58:29Z]}
-      iex> Astro.equinox 2019, :september
-      {:ok, ~U[2019-09-23 07:49:53Z]}
+      iex> {:ok, dt} = Astro.equinox 2019, :march
+      iex> DateTime.truncate(dt, :second)
+      ~U[2019-03-20 21:58:28Z]
+      iex> {:ok, dt} = Astro.equinox 2019, :september
+      iex> DateTime.truncate(dt, :second)
+      ~U[2019-09-23 07:49:52Z]
 
   ### Notes
 
@@ -920,10 +922,12 @@ defmodule Astro do
 
   ### Examples
 
-      iex> Astro.solstice 2019, :december
-      {:ok, ~U[2019-12-22 04:19:20Z]}
-      iex> Astro.solstice 2019, :june
-      {:ok, ~U[2019-06-21 15:54:08Z]}
+      iex> {:ok, dt} = Astro.solstice 2019, :december
+      iex> DateTime.truncate(dt, :second)
+      ~U[2019-12-22 04:19:19Z]
+      iex> {:ok, dt} = Astro.solstice 2019, :june
+      iex> DateTime.truncate(dt, :second)
+      ~U[2019-06-21 15:54:07Z]
 
   ### Notes
 

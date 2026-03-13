@@ -75,9 +75,9 @@ defmodule Astro.Time do
   successor to Ephemeris Time (ET). TT is related to International
   Atomic Time (TAI) by a fixed offset: TT = TAI + 32.184 s. For
   solar-system calculations at Earth's distance, TT ≈ TDB to within
-  ~1.7 ms, and this library treats them as identical.
-
-  Function: `utc_datetime_from_terrestrial_datetime/1`.
+  ~1.7 ms, and this library treats them as identical. The conversion
+  function `utc_datetime_from_terrestrial_datetime/1` delegates to
+  `universal_from_dynamical/1` internally.
 
   ### Sidereal Time
 
@@ -656,42 +656,32 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a terrestrial datetime to a UTC datetime
+  Converts a Terrestrial Time (TT) datetime to a UTC datetime.
+
+  TT is the uniform atomic time scale on Earth's geoid, the modern
+  successor to Ephemeris Time (ET). This library treats TT as
+  identical to dynamical time (TDB), since the two differ by at most
+  ~1.7 ms — well below the precision of rise/set calculations.
+
+  Internally this converts the TT datetime to a moment, applies the
+  same ΔT subtraction as `universal_from_dynamical/1`, and converts
+  back to a UTC `DateTime`.
 
   ### Arguments
 
-  * `datetime` is any UTC datetime which is considered
-    to be a Terrestrial Time.
+  * `datetime` is a `DateTime` whose clock reading is in Terrestrial
+    Time (equivalently, dynamical time).
 
   ### Returns
 
-  * A UTC datetime adjusted for the difference
-    between Terrestrial Time and UTC time
-
-  ## Notes
-
-  Terrestrial Time (TT) was introduced by the IAU in 1979 as
-  the coordinate time scale for an observer on the
-  surface of Earth. It takes into account relativistic
-  effects and is based on International Atomic Time (TAI),
-  which is a high-precision standard using several hundred
-  atomic clocks worldwide. As such, TD is the atomic time
-  equivalent to its predecessor Ephemeris Time (ET) and is
-  used in the theories of motion for bodies in the solar
-  system.
-
-  To ensure continuity with ET, TD was defined to match
-  ET for the date 1977 Jan 01. In 1991, the IAU refined
-  the definition of TT to make it more precise. It was
-  also renamed Terrestrial Time (TT) from the earlier
-  Terrestrial Dynamical Time (TDT).
+  * `{:ok, utc_datetime}` — the corresponding UTC `DateTime`.
 
   """
   @spec utc_datetime_from_terrestrial_datetime(Calendar.datetime()) :: {:ok, Calendar.datetime()}
-  def utc_datetime_from_terrestrial_datetime(%{year: year} = datetime) do
-    decimal_year = year + (datetime.month - 1) / 12.0 + (datetime.day - 1) / 365.25
-    delta_seconds = trunc(delta_t(decimal_year))
-    {:ok, DateTime.add(datetime, -delta_seconds, :second)}
+  def utc_datetime_from_terrestrial_datetime(datetime) do
+    tt_moment = date_time_to_moment(datetime)
+    utc_moment = universal_from_dynamical(tt_moment)
+    date_time_from_moment(utc_moment)
   end
 
   @doc """
