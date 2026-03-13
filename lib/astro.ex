@@ -31,7 +31,7 @@ defmodule Astro do
   * `:time_zone` — a zone name string, `:utc`, or `:default`
     (resolve from coordinates via `TzWorld`).
   * `:time_zone_database` — the time zone database module
-    (e.g. `Tz.TimeZoneDatabase`).
+    (e.g. Tz.TimeZoneDatabase).
   * `:time_zone_resolver` — a custom 1-arity function
     `(%Geo.Point{}) → {:ok, String.t()}`.
 
