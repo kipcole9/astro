@@ -1,8 +1,73 @@
 defmodule Astro do
   @moduledoc """
-  Functions for basic astronomical observations such
-  as sunrise, sunset, solstice, equinox, moonrise,
-  moonset and moon phase.
+  High-level API for common astronomical observations.
+
+  This module is the primary public interface for the Astro library.
+  It provides functions for sunrise/sunset, moonrise/moonset,
+  equinoxes and solstices, lunar phases, and sun/moon position.
+  All functions accept standard Elixir `Date` or `DateTime` structs
+  and return `{:ok, value}` or `{:error, reason}` tuples.
+
+  For lower-level access see `Astro.Solar`, `Astro.Lunar`,
+  `Astro.Time`, `Astro.Earth` and `Astro.Ephemeris`.
+
+  ## Specifying a location
+
+  Location is specified as a `{longitude, latitude}` tuple (note
+  the order, matching `Geo.Point`), a `Geo.Point.t` struct, or a
+  `Geo.PointZ.t` struct that includes elevation in meters.
+
+  * Longitude is `+` for east, `-` for west, in degrees.
+  * Latitude is `+` for north, `-` for south, in degrees.
+
+  ## Time zone resolution
+
+  Rise/set functions (`sunrise/3`, `sunset/3`, `moonrise/3`,
+  `moonset/3`) return a `DateTime` in the local time zone of the
+  given location. By default the time zone is resolved via
+  `TzWorld` (if configured). This can be overridden with the
+  following options:
+
+  * `:time_zone` — a zone name string, `:utc`, or `:default`
+    (resolve from coordinates via `TzWorld`).
+  * `:time_zone_database` — the time zone database module
+    (e.g. `Tz.TimeZoneDatabase`).
+  * `:time_zone_resolver` — a custom 1-arity function
+    `(%Geo.Point{}) → {:ok, String.t()}`.
+
+  ## Function groups
+
+  ### Solar
+
+  * `sunrise/3`, `sunset/3` — local sunrise and sunset times
+  * `solar_noon/2` — UTC solar noon for a location and date
+  * `hours_of_daylight/2` — duration of daylight
+  * `sun_position_at/1` — right ascension, declination and distance
+  * `sun_azimuth_elevation/2` — azimuth and altitude at a datetime
+  * `sun_apparent_longitude/1` — apparent ecliptic longitude
+
+  ### Lunar
+
+  * `moonrise/3`, `moonset/3` — local moonrise and moonset times
+  * `moon_position_at/1` — right ascension, declination and distance
+  * `illuminated_fraction_of_moon_at/1` — fraction of the Moon illuminated
+  * `lunar_phase_at/1` — phase angle (0–360°)
+  * `lunar_phase_emoji/1` — Unicode emoji for a phase angle
+
+  ### New moon search
+
+  * `date_time_new_moon_before/1`, `date_time_new_moon_at_or_after/1`
+  * `date_time_new_moon_nearest/1`
+
+  ### Phase search
+
+  * `date_time_lunar_phase_at_or_before/2`
+  * `date_time_lunar_phase_at_or_after/2`
+
+  ### Equinoxes and solstices
+
+  * `equinox/2` — March or September equinox
+  * `solstice/2` — June or December solstice
 
   """
 
@@ -842,6 +907,52 @@ defmodule Astro do
     Solar.SunRiseSet.sunset(location, date_to_moment(date), options)
   end
 
+  @doc """
+  Returns the datetime of moonrise for a given location and date.
+
+  Uses the JPL DE440s ephemeris with fully topocentric correction
+  to compute the Moon's altitude zero-crossing via scan-and-bisect.
+
+  ### Arguments
+
+  * `location` is the location as a `{longitude, latitude}` tuple,
+    a `Geo.Point.t` or a `Geo.PointZ.t`.
+
+  * `date` is a `t:Date.t/0` or `t:DateTime.t/0`.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:time_zone` is the time zone in which the sunrise
+    is requested. The default is `:default` in which
+    the sunrise time is reported in the time zone of
+    the requested location. `:utc` can be specified or any
+    other time zone name supported by the option
+    `:time_zone_database` is acceptabe.
+
+  * `:time_zone_database` represents the module that
+    implements the `Calendar.TimeZoneDatabase` behaviour.
+    The default is the configured Elixir time zone database or
+    one of Tzdata.TimeZoneDatabase or Tz.TimeZoneDatabase
+    depending upon which dependency is configured.
+
+  * `:time_zone_resolver` is a 1-arity function that resolves the
+    time zone name for a given location. The function will receive
+    a `%Geo.Point{cordinates: {lng, lat}}` struct and is expected to
+    return either `{:ok, time_zone_name}` or `{:error, :time_zone_not_found}`.
+    The default is `TzWorld.timezone_at/1` if `:tz_world` is
+    configured.
+
+  ### Returns
+
+  * `{:ok, date_time}` with the local time of moonrise, or
+
+  * `{:error, :moon_always_below_horizon}` if the Moon does not
+    rise on the given date at the given location.
+
+  """
+  @doc since: "2.0.0"
   @spec moonrise(location, date, options) ::
           {:ok, DateTime.t()} | {:error, :moon_always_below_horizon}
 
@@ -851,6 +962,52 @@ defmodule Astro do
     Lunar.MoonRiseSet.moonrise(location, date_to_moment(date), options)
   end
 
+  @doc """
+  Returns the datetime of moonset for a given location and date.
+
+  Uses the JPL DE440s ephemeris with fully topocentric correction
+  to compute the Moon's altitude zero-crossing via scan-and-bisect.
+
+  ### Arguments
+
+  * `location` is the location as a `{longitude, latitude}` tuple,
+    a `Geo.Point.t` or a `Geo.PointZ.t`.
+
+  * `date` is a `t:Date.t/0` or `t:DateTime.t/0`.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:time_zone` is the time zone in which the sunrise
+    is requested. The default is `:default` in which
+    the sunrise time is reported in the time zone of
+    the requested location. `:utc` can be specified or any
+    other time zone name supported by the option
+    `:time_zone_database` is acceptabe.
+
+  * `:time_zone_database` represents the module that
+    implements the `Calendar.TimeZoneDatabase` behaviour.
+    The default is the configured Elixir time zone database or
+    one of Tzdata.TimeZoneDatabase or Tz.TimeZoneDatabase
+    depending upon which dependency is configured.
+
+  * `:time_zone_resolver` is a 1-arity function that resolves the
+    time zone name for a given location. The function will receive
+    a `%Geo.Point{cordinates: {lng, lat}}` struct and is expected to
+    return either `{:ok, time_zone_name}` or `{:error, :time_zone_not_found}`.
+    The default is `TzWorld.timezone_at/1` if `:tz_world` is
+    configured.
+
+  ### Returns
+
+  * `{:ok, date_time}` with the local time of moonset, or
+
+  * `{:error, :moon_always_above_horizon}` if the Moon does not
+    set on the given date at the given location.
+
+  """
+  @doc since: "2.0.0"
   @spec moonset(location, date, options) ::
           {:ok, DateTime.t()} | {:error, :moon_always_above_horizon}
 
@@ -945,9 +1102,7 @@ defmodule Astro do
   The seasons of the year are determined by
   reference to both the solstices and the equinoxes.
 
-  The term solstice can also be used in a broader
-  sense, as the day when this occurs. The day of a
-  solstice in either hemisphere has either the most
+  The day of a solstice in either hemisphere has either the most
   sunlight of the year (summer solstice) or the least
   sunlight of the year (winter solstice) for any place
   other than the Equator.
