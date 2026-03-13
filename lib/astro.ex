@@ -302,7 +302,7 @@ defmodule Astro do
     {:error, {module(), String.t()}}
   )
 
-  def date_time_new_moon_before(unquote(Guards.datetime()) = date_time) do
+  def date_time_new_moon_at_or_before(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time

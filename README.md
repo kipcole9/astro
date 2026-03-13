@@ -5,7 +5,7 @@
 [![Hex.pm](https://img.shields.io/hexpm/dt/astro.svg?)](https://hex.pm/packages/astro)
 [![Hex.pm](https://img.shields.io/hexpm/l/astro.svg)](https://hex.pm/packages/astro)
 
-Astro is a library to provide basic astromonomical functions with a focus on functions that support solar, lunar and lunisolar calendars such as the Islamic, Chinese, Hebrew and Persian calendars.
+Astro is a library to provide accurate astronomical functions with a focus on functions that support solar, lunar and lunisolar calendars such as the Islamic, Chinese, Hebrew and Persian calendars.
 
 ## Usage
 
@@ -13,13 +13,14 @@ Astro is a library to provide basic astromonomical functions with a focus on fun
 
 The primary functions are:
 
-### Solar function
+### Solar functions
 
 * `Astro.sunrise/3`
 * `Astro.sunset/3`
 * `Astro.solstice/2`
 * `Astro.equinox/2`
 * `Astro.hours_of_daylight/2`
+* `Astro.sun_position_at/1`
 
 ### Lunar functions
 
@@ -28,6 +29,8 @@ The primary functions are:
 * `Astro.moon_position_at/1`
 * `Astro.illuminated_fraction_of_moon_at/1`
 * `Astro.date_time_new_moon_at_or_after/1`
+* `Astro.date_time_new_moon_before/1`
+* `Astro.date_time_new_moon_nearest/1`
 * `Astro.lunar_phase_at/1`
 * `Astro.lunar_phase_emoji/1`
 
@@ -35,11 +38,11 @@ The primary functions are:
 ```elixir
   # Sunrise in Sydney on December 4th
   iex> Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
-  {:ok, #DateTime<2019-12-04 05:37:09+11:00 AEDT Australia/Sydney>}
+  {:ok, #DateTime<2019-12-04 05:37:08+11:00 AEDT Australia/Sydney>}
 
   # Sunset in Sydney on December 4th
   iex> Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
-  {:ok, #DateTime<2019-12-04 19:53:21+11:00 AEDT Australia/Sydney>}
+  {:ok, #DateTime<2019-12-04 19:53:20+11:00 AEDT Australia/Sydney>}
 
   # Sunset in the town of Alert in Nunavut, Canada
   # ...doesn't exist since there is no sunset in summer
@@ -64,17 +67,17 @@ The primary functions are:
 
   # Calculate solstices for 2019
   iex> Astro.solstice 2019, :december
-  {:ok, ~U[2019-12-22 04:18:57Z]}
+  {:ok, ~U[2019-12-22 04:19:19Z]}
 
   iex> Astro.solstice 2019, :june
-  {:ok, ~U[2019-06-21 15:53:45Z]}
+  {:ok, ~U[2019-06-21 15:54:07Z]}
 
   # Calculate equinoxes for 2019
   iex> Astro.equinox 2019, :march
-  {:ok, ~U[2019-03-20 21:58:06Z]}
+  {:ok, ~U[2019-03-20 21:58:28Z]}
 
   iex> Astro.equinox 2019, :september
-  {:ok, ~U[2019-09-23 07:49:30Z]}
+  {:ok, ~U[2019-09-23 07:49:52Z]}
 ```
 
 ### Specifying a location
@@ -115,7 +118,7 @@ Astro can be installed by adding `astro` to your list of dependencies in `mix.ex
 ```elixir
 def deps do
   [
-    {:astro, "~> 1.0"}
+    {:astro, "~> 2.0"}
   ]
 end
 ```
@@ -140,7 +143,7 @@ For functions such as `Astro.sunrise/3` and `Astro.sunset/3` it is common to exp
 
 It is expected that `tz_world` is configured for most applications although it is not formally required.
 
-`tz_world` does however require the download of nearly 30Mb of geojson data and a non-trivial post-processing step to format the data for efficient use by Astro. This might not be suitable for embedded devices and therefore `Astro.sunrise/3` and `Astro.sunset/3` take an optional `:time_zone_resolver` option to support the implementation of a custom function to resolve the time zone name from a given location.
+`tz_world` does however require the download of nearly 30Mb of geojson data and a non-trivial post-processing step to format the data for efficient use by Astro. This might not be suitable for embedded devices and therefore `Astro.sunrise/3`, `Astro.sunset/3`, `Astro.moonrise/3` and `Astro.moonset/3` take an optional `:time_zone_resolver` option to support the implementation of a custom function to resolve the time zone name from a given location.
 
 The following steps should be following if `tz_world` is configured.
 
@@ -194,17 +197,17 @@ Documentation can be found at [https://hexdocs.pm/astro](https://hexdocs.pm/astr
 
 #### Developing Astro Locally
 
-The Astro test suite requires a functioning tz_world database to be available in the test environmment. Once all other dependencies are installed, exceute:
+The Astro test suite requires a functioning tz_world database to be available in the test environment. Once all other dependencies are installed, execute:
 
 ```
 MIX_ENV=test mix tz_world.update
 ```
 
-## Astro version 2 rise and set algorithms
+## Astro improved rise and set algorithms
 
 The implementation of the sun and moon rise and set calculations in Astro 2.0 is a JPL DE440s ephemeris scan-and-bisect algorithm. Specifically:
 
-* Astro verison 1.x: was a NOAA/Meeus analytical solar position (polynomial + periodic-term approximation of the Sun's coordinates, with three-point interpolation for the rise/set crossing). There was no moon rise/set calculation in Astro 1.x.
+* Astro version 1.x: was a NOAA/Meeus analytical solar position (polynomial + periodic-term approximation of the Sun's coordinates, with three-point interpolation for the rise/set crossing). There was no moon rise/set calculation in Astro 1.x.
 
 * Astro version 2: JPL DE440s ephemeris with coarse-scan and binary-search — the Sun's (or Moon's) position is computed directly from the JPL Development Ephemeris at each evaluation point, and the altitude zero-crossing is found by:
   * Coarse scan — sampling altitude at regular intervals (24-minute steps for the Sun, shorter for the Moon) to bracket sign changes

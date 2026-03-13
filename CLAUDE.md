@@ -14,8 +14,8 @@ mix dialyzer                       # Static type analysis
 mix docs                           # Generate documentation
 ```
 Make sure the TzWorld data is installed in the `:dev` and `:test` environments by running the following:
-- `mix TzWorld.update`
-- `MIX_ENV=test mix TzWorld.update`
+- `mix tz_world.update`
+- `MIX_ENV=test mix tz_world.update`
 
 Tests require `TzWorld` backend. The test helper starts `Astro.Supervisor` if `TzWorld` is loaded. Outside tests (e.g. `mix run` scripts), call `Astro.Supervisor.start_link()` manually or pass an explicit `:time_zone` option.
 
