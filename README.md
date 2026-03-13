@@ -123,6 +123,26 @@ def deps do
 end
 ```
 
+### Download the JPL Ephemeris
+
+Astro requires the JPL DE440s ephemeris file (`de440s.bsp`, ~32 MB) for its rise/set calculations. After fetching dependencies, download it with the included mix task:
+
+```
+mix deps.get
+mix astro.download_ephemeris
+```
+
+The file is placed in Astro's `priv` directory and loaded into memory at application start.
+
+To use an alternative file path or a diffferent but compatible ephemeris (such as `de440.bsp`), configure the `:ephemeris` option in your `runtime.exs`:
+
+```elixir
+config :astro,
+  ephemeris: "/path/to/de440.bsp"
+```
+
+The default path is `priv/de440s.bsp` relative to the Astro application directory.
+
 ### Install a time zone database
 
 A time zone database is required in order to support time zone conversions. Two popular options are [tzdata](https://hex.pm/packages/tzdata) and [tz](https://hex.pm/packages/tz). The time zone database must be configured in `config.exs` or `runtime.exs` as the default time zone database.  For example:
