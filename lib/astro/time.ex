@@ -76,7 +76,7 @@ defmodule Astro.Time do
   Atomic Time (TAI) by a fixed offset: TT = TAI + 32.184 s. For
   solar-system calculations at Earth's distance, TT ≈ TDB to within
   ~1.7 ms, and this library treats them as identical. The conversion
-  function `utc_datetime_from_terrestrial_datetime/1` delegates to
+  function `utc_datetime_from_dynamical_datetime/1` delegates to
   `universal_from_dynamical/1` internally.
 
   ### Sidereal Time
@@ -305,13 +305,26 @@ defmodule Astro.Time do
   def mean_tropical_year, do: @mean_tropical_year
 
   @doc """
-  Returns the dynamical time for a given
-  universal time.
+  Returns the dynamical moment for a given universal (UTC) moment.
 
-  Dynamical time is the time-scale that is used in
-  calculating orbital motions within the Solar
-  System. The underlying physical law governing
-  such motions is the law of gravitation.
+  Adds ΔT (converted to a fraction of a day) to the UTC moment,
+  producing a dynamical moment suitable for evaluating Meeus-era
+  polynomial series via `julian_centuries_from_moment/1`.
+
+  ### Arguments
+
+  * `t` is a moment (float Gregorian days since 0000-01-01) in UTC.
+
+  ### Returns
+
+  * A moment in the dynamical time scale (float Gregorian days).
+
+  ### Examples
+
+      iex> t = Astro.Time.date_time_to_moment(~U[2000-01-01 12:00:00Z])
+      iex> dt = Astro.Time.dynamical_from_universal(t)
+      iex> Float.round(dt - t, 6)
+      0.000739
 
   """
   @spec dynamical_from_universal(time()) :: time()
@@ -323,19 +336,26 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the universal (UTC) time
-  for a given dynamical time.
+  Returns the universal (UTC) moment for a given dynamical moment.
 
-  Coordinated Universal Time or UTC is
-  the primary time standard by which the
-  world regulates clocks and time.
+  Subtracts ΔT (converted to a fraction of a day) from a dynamical
+  moment, recovering the corresponding UTC moment.
 
-  It is within about 1 second of mean solar
-  time at 0° longitude and is not adjusted
-  for daylight saving time.
+  ### Arguments
 
-  It is effectively a successor to Greenwich
-  Mean Time (GMT).
+  * `t` is a moment (float Gregorian days since 0000-01-01) in
+    dynamical time.
+
+  ### Returns
+
+  * A moment in the UTC time scale (float Gregorian days).
+
+  ### Examples
+
+      iex> t = Astro.Time.date_time_to_moment(~U[2000-01-01 12:00:00Z])
+      iex> dyn = Astro.Time.dynamical_from_universal(t)
+      iex> Astro.Time.universal_from_dynamical(dyn) == t
+      true
 
   """
   @spec universal_from_dynamical(time()) :: time()
@@ -347,16 +367,29 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the local time from the
-  universal time at a given location.
+  Returns the local mean solar time for a given universal (UTC) moment
+  and location.
 
-  Locale time is UTC time plus the number
-  of hours offset calculated from the longitude
-  of a location.
+  Local mean solar time is UTC plus an offset derived purely from
+  geographic longitude (`longitude / 360` of a day). This is distinct
+  from standard time, which uses named time zone boundaries and
+  daylight-saving rules.
 
-  This is different to standard time which
-  is UTC time adjusted for a specific time
-  zone name.
+  ### Arguments
+
+  * `t` is a moment (float Gregorian days since 0000-01-01) in UTC.
+  * `location` is a `Geo.PointZ` with `{longitude, latitude, altitude}`.
+
+  ### Returns
+
+  * A moment in local mean solar time (float Gregorian days).
+
+  ### Examples
+
+      iex> location = %Geo.PointZ{coordinates: {-90.0, 40.0, 0.0}}
+      iex> t = 740047.5
+      iex> Astro.Time.local_from_universal(t, location)
+      740047.25
 
   """
   @spec local_from_universal(time(), Geo.PointZ.t()) :: time()
@@ -365,16 +398,29 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the universal time (UTC) from
-  the local time at a given location.
+  Returns the universal (UTC) moment for a given local mean solar
+  time moment and location.
 
-  Locale time is UTC time plus the number
-  of hours offset calculated from the longitude
-  of a location.
+  Subtracts the longitude-based offset (`longitude / 360` of a day)
+  from the local time to recover UTC. This is the inverse of
+  `local_from_universal/2`.
 
-  This is different to standard time which
-  is UTC time adjusted for a specific time
-  zone name.
+  ### Arguments
+
+  * `t` is a moment (float Gregorian days since 0000-01-01) in
+    local mean solar time.
+  * `location` is a `Geo.PointZ` with `{longitude, latitude, altitude}`.
+
+  ### Returns
+
+  * A moment in UTC (float Gregorian days).
+
+  ### Examples
+
+      iex> location = %Geo.PointZ{coordinates: {-90.0, 40.0, 0.0}}
+      iex> local_t = 740047.25
+      iex> Astro.Time.universal_from_local(local_t, location)
+      740047.5
 
   """
   @spec universal_from_local(time(), Geo.PointZ.t()) :: time()
@@ -383,8 +429,28 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the standard time for a universal time in a given
-  time zone.
+  Returns the standard time moment for a given universal (UTC) moment
+  and time zone.
+
+  Standard time is UTC adjusted by the named time zone's UTC offset
+  and any daylight-saving offset in effect at the given instant.
+
+  ### Arguments
+
+  * `t` is a moment (float Gregorian days since 0000-01-01) in UTC.
+  * `zone_name` is either a time zone name string
+    (e.g. `"America/New_York"`) or a numeric offset in fractional days.
+
+  ### Returns
+
+  * A moment in standard time (float Gregorian days).
+
+  ### Examples
+
+      iex> t = Astro.Time.date_time_to_moment(~U[2024-01-15 12:00:00Z])
+      iex> standard = Astro.Time.standard_from_universal(t, 0.25)
+      iex> standard - t
+      0.25
 
   """
   @spec standard_from_universal(time(), zone_name() | number()) :: time()
@@ -397,8 +463,30 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the universal (UTC) time for a standard time in a given time
-  zone.
+  Returns the universal (UTC) moment for a given standard time moment
+  and time zone.
+
+  Subtracts the time zone offset (UTC offset + DST) from the standard
+  time moment to recover UTC. This is the inverse of
+  `standard_from_universal/2`.
+
+  ### Arguments
+
+  * `t` is a moment (float Gregorian days since 0000-01-01) in
+    standard time.
+  * `zone_name` is either a time zone name string
+    (e.g. `"America/New_York"`) or a numeric offset in fractional days.
+
+  ### Returns
+
+  * A moment in UTC (float Gregorian days).
+
+  ### Examples
+
+      iex> t = 740047.75
+      iex> utc = Astro.Time.universal_from_standard(t, 0.25)
+      iex> t - utc
+      0.25
 
   """
   @spec universal_from_standard(time(), zone_name() | number()) :: time()
@@ -435,7 +523,26 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the Greenwich mean sidereal time for a given date time.
+  Returns the Greenwich Mean Sidereal Time (GMST) in degrees for a
+  given datetime.
+
+  GMST measures Earth's rotation relative to the stars. It is the
+  hour angle of the mean vernal equinox at the Greenwich meridian.
+
+  ### Arguments
+
+  * `date_time` is any `t:Calendar.datetime/0`. If not already in UTC,
+    it is converted to UTC before computation.
+
+  ### Returns
+
+  * GMST in degrees (float, typically 0–360).
+
+  ### Examples
+
+      iex> gmst = Astro.Time.greenwich_mean_sidereal_time(~U[2000-01-01 12:00:00Z])
+      iex> Float.round(gmst, 4)
+      280.7273
 
   """
   @doc since: "0.11.0"
@@ -453,8 +560,27 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the local sidereal time for a given location
-  and date time.
+  Returns the local sidereal time in degrees for a given location
+  and datetime.
+
+  Local sidereal time is GMST plus the observer's geographic
+  longitude.
+
+  ### Arguments
+
+  * `location` is any `t:Astro.location/0` (a `Geo.Point`,
+    `Geo.PointZ`, or `{longitude, latitude}` tuple).
+  * `date_time` is any `t:Calendar.datetime/0`.
+
+  ### Returns
+
+  * Local sidereal time in degrees (float).
+
+  ### Examples
+
+      iex> lst = Astro.Time.local_sidereal_time({0.0, 51.5}, ~U[2000-01-01 12:00:00Z])
+      iex> Float.round(lst, 4)
+      280.7273
 
   """
   @doc since: "0.11.0"
@@ -470,8 +596,30 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the zone difference in hours between
-  a given location and UTC.
+  Returns the local mean solar time offset from UTC as a fraction
+  of a day for a given longitude.
+
+  The offset is `longitude / 360` of a day. West longitudes
+  (negative) produce negative offsets, east longitudes produce
+  positive offsets.
+
+  ### Arguments
+
+  * `longitude` is either a `Geo.PointZ` struct or a numeric
+    longitude in degrees (west negative, east positive).
+
+  ### Returns
+
+  * The offset as a fraction of a day (float). For example, −90°
+    returns −0.25 (6 hours behind UTC).
+
+  ### Examples
+
+      iex> Astro.Time.offset_from_longitude(-90.0)
+      -0.25
+
+      iex> Astro.Time.offset_from_longitude(180.0)
+      0.5
 
   """
   @spec offset_from_longitude(Geo.PointZ.t() | Astro.longitude()) :: moment()
@@ -484,8 +632,7 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the astronomical Julian day for a given
-  date
+  Returns the astronomical Julian day number for a given date.
 
   ### Arguments
 
@@ -493,12 +640,16 @@ defmodule Astro.Time do
 
   ### Returns
 
-  * the astronomical Julian day as a `float`.
+  * The Julian day as a `float`. The `.5` fractional part
+    reflects the Julian day convention of starting at noon.
 
-  ## Example
+  ### Examples
 
-    iex> Astro.Time.julian_day_from_date ~D[2019-12-05]
-    2458822.5
+      iex> Astro.Time.julian_day_from_date(~D[2019-12-05])
+      2458822.5
+
+      iex> Astro.Time.julian_day_from_date(~D[2000-01-01])
+      2451544.5
 
   """
   @spec julian_day_from_date(Calendar.date()) :: julian_days()
@@ -517,30 +668,73 @@ defmodule Astro.Time do
   defdelegate ajd(date), to: __MODULE__, as: :julian_day_from_date
 
   @doc """
-  Returns the Julian centuries for a given
-  Julian day
+  Returns Julian centuries from J2000.0 for a given Julian day.
 
   ### Arguments
 
-  * `julian_day` is any astronomical Julian day such
-    as returned from `Astro.Time.julian_day_from_date/1`.
+  * `julian_day` is a Julian day number (float) such as returned
+    from `julian_day_from_date/1`.
 
   ### Returns
 
-  * the astronomical Julian century as a `float`.
+  * Julian centuries from J2000.0 as a `float`.
+
+  ### Examples
+
+      iex> Astro.Time.julian_centuries_from_julian_day(2451545.0)
+      0.0
+
+      iex> Float.round(Astro.Time.julian_centuries_from_julian_day(2451545.0 + 36525.0), 1)
+      1.0
 
   """
   def julian_centuries_from_julian_day(julian_day) do
     (julian_day - @julian_day_jan_1_2000) / @julian_days_per_century
   end
 
+  @doc """
+  Returns Julian centuries from J2000.0 for a given UTC moment.
+
+  First converts the UTC moment to a dynamical moment (by adding ΔT),
+  then computes Julian centuries from J2000.0. This is the time
+  argument expected by Meeus-era polynomial series for precession,
+  nutation, and orbital elements.
+
+  ### Arguments
+
+  * `t` is a moment (float Gregorian days since 0000-01-01) in UTC.
+
+  ### Returns
+
+  * Julian centuries from J2000.0 as a `float`.
+
+  ### Examples
+
+      iex> t = Astro.Time.date_time_to_moment(~U[2000-01-01 12:00:00Z])
+      iex> Float.round(Astro.Time.julian_centuries_from_moment(t), 6)
+      0.0
+
+  """
   def julian_centuries_from_moment(t) do
     (dynamical_from_universal(t) - j2000()) / @julian_days_per_century
   end
 
   @doc """
-  Returns the day number for
-  January 1st, 2000.
+  Returns the J2000.0 epoch as a moment (Gregorian days since
+  0000-01-01).
+
+  J2000.0 is 2000 January 1.5 TT (noon on January 1, 2000). This
+  is the standard reference epoch for precession, nutation, and
+  ephemeris polynomials.
+
+  ### Returns
+
+  * The J2000.0 moment as a `float` (730485.5).
+
+  ### Examples
+
+      iex> Astro.Time.j2000()
+      730485.5
 
   """
   @new_year_2000 Date.new!(2000, 1, 1)
@@ -551,17 +745,27 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the Julian day for a given
-  Julian century.
+  Returns the Julian day for a given number of Julian centuries
+  from J2000.0.
+
+  This is the inverse of `julian_centuries_from_julian_day/1`.
 
   ### Arguments
 
-  * `julian_century` is any astronomical Julian century such
-    as returned from `Astro.Time.julian_centuries_from_julian_day/1`.
+  * `julian_centuries` is a float number of Julian centuries from
+    J2000.0.
 
   ### Returns
 
-  * the astronomical Julian day as a `float`.
+  * The Julian day as a `float`.
+
+  ### Examples
+
+      iex> Astro.Time.julian_day_from_julian_centuries(0.0)
+      2451545.0
+
+      iex> Astro.Time.julian_day_from_julian_centuries(1.0)
+      2488070.0
 
   """
   @spec julian_day_from_julian_centuries(julian_centuries()) :: julian_days()
@@ -570,21 +774,23 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the datetime for a given Julian day.
+  Returns a UTC datetime for a given Julian day number.
 
   ### Arguments
 
-  * `julian_day` is any astronomical Julian day such
-    as returned from `Astro.Time.julian_day_from_date/1`.
+  * `julian_day` is a Julian day number as a `float`.
 
   ### Returns
 
-  * a `t:DateTime.t/0` in the UTC time zone.
+  * `{:ok, datetime}` — a `t:DateTime.t/0` in the UTC time zone.
 
-  ## Example
+  ### Examples
 
       iex> Astro.Time.datetime_from_julian_days(2458822.5)
       {:ok, ~U[2019-12-05 00:00:00Z]}
+
+      iex> Astro.Time.datetime_from_julian_days(2451545.0)
+      {:ok, ~U[2000-01-01 12:00:00Z]}
 
   """
   @spec datetime_from_julian_days(julian_days()) :: {:ok, Calendar.datetime()}
@@ -623,18 +829,21 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the date for a given Julian day.
+  Returns the date for a given Julian day number.
+
+  The Julian day is rounded to the nearest integer before
+  conversion. This is suitable when only the calendar date is
+  needed, without time-of-day information.
 
   ### Arguments
 
-  * `julian_day` is any astronomical integer Julian day such
-    as returned from `Astro.Time.julian_day_from_date/1`.
+  * `julian_day` is a Julian day number (float or integer).
 
   ### Returns
 
-  * a `t:Date.t/0`.
+  * `{:ok, date}` — a `t:Date.t/0`.
 
-  ## Example
+  ### Examples
 
       iex> Astro.Time.date_from_julian_days(2458822.5)
       {:ok, ~D[2019-12-05]}
@@ -676,34 +885,40 @@ defmodule Astro.Time do
 
   * `{:ok, utc_datetime}` — the corresponding UTC `DateTime`.
 
+  ### Examples
+
+      iex> {:ok, tt} = Astro.Time.datetime_from_julian_days(2451545.0)
+      iex> {:ok, utc} = Astro.Time.utc_datetime_from_dynamical_datetime(tt)
+      iex> DateTime.truncate(utc, :second)
+      ~U[2000-01-01 11:58:56Z]
+
   """
-  @spec utc_datetime_from_terrestrial_datetime(Calendar.datetime()) :: {:ok, Calendar.datetime()}
-  def utc_datetime_from_terrestrial_datetime(datetime) do
+  @spec utc_datetime_from_dynamical_datetime(Calendar.datetime()) :: {:ok, Calendar.datetime()}
+  def utc_datetime_from_dynamical_datetime(datetime) do
     tt_moment = date_time_to_moment(datetime)
     utc_moment = universal_from_dynamical(tt_moment)
     date_time_from_moment(utc_moment)
   end
 
   @doc """
-  Returns the modified Julian day for a date.
+  Returns the Modified Julian Day (MJD) for a given date.
+
+  MJD is JD − 2400000.5, shifting the day boundary from noon to
+  midnight and producing smaller numbers. MJD 0 corresponds to
+  1858-11-17 00:00:00 UTC.
 
   ### Arguments
 
-  * `date` is any `Calendar.date`.
+  * `date` is any `t:Calendar.date/0`.
 
   ### Returns
 
-  * the modified Julian day as a `float`.
+  * The Modified Julian Day as a `float`.
 
-  ## Notes
+  ### Examples
 
-  A modified version of the Julian date denoted MJD is
-  obtained by subtracting 2,400,000.5 days from the
-  Julian date JD,
-
-  The MJD therefore gives the number of days since
-  midnight on November 17, 1858. This date corresponds
-  to `2400000.5` days after day 0 of the Julian calendar.
+      iex> Astro.Time.mjd(~D[2019-12-05])
+      58822.0
 
   """
   @spec mjd(Calendar.date()) :: julian_days()
@@ -712,20 +927,24 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Adds a float number of hours since midnight to
-  a `t:Date.t/0` to return a UTC `t:DateTime.t/0`.
+  Returns a UTC datetime by combining a date with a float number
+  of hours since midnight.
 
   ### Arguments
 
-  * `time_of_day` is a float number of hours
-    since midnight.
-
+  * `time_of_day` is a float number of hours since midnight
+    (e.g. 13.5 for 1:30 PM).
   * `date` is any `t:Calendar.date/0`.
 
   ### Returns
 
-  A `t:NaiveDateTime.t/0` combining the `date` and `time_of_day`
-  in the UTC timezone.
+  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC.
+
+  ### Examples
+
+      iex> {:ok, dt} = Astro.Time.hours_and_date_to_datetime(12.0, ~D[2024-06-21])
+      iex> DateTime.truncate(dt, :second)
+      ~U[2024-06-21 12:00:00Z]
 
   """
   @spec hours_and_date_to_datetime(hours(), Calendar.date()) :: {:ok, Calendar.datetime()}
@@ -737,29 +956,28 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a float number of hours
-  since midnight into `{hours, minutes, seconds}`.
+  Returns an `{hours, minutes, seconds}` tuple for a given float
+  number of hours since midnight.
 
   ### Arguments
 
-  * `time_of_day` is a float number of hours
-    since midnight.
+  * `time_of_day` is a float number of hours since midnight.
 
   ### Returns
 
-  * A `{hour, minute, second}` tuple. Fractions of
-    seconds are truncated.
+  * A `{hour, minute, second}` tuple. Fractional seconds are
+    truncated.
 
-  ## Examples
+  ### Examples
 
-    iex> Astro.Time.hours_to_hms 0.0
-    {0, 0, 0}
+      iex> Astro.Time.hours_to_hms(0.0)
+      {0, 0, 0}
 
-    iex> Astro.Time.hours_to_hms 23.999
-    {23, 59, 56}
+      iex> Astro.Time.hours_to_hms(23.999)
+      {23, 59, 56}
 
-    iex> Astro.Time.hours_to_hms 15.456
-    {15, 27, 21}
+      iex> Astro.Time.hours_to_hms(15.456)
+      {15, 27, 21}
 
   """
   @spec hours_to_hms(hours()) :: hms()
@@ -772,20 +990,23 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a number of hours into days.
+  Returns the number of days for a given number of hours.
 
   ### Arguments
 
-  * a float number of `hours`.
+  * `hours` is a number of hours.
 
   ### Returns
 
-  * a float number of `days`.
+  * The equivalent number of days as a `float`.
 
-  ## Examples
+  ### Examples
 
       iex> Astro.Time.hours_to_days(48)
       2.0
+
+      iex> Astro.Time.hours_to_days(6)
+      0.25
 
   """
   @spec hours_to_days(hours()) :: days()
@@ -794,27 +1015,28 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a number of seconds
-  since midnight into `{hours, minutes, seconds}`.
+  Returns an `{hours, minutes, seconds}` tuple for a given number
+  of seconds since midnight.
 
   ### Arguments
 
-  * `time_of_day` is a number of seconds.
+  * `time_of_day` is a number of seconds since midnight.
 
   ### Returns
 
-  * A `{hour, minute, second}` tuple.
+  * A `{hour, minute, second}` tuple. Fractional seconds are
+    truncated.
 
-  ## Examples
+  ### Examples
 
-    iex> Astro.Time.seconds_to_hms 0.0
-    {0, 0, 0}
+      iex> Astro.Time.seconds_to_hms(0.0)
+      {0, 0, 0}
 
-    iex> Astro.Time.seconds_to_hms 3214
-    {0, 53, 34}
+      iex> Astro.Time.seconds_to_hms(3214)
+      {0, 53, 34}
 
-    iex> Astro.Time.seconds_to_hms 10_000
-    {2, 46, 39}
+      iex> Astro.Time.seconds_to_hms(10_000)
+      {2, 46, 39}
 
   """
   @spec seconds_to_hms(fraction_of_day()) :: hms()
@@ -824,18 +1046,22 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Adds the requested minutes to a date
-  returning a datetime in the UTC time zone.
+  Returns a UTC datetime by combining a date with a float number
+  of minutes since midnight.
 
   ### Arguments
 
   * `minutes` is a float number of minutes since midnight.
-
-  * `date` is any date in the Gregorian calendar.
+  * `date` is any `t:Calendar.date/0`.
 
   ### Returns
 
-  * `{:ok, datetime in the UTC time zone}`
+  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC.
+
+  ### Examples
+
+      iex> Astro.Time.datetime_from_date_and_minutes(720.0, ~D[2024-06-21])
+      {:ok, ~U[2024-06-21 12:00:00Z]}
 
   """
   @spec datetime_from_date_and_minutes(minutes(), Calendar.date()) :: {:ok, Calendar.datetime()}
@@ -904,13 +1130,29 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns the offset in float days
-  for a given number of gregorian seconds and time zone.
+  Returns the time zone offset as a fraction of a day for a given
+  instant and time zone.
 
-  ## Example
+  ### Arguments
+
+  * `gregorian_seconds` is the number of seconds since the Gregorian
+    epoch (0000-01-01 00:00:00).
+  * `time_zone` is a time zone name string (e.g. `"Europe/London"`).
+  * `time_zone_database` is the time zone database module (defaults
+    to `Calendar.get_time_zone_database()`).
+
+  ### Returns
+
+  * The total offset (UTC offset + DST) as a fraction of a day
+    (float).
+  * `:ambiguous_time` if the instant falls in a DST overlap.
+  * `:no_such_time_or_zone` if the zone is unknown or the instant
+    falls in a DST gap.
+
+  ### Examples
 
       iex> t = Date.to_gregorian_days(~D[2021-08-01]) * (60 * 60 * 24)
-      iex> Astro.Time.offset_for_zone t, "Europe/London"
+      iex> Astro.Time.offset_for_zone(t, "Europe/London")
       0.041666666666666664
 
   """
@@ -1252,9 +1494,9 @@ defmodule Astro.Time do
 
   ### Returns
 
-  * ΔT in seconds as a float
+  * ΔT in seconds as a `float`.
 
-  ## Examples
+  ### Examples
 
       iex> Astro.Time.delta_t(2000.0)
       63.83
@@ -1347,13 +1589,29 @@ defmodule Astro.Time do
   @jd_gregorian_epoch 1_721_059.5
 
   @doc """
-  Converts a moment (fractional Gregorian days since the epoch) to
-  dynamical time (TDB seconds past J2000.0).
+  Returns dynamical time (TDB seconds past J2000.0) for a given
+  UTC moment.
 
-  A moment is the time representation used by `Astro.Time` — the number
-  of days (and fractional day) since the Gregorian epoch (0000-01-01).
-  This function applies a date-dependent ΔT to produce the dynamical
-  time expected by the SPK kernel.
+  Applies a date-dependent ΔT via `delta_t/1` to convert the UTC
+  moment to TDB, the time scale expected by the JPL SPK ephemeris
+  kernel.
+
+  ### Arguments
+
+  * `moment` is a moment (float Gregorian days since 0000-01-01)
+    in UTC.
+
+  ### Returns
+
+  * Dynamical time as a `float` (TDB seconds past J2000.0).
+
+  ### Examples
+
+      iex> t = Astro.Time.date_time_to_moment(~U[2000-01-01 12:00:00Z])
+      iex> dt = Astro.Time.dynamical_time_from_moment(t)
+      iex> Float.round(dt, 1)
+      63.8
+
   """
   @spec dynamical_time_from_moment(float()) :: float()
   def dynamical_time_from_moment(moment) do
@@ -1365,10 +1623,28 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts dynamical time (TDB seconds past J2000.0) back to a moment
-  (fractional Gregorian days since the epoch).
+  Returns a UTC moment for a given dynamical time (TDB seconds past
+  J2000.0).
 
-  Uses a date-dependent ΔT derived from IERS observations.
+  This is the inverse of `dynamical_time_from_moment/1`. Subtracts a
+  date-dependent ΔT to recover the UTC moment.
+
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0 (float).
+
+  ### Returns
+
+  * A moment (float Gregorian days since 0000-01-01) in UTC.
+
+  ### Examples
+
+      iex> t = Astro.Time.date_time_to_moment(~U[2000-01-01 12:00:00Z])
+      iex> dt = Astro.Time.dynamical_time_from_moment(t)
+      iex> round_trip = Astro.Time.dynamical_time_to_moment(dt)
+      iex> Float.round(abs(round_trip - t) * 86400, 3)
+      0.0
+
   """
   @spec dynamical_time_to_moment(float()) :: float()
   def dynamical_time_to_moment(dynamical_time) do
@@ -1380,8 +1656,27 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Returns Julian centuries from J2000.0 for the given dynamical time
-  (TDB seconds past J2000.0).
+  Returns Julian centuries from J2000.0 for a given dynamical time.
+
+  A pure arithmetic conversion: divides TDB seconds by the number
+  of seconds in a Julian century (36525 × 86400).
+
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0 (float).
+
+  ### Returns
+
+  * Julian centuries from J2000.0 as a `float`.
+
+  ### Examples
+
+      iex> Astro.Time.julian_centuries_from_dynamical_time(0.0)
+      0.0
+
+      iex> Astro.Time.julian_centuries_from_dynamical_time(36525.0 * 86400.0)
+      1.0
+
   """
   @spec julian_centuries_from_dynamical_time(float()) :: float()
   def julian_centuries_from_dynamical_time(dynamical_time) do
@@ -1394,25 +1689,33 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts an `t:Astro.moment/0` into a UTC `t:DateTime.t/0`.
+  Returns a UTC `DateTime` for a given moment.
 
   A moment is by definition in the UTC timezone, so the returned
-  DateTime always has `time_zone: "Etc/UTC"`.
+  `DateTime` always has `time_zone: "Etc/UTC"`. Microsecond
+  precision is preserved.
 
   ### Arguments
 
-  * `moment` is float representation of a UTC date_time
-    where the integer part is the number of gregorian days
-    since 0000-01-01 and the fractional part is the fraction
-    of a day since midnight.
+  * `moment` is a float representation of a UTC datetime where
+    the integer part is the number of Gregorian days since
+    0000-01-01 and the fractional part is the fraction of a day
+    since midnight.
+
+  ### Returns
+
+  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC with
+    microsecond precision.
 
   ### Examples
 
-      iex> Astro.Time.date_time_from_moment 740047.5
+      iex> Astro.Time.date_time_from_moment(740047.5)
       {:ok, ~U[2026-03-07 12:00:00.000000Z]}
-      iex> Astro.Time.date_time_from_moment 740047.0
+
+      iex> Astro.Time.date_time_from_moment(740047.0)
       {:ok, ~U[2026-03-07 00:00:00.000000Z]}
-      iex> Astro.Time.date_time_from_moment 740047.999999
+
+      iex> Astro.Time.date_time_from_moment(740047.999999)
       {:ok, ~U[2026-03-07 23:59:59.913599Z]}
 
   """
@@ -1451,14 +1754,33 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a date or datetime to a moment.
+  Returns a moment for a given date or datetime.
 
   A moment is a float where the integer part is the number of Gregorian
   days since 0000-01-01 and the fractional part is the fraction of a day
   since midnight. Moments are always in UTC.
 
   When given a `DateTime`, it is first shifted to UTC before conversion.
-  When given a `Date`, returns the integer Gregorian day number (midnight UTC).
+  When given a `Date`, returns the integer Gregorian day number
+  (midnight UTC).
+
+  ### Arguments
+
+  * `date_or_datetime` is any `t:Calendar.date/0` or
+    `t:Calendar.datetime/0`.
+
+  ### Returns
+
+  * A moment as a `float` (or integer for `Date` inputs).
+
+  ### Examples
+
+      iex> Astro.Time.date_time_to_moment(~U[2026-03-07 12:00:00Z])
+      740047.5
+
+      iex> Astro.Time.date_time_to_moment(~D[2026-03-07])
+      740047
+
   """
   @spec date_time_to_moment(Calendar.date() | Calendar.datetime()) :: moment()
 
