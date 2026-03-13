@@ -26,6 +26,7 @@ defmodule Astro.Coordinates do
   Precession: Lieske et al. (1977), A&A 58, 1–16.
   Nutation:   IAU 1980 series, Wahr (1981), Meeus Ch.22 (top 17 terms).
   GAST:       Meeus Ch.12 with equation of the equinoxes.
+
   """
 
   alias Astro.Earth
@@ -42,28 +43,74 @@ defmodule Astro.Coordinates do
   # ── Time conversions ─────────────────────────────────────────────────────────
 
   @doc """
-  Converts a moment to dynamical time. Delegates to `Astro.Time.dynamical_time_from_moment/1`.
+  Converts a moment to dynamical time (TDB seconds past J2000.0).
+
+  Delegates to `Astro.Time.dynamical_time_from_moment/1`.
+
+  ### Arguments
+
+  * `moment` is a moment (fractional days since epoch).
+
+  ### Returns
+
+  * TDB seconds past J2000.0 as a float.
+
   """
   defdelegate dynamical_time_from_moment(moment), to: Astro.Time
 
   @doc """
-  Converts dynamical time to a moment. Delegates to `Astro.Time.dynamical_time_to_moment/1`.
+  Converts dynamical time back to a moment.
+
+  Delegates to `Astro.Time.dynamical_time_to_moment/1`.
+
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * A moment (fractional days since epoch) as a float.
+
   """
   defdelegate dynamical_time_to_moment(dynamical_time), to: Astro.Time
 
   @doc """
   Returns Julian centuries from J2000.0 for the given dynamical time.
+
   Delegates to `Astro.Time.julian_centuries_from_dynamical_time/1`.
+
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * Julian centuries from J2000.0 as a float.
+
   """
   defdelegate julian_centuries_from_dynamical_time(dynamical_time), to: Astro.Time
 
   # ── Precession and nutation (IAU 1980) ───────────────────────────────────────
 
   @doc """
-  Rotates a J2000.0 ICRF Cartesian vector `{x, y, z}` to the true equator
+  Rotates a J2000.0 ICRF Cartesian vector to the true equator
   and equinox of date, applying IAU 1980 precession and nutation.
 
-  Returns `{x', y', z'}` in the same units as the input.
+  The precession matrix uses Lieske (1977) angles and the nutation
+  uses the top 17 terms of the IAU 1980 series via `Astro.Earth.nutation/1`.
+
+  ### Arguments
+
+  * `{x, y, z}` is a Cartesian position vector in the ICRF/J2000
+    frame, in any consistent unit (typically kilometers).
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * `{x', y', z'}` in the true equator and equinox of date frame,
+    in the same units as the input.
+
   """
   @spec icrf_to_true_equator({float(), float(), float()}, float()) ::
           {float(), float(), float()}
@@ -97,9 +144,19 @@ defmodule Astro.Coordinates do
   # ── Spherical coordinates ────────────────────────────────────────────────────
 
   @doc """
-  Converts equatorial Cartesian `{x, y, z}` (km) to spherical coordinates.
+  Converts equatorial Cartesian coordinates to spherical coordinates.
 
-  Returns `{ra_deg, dec_deg, distance_km}` where RA is in [0, 360).
+  ### Arguments
+
+  * `{x, y, z}` is an equatorial Cartesian position vector in
+    kilometers.
+
+  ### Returns
+
+  * `{ra_deg, dec_deg, distance_km}` where right ascension is
+    in degrees in the range [0, 360), declination is in degrees
+    in the range [-90, 90], and distance is in kilometers.
+
   """
   @spec cartesian_to_spherical({float(), float(), float()}) ::
           {float(), float(), float()}
@@ -118,8 +175,20 @@ defmodule Astro.Coordinates do
   @doc """
   Computes Greenwich Apparent Sidereal Time (GAST) in degrees.
 
-  Includes the equation of the equinoxes (nutation in RA).
-  `dynamical_time` is TDB seconds past J2000.0.
+  GMST is computed from UT1 (≈ UTC) using Meeus equation 12.4,
+  then corrected by the equation of the equinoxes (Δψ · cos ε)
+  to obtain GAST.
+
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0. ΔT is
+    subtracted internally to recover UT1 for the sidereal
+    rotation rate.
+
+  ### Returns
+
+  * GAST in degrees, normalized to the range [0, 360).
+
   """
   @spec gast(float()) :: float()
   def gast(dynamical_time) do
