@@ -1,7 +1,9 @@
 defmodule Astro.Solar.SunRiseSet do
   @moduledoc """
   Computes sunrise and sunset times using the JPL DE440s ephemeris and a
-  scan-and-bisect algorithm, as an alternative to`Astro.sunrise/3` and
+  scan-and-bisect algorithm.
+
+  This module is the implementation behind `Astro.sunrise/3` and
   `Astro.sunset/3`.
 
   ## Algorithm
@@ -16,26 +18,95 @@ defmodule Astro.Solar.SunRiseSet do
       geometric_alt_centre = −50′/60°
 
   where 50′ = 34′ (standard refraction) + 16′ (solar semi-diameter). This
-  fixed `h0` is the same constant used by virtually every published sunrise/
+  fixed threshold is the same constant used by virtually every published sunrise/
   sunset table and is independent of the actual solar distance on the day.
 
   ## Accuracy
 
-  Expected agreement with `Astro.sunrise/3` and timeanddate.com to within
-  1 minute for all latitudes where sunrise and sunset occur. The Sun's
-  parallax and semi-diameter are both negligible for this purpose, and the
-  dominant error source is real-atmosphere refraction variation.
+  ### Comparison with timeanddate.com
+
+  Expected agreement with [timeanddate.com](https://www.timeanddate.com) to
+  within their 1-minute display resolution for all latitudes where sunrise and
+  sunset occur and where the location has a flat mathematical horizon. The test
+  suite validates 343 cases across five cities (Sydney, Moscow, New York,
+  Beijing, São Paulo) against reference data with a ±1 minute tolerance.
+
+  ### Comparison with Skyfield
+
+  [Skyfield](https://rhodesmill.org/skyfield/) is a high-accuracy Python
+  astronomy library that also uses JPL ephemerides (DE421/DE440) for solar
+  position and a numerical root-finding approach. The two implementations
+  share the same underlying positional data source and a similar solver
+  strategy (coarse scan then bisection), so they are expected to agree to
+  within a few seconds for standard (geometric) sunrise/sunset. Residual
+  differences arise from:
+
+  * Skyfield uses the IERS-based precession-nutation model (IAU 2000A/2006),
+    while this module uses IAU 1976 precession and IAU 1980 nutation. The
+    difference in apparent solar RA is below 0.01 s of time for modern dates.
+  * Skyfield's refraction model optionally accounts for observer elevation
+    and temperature/pressure, whereas this module uses the fixed 34′ standard
+    atmosphere constant.
+
+  ### Comparison with NOAA Solar Calculator
+
+  The [NOAA Solar Calculator](https://gml.noaa.gov/grad/solcalc/) uses the
+  Meeus analytical polynomial series for solar position and an iterative
+  formula for the rise/set time. `Astro.Solar` (`lib/astro/solar.ex`)
+  implements this same NOAA/Meeus algorithm. Differences between this module
+  and the NOAA approach are typically under 30 seconds and arise from:
+
+  * This module evaluates solar positions from the JPL DE440s numerical
+    ephemeris (Chebyshev polynomials fitted to a full n-body integration),
+    while the NOAA algorithm uses truncated analytical series from Meeus.
+  * This module applies a variable ΔT correction based on IERS observations
+    (1972–2025) and Meeus polynomial approximations for historical dates,
+    while the NOAA calculator uses a simpler ΔT model.
+  * This module uses a scan-and-bisect solver with 0.01 s tolerance,
+    while the NOAA algorithm uses an iterative analytical formula.
+
+  For all three references the dominant error source is real-atmosphere
+  refraction variation (±2 arcmin ≈ ±10 s at the horizon), which none
+  of these implementations model.
+
+  ## Solar elevation options
+
+  The `:solar_elevation` option controls which event is computed. The
+  terminology can be confusing because different references use
+  "solar elevation", "solar zenith angle", and "solar depression" to
+  describe overlapping concepts.
+
+  | Term | Definition | Relationship |
+  |---|---|---|
+  | **Geometric altitude** | Angle of the Sun's centre above the geometric (airless) horizon, measured from 0° (horizon) to +90° (zenith). | — |
+  | **Solar zenith angle** | Complement of altitude: 90° − altitude. 0° at the zenith, 90° at the horizon. | zenith = 90° − altitude |
+  | **Solar depression** | Angle below the horizon, i.e. the negation of a negative altitude. Used for twilight thresholds. | depression = −altitude (when Sun is below horizon) |
+
+  Sunrise and sunset occur when the Sun's geometric altitude crosses a
+  threshold that accounts for atmospheric refraction (34′) and the Sun's
+  angular semi-diameter (16′). The named `:solar_elevation` values and
+  their corresponding thresholds are:
+
+  | Option | Zenith angle | Altitude threshold | Description |
+  |---|---|---|---|
+  | `:geometric` | 90°50′ | −0.8333° | **Standard sunrise/sunset.** Upper limb of the Sun appears to touch the horizon after accounting for standard atmospheric refraction. |
+  | `:civil` | 96° | −6° | **Civil twilight.** Enough light for outdoor activities without artificial lighting. The horizon is clearly visible. |
+  | `:nautical` | 102° | −12° | **Nautical twilight.** The horizon is faintly visible at sea. Bright stars are visible for celestial navigation. |
+  | `:astronomical` | 108° | −18° | **Astronomical twilight.** The sky is dark enough for astronomical observations of faint objects. |
+  | Custom number N | N° | −(N − 90)° | A custom zenith angle in degrees, converted to an altitude threshold. |
+
+  Note: the `:geometric` option name is historical. Despite its name, the
+  `:geometric` threshold does include standard atmospheric refraction (34′)
+  and solar semi-diameter (16′). A truly geometric (airless, centre-of-disk)
+  event would use a custom value of 90.0.
 
   ## Required setup
 
-  * Download https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
-    to the priv directory.
+  The JPL DE440s ephemeris file must be present:
 
-  ## Options
-
-    * `:time_zone`          — tz name string, `:utc`, or `:default` (resolve from location)
-    * `:time_zone_database` — tz database module or `:configured`
-    * `:time_zone_resolver` — 1-arity fn `(%Geo.Point{}) → {:ok, String.t()}`
+  * Download `de440s.bsp` from
+    https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
+    to the `priv` directory.
 
   """
 
@@ -69,26 +140,77 @@ defmodule Astro.Solar.SunRiseSet do
   # ── Public API ───────────────────────────────────────────────────────────────
 
   @doc """
-  Returns the sunrise time for `location` on the date represented by `moment`.
+  Returns the sunrise time for a given location and date.
 
-  The solar position is derived from the JPL DE440s ephemeris.
+  Computes the moment when the upper limb of the Sun appears to cross the
+  horizon (or the configured `:solar_elevation` threshold) using solar
+  positions derived from the JPL DE440s ephemeris.
 
-  ## Arguments
+  ### Arguments
 
-    * `location` — `{lng, lat}`, `Geo.Point.t()`, or `Geo.PointZ.t()`
-    * `moment` — a moment (fractional Gregorian days) representing UTC midnight
-      of the requested date
-    * `options` — keyword list
+  * `location` is a `{longitude, latitude}` tuple, a `t:Geo.Point.t/0`,
+    or a `t:Geo.PointZ.t/0`. Longitude and latitude are in degrees
+    (west/south negative).
 
-  ## Options
+  * `moment` is a moment (float Gregorian days since 0000-01-01)
+    representing UTC midnight of the requested date. Use
+    `Astro.Time.date_time_to_moment/1` to convert from a `Date` or
+    `DateTime`.
 
-    * `:solar_elevation` — the type of sunrise to compute:
-      * `:geometric` (default) — upper limb on the horizon (zenith 90°50′)
-      * `:civil` — centre of Sun 6° below the horizon (civil twilight)
-      * `:nautical` — centre of Sun 12° below the horizon
-      * `:astronomical` — centre of Sun 18° below the horizon
-      * a number — custom zenith angle in degrees (90 = geometric horizon)
-    * `:time_zone`, `:time_zone_database`, `:time_zone_resolver` — as for `Astro.sunrise/3`
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:solar_elevation` — the type of sunrise to compute:
+    * `:geometric` (default) — standard sunrise where the upper limb of
+      the Sun appears to touch the horizon (zenith 90°50′, accounting for
+      34′ standard refraction + 16′ solar semi-diameter)
+    * `:civil` — centre of Sun 6° below the horizon (civil twilight
+      boundary)
+    * `:nautical` — centre of Sun 12° below the horizon (nautical
+      twilight boundary)
+    * `:astronomical` — centre of Sun 18° below the horizon
+      (astronomical twilight boundary)
+    * a number — custom zenith angle in degrees (90 = geometric
+      horizon with no refraction or semi-diameter correction)
+
+  * `:time_zone` — the time zone for the returned `DateTime`. The
+    default is `:default` which resolves the time zone from the
+    location. `:utc` returns UTC, or pass a time zone name string
+    (e.g. `"America/New_York"`).
+
+  * `:time_zone_database` — the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is `:configured`
+    which uses the application's configured time zone database.
+
+  * `:time_zone_resolver` — a 1-arity function that receives a
+    `%Geo.Point{}` and returns `{:ok, time_zone_name}` or
+    `{:error, reason}`. The default uses `TzWorld.timezone_at/1`
+    if `:tz_world` is configured.
+
+  ### Returns
+
+  * `{:ok, datetime}` where `datetime` is a `t:DateTime.t/0` in the
+    requested time zone.
+
+  * `{:error, :no_time}` if there is no sunrise on the requested date
+    at the given location (e.g. polar night or midnight sun).
+
+  * `{:error, :time_zone_not_found}` if the requested time zone is
+    unknown.
+
+  * `{:error, :time_zone_not_resolved}` if the time zone cannot be
+    resolved from the location.
+
+  ### Examples
+
+      iex> moment = Astro.Time.date_time_to_moment(~D[2019-12-04])
+      iex> {:ok, sunrise} = Astro.Solar.SunRiseSet.sunrise({151.20666584, -33.8559799094}, moment, time_zone: :utc)
+      iex> sunrise.hour
+      18
+      iex> sunrise.minute
+      37
+
   """
   @spec sunrise(Astro.location(), number(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
@@ -97,11 +219,57 @@ defmodule Astro.Solar.SunRiseSet do
   end
 
   @doc """
-  Returns the sunset time for `location` on the date represented by `moment`.
+  Returns the sunset time for a given location and date.
 
-  The solar position is derived from the JPL DE440s ephemeris.
+  Computes the moment when the upper limb of the Sun appears to cross below
+  the horizon (or the configured `:solar_elevation` threshold) using solar
+  positions derived from the JPL DE440s ephemeris.
 
-  Accepts the same arguments and options as `sunrise/3`.
+  ### Arguments
+
+  * `location` is a `{longitude, latitude}` tuple, a `t:Geo.Point.t/0`,
+    or a `t:Geo.PointZ.t/0`. Longitude and latitude are in degrees
+    (west/south negative).
+
+  * `moment` is a moment (float Gregorian days since 0000-01-01)
+    representing UTC midnight of the requested date. Use
+    `Astro.Time.date_time_to_moment/1` to convert from a `Date` or
+    `DateTime`.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  Accepts the same options as `sunrise/3`:
+
+  * `:solar_elevation` — event threshold (default `:geometric`)
+  * `:time_zone` — time zone for the result (default `:default`)
+  * `:time_zone_database` — time zone database module (default `:configured`)
+  * `:time_zone_resolver` — custom location-to-timezone resolver function
+
+  ### Returns
+
+  * `{:ok, datetime}` where `datetime` is a `t:DateTime.t/0` in the
+    requested time zone.
+
+  * `{:error, :no_time}` if there is no sunset on the requested date
+    at the given location (e.g. polar night or midnight sun).
+
+  * `{:error, :time_zone_not_found}` if the requested time zone is
+    unknown.
+
+  * `{:error, :time_zone_not_resolved}` if the time zone cannot be
+    resolved from the location.
+
+  ### Examples
+
+      iex> moment = Astro.Time.date_time_to_moment(~D[2019-12-04])
+      iex> {:ok, sunset} = Astro.Solar.SunRiseSet.sunset({151.20666584, -33.8559799094}, moment, time_zone: :utc)
+      iex> sunset.hour
+      8
+      iex> sunset.minute
+      53
+
   """
   @spec sunset(Astro.location(), number(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}

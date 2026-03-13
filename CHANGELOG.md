@@ -18,11 +18,13 @@ This is the changelog for Astro version 2.0.0 released on ______.  For older cha
 
 * `Astro.moon_position_at/1` now returns distance to the Moon in kilometres instead of metres.
 
-* `Astro.sunrise/3` and `Astro.sunset/3` default options changed from `default_options()` to `[]`. These functions now delegate to `Astro.Solar.SunRiseSet` which uses centre-of-disk calculations rather than the previous geometric-centre approach.
+* `Astro.sunrise/3` and `Astro.sunset/3` now delegate to `Astro.Solar.SunRiseSet` which computes solar positions from the JPL DE440s numerical ephemeris rather than the previous NOAA/Meeus analytical polynomial series, and uses a scan-and-bisect solver rather than the previous iterative analytical formula.
 
 * Improved ΔT (delta-T) computation now uses variable ΔT based on IERS observations (1972–2025) and Meeus polynomial approximations for historical dates, replacing the previous fixed ΔT value. This improves the accuracy of all astronomical calculations but changes computed times for equinoxes, solstices, new moons, and lunar phases by up to ~22 seconds compared to version 1.x.
 
 * Sunrise/sunset and moonrise/moonset bisection tolerance tightened from 1.0 second to 0.01 seconds, yielding sub-second precision.
+
+* Remove `Astro.Solar.sun_rise_or_set/3` and `Astro.Solar.utc_sun_position/4` (the old NOAA/Meeus sunrise/sunset implementation). These functions were previously `@doc false` and are superseded by `Astro.Solar.SunRiseSet`.
 
 ### Enhancements
 
@@ -34,13 +36,15 @@ This is the changelog for Astro version 2.0.0 released on ______.  For older cha
 
 * Add `Astro.Time.date_from_julian_days/1` to convert Julian Day Numbers to `Date` structs.
 
-* Add new `Astro.Solar.SunRiseSet` module implementing sunrise/sunset calculations with centre-of-disk convention and configurable bisection tolerance.
+* Add new `Astro.Solar.SunRiseSet` module implementing sunrise/sunset via JPL DE440s ephemeris and scan-and-bisect solver with configurable bisection tolerance.
 
-* Add new `Astro.Lunar.MoonRiseSet` module implementing moonrise/moonset calculations with centre-of-disk convention and configurable bisection tolerance.
+* Add new `Astro.Lunar.MoonRiseSet` module implementing fully topocentric moonrise/moonset via JPL DE440s ephemeris and scan-and-bisect solver with configurable bisection tolerance.
 
 * Add new `Astro.Coordinates` module for coordinate system conversions.
 
 * Add new types `Astro.radians/0`, `Astro.astronomical_units/0`, and `Astro.kilometers/0`.
+
+* Improved documentation with greater explanation of some of the key astronomical concepts.
 
 ## Astro version 1.1.2
 

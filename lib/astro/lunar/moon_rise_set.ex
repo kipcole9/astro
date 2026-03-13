@@ -3,55 +3,99 @@ defmodule Astro.Lunar.MoonRiseSet do
   Computes moonrise and moonset times using the JPL DE440s ephemeris and a
   fully topocentric bisection algorithm.
 
+  This module is the implementation behind `Astro.moonrise/3` and
+  `Astro.moonset/3`.
+
   ## Algorithm
 
-  The Meeus Ch.15 three-point geocentric iteration — used by `MoonRiseSet`
-  — handles parallax-in-altitude via the `h0 = 0.7275π − 0.5667°` formula
-  but ignores the RA component of lunar parallax (~47 arcmin at the horizon
-  for mid-latitudes). This produces a systematic 2–3 minute error because
-  the apparent moon is displaced in RA from the geocentric position by the
-  observer's parallax.
+  The classical Meeus Ch.15 three-point geocentric iteration handles
+  parallax-in-altitude via the `h0 = 0.7275π − 0.5667°` formula but
+  ignores the right-ascension component of lunar parallax (~47 arcmin at
+  the horizon for mid-latitudes). This produces a systematic 2–3 minute
+  error because the apparent Moon is displaced in RA from the geocentric
+  position by the observer's parallax.
 
   This module removes that error entirely by abandoning the interpolation
   framework. Instead:
 
-  1. **Coarse scan** — the local day is sampled at `@scan_step_s`-second
-     intervals. At each sample the instantaneous topocentric apparent altitude
-     is evaluated directly from the ephemeris. Adjacent samples with opposite
-     sign identify a rise or set event bracketed to within one scan step.
+  1. **Coarse scan** — the local day is sampled at 24-minute intervals.
+     At each sample the instantaneous topocentric apparent altitude is
+     evaluated directly from the JPL DE440s ephemeris. Adjacent samples
+     with opposite sign identify a rise or set event bracketed to within
+     one scan step.
 
-  2. **Binary search** — the bracket is bisected until its width falls below
-     `@bisect_tol_s` seconds (0.01 s). Each probe evaluates one
-     ephemeris position, one Ch.40 topocentric correction, and one refraction
-     call — no derivatives, no interpolation error.
+  2. **Binary search** — the bracket is bisected until its width falls
+     below 0.01 seconds. Each probe evaluates one ephemeris position,
+     one Meeus Ch.40 topocentric correction, and one refraction offset
+     — no derivatives, no interpolation error.
 
-  where the event is defined to match the USNO / timeanddate.com standard:
-  the topocentric geometric altitude of the Moon's centre equals
-  `−(34'/60° + semi_diameter)`, where 34' is a fixed standard-atmosphere
+  The event condition matches the USNO / timeanddate.com standard: the
+  topocentric geometric altitude of the Moon's centre equals
+  `−(34′/60° + semi_diameter)`, where 34′ is a fixed standard-atmosphere
   refraction constant. This is equivalent to the USNO's published condition
   `zd_centre = 90.5666° + angular_radius − horizontal_parallax`, once the
-  horizontal parallax is absorbed by computing the topocentric position directly.
+  horizontal parallax is absorbed by computing the topocentric position
+  directly via Meeus Ch.40.
+
+  Unlike the Sun (whose parallax is only ~8.7″), the Moon's parallax can
+  reach ~61′ — comparable to its own angular diameter. This makes the
+  topocentric correction essential for accurate moonrise/moonset times.
 
   ## Accuracy
 
-  Expected agreement with timeanddate.com to within their 1-minute display
-  resolution for locations with a flat mathematical horizon. The dominant
-  residual is real-atmosphere refraction variation (~±2 arcmin, ≈ ±10 s),
-  which neither this implementation nor timeanddate.com models.
+  ### Comparison with timeanddate.com
+
+  Expected agreement with [timeanddate.com](https://www.timeanddate.com)
+  to within their 1-minute display resolution for locations with a flat
+  mathematical horizon. The test suite validates 70 cases across four
+  cities (New York, London, Sydney, Tokyo) against USNO reference data
+  with a ±1 minute tolerance.
+
+  ### Comparison with Skyfield
+
+  [Skyfield](https://rhodesmill.org/skyfield/) is a high-accuracy Python
+  astronomy library that also uses JPL ephemerides for lunar position and
+  a numerical root-finding approach. The two implementations share the
+  same underlying positional data source and a similar solver strategy,
+  so they are expected to agree to within a few seconds. Residual
+  differences arise from:
+
+  * Skyfield uses the IERS-based precession-nutation model (IAU 2000A/2006),
+    while this module uses IAU 1976 precession and IAU 1980 nutation. For
+    the Moon the RA difference is below 0.1″ for modern dates.
+  * Skyfield's refraction model optionally accounts for observer elevation
+    and temperature/pressure, whereas this module uses the fixed 34′
+    standard atmosphere constant.
+  * Skyfield computes a fully rigorous topocentric position using the ITRS
+    to GCRS transformation, while this module uses the Meeus Ch.40
+    approximation. The difference is negligible (< 0.01″) for the Moon.
+
+  ### Comparison with NOAA / Meeus Ch.15
+
+  The Meeus Ch.15 algorithm (as used by many online calculators) differs
+  from this module in two significant ways:
+
+  * **Geocentric vs topocentric RA** — Meeus Ch.15 applies a parallax
+    correction only to altitude, not to right ascension. This ignores the
+    RA component of lunar parallax, which can shift the apparent moonrise/
+    moonset time by 2–3 minutes at mid-latitudes.
+  * **Interpolation vs direct evaluation** — Meeus Ch.15 interpolates the
+    Moon's position from three daily tabular values, introducing
+    interpolation error. This module evaluates the ephemeris directly at
+    each bisection probe.
+
+  For all three references the dominant error source is real-atmosphere
+  refraction variation (±2 arcmin ≈ ±10 s at the horizon), which none
+  of these implementations model.
 
   ## Required setup
 
-      {:ok, kernel} = Spk.Kernel.load("priv/de440s.bsp")
-      {:ok, dt} = MoonRiseSet2.moonrise(kernel, {151.2093, -33.8688}, ~D[2026-03-08])
+  The JPL DE440s ephemeris file must be present:
 
-  `de440s.bsp` (~32 MB):
-  https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
+  * Download `de440s.bsp` from
+    https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
+    to the `priv` directory.
 
-  ## Options
-
-    * `:time_zone`          — tz name string, `:utc`, or `:default` (resolve from location)
-    * `:time_zone_database` — tz database module or `:configured`
-    * `:time_zone_resolver` — 1-arity fn `(%Geo.Point{}) → {:ok, String.t()}`
   """
 
   alias Astro.{Ephemeris, Coordinates, Time}
@@ -103,12 +147,168 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   # ── Public API ───────────────────────────────────────────────────────────────
 
+  @doc """
+  Returns the moonrise time for a given location and date.
+
+  Computes the moment when the upper limb of the Moon (or centre of disk
+  if `:limb` is `:center`) appears to cross above the horizon, using
+  lunar positions derived from the JPL DE440s ephemeris with full
+  topocentric parallax correction.
+
+  ### Arguments
+
+  * `location` is a `{longitude, latitude}` tuple, a `t:Geo.Point.t/0`,
+    or a `t:Geo.PointZ.t/0`. Longitude and latitude are in degrees
+    (west/south negative). Observer elevation is taken from
+    `Geo.PointZ` if provided; it affects the geocentric parallax factors
+    (Meeus Ch.11).
+
+  * `moment` is a moment (float Gregorian days since 0000-01-01)
+    representing UTC midnight of the requested date. Use
+    `Astro.Time.date_time_to_moment/1` to convert from a `Date` or
+    `DateTime`.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:limb` — which part of the Moon's disk defines the event:
+    * `:upper` (default) — upper limb on the apparent horizon
+      (USNO standard). The event threshold is
+      `−(34′ refraction + semi-diameter)`.
+    * `:center` — centre of disk on the apparent horizon. The event
+      threshold is `−34′ refraction` only.
+
+  * `:interpolation` — how the Moon's position is evaluated during
+    bisection:
+    * `:direct` (default) — evaluate the JPL ephemeris at every
+      bisection probe.
+    * `:lagrange` — three-point Lagrange quadratic interpolation
+      of the geocentric position, mimicking the Meeus Ch.15 approach.
+
+  * `:time_zone` — the time zone for the returned `DateTime`. The
+    default is `:default` which resolves the time zone from the
+    location. `:utc` returns UTC, or pass a time zone name string
+    (e.g. `"Asia/Tokyo"`).
+
+  * `:time_zone_database` — the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is `:configured`
+    which uses the application's configured time zone database.
+
+  * `:time_zone_resolver` — a 1-arity function that receives a
+    `%Geo.Point{}` and returns `{:ok, time_zone_name}` or
+    `{:error, reason}`. The default uses `TzWorld.timezone_at/1`
+    if `:tz_world` is configured.
+
+  ### Returns
+
+  * `{:ok, datetime}` where `datetime` is a `t:DateTime.t/0` in the
+    requested time zone.
+
+  * `{:error, :no_time}` if the Moon does not rise on the requested
+    date at the given location (the Moon can remain below the horizon
+    for an entire calendar day).
+
+  * `{:error, :time_zone_not_found}` if the requested time zone is
+    unknown.
+
+  * `{:error, :time_zone_not_resolved}` if the time zone cannot be
+    resolved from the location.
+
+  ### Examples
+
+      iex> moment = Astro.Time.date_time_to_moment(~D[2026-03-01])
+      iex> {:ok, moonrise} = Astro.Lunar.MoonRiseSet.moonrise({151.20666584, -33.8559799094}, moment, time_zone: :utc)
+      iex> moonrise.hour
+      7
+      iex> moonrise.minute
+      18
+
+  """
   @spec moonrise(Astro.location(), number(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
   def moonrise(location, moment, options \\ []) when is_number(moment) do
     moon_event(location, moment, :rise, options)
   end
 
+  @doc """
+  Returns the moonset time for a given location and date.
+
+  Computes the moment when the upper limb of the Moon (or centre of disk
+  if `:limb` is `:center`) appears to cross below the horizon, using
+  lunar positions derived from the JPL DE440s ephemeris with full
+  topocentric parallax correction.
+
+  ### Arguments
+
+  * `location` is a `{longitude, latitude}` tuple, a `t:Geo.Point.t/0`,
+    or a `t:Geo.PointZ.t/0`. Longitude and latitude are in degrees
+    (west/south negative). Observer elevation is taken from
+    `Geo.PointZ` if provided; it affects the geocentric parallax factors
+    (Meeus Ch.11).
+
+  * `moment` is a moment (float Gregorian days since 0000-01-01)
+    representing UTC midnight of the requested date. Use
+    `Astro.Time.date_time_to_moment/1` to convert from a `Date` or
+    `DateTime`.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:limb` — which part of the Moon's disk defines the event:
+    * `:upper` (default) — upper limb on the apparent horizon
+      (USNO standard). The event threshold is
+      `−(34′ refraction + semi-diameter)`.
+    * `:center` — centre of disk on the apparent horizon. The event
+      threshold is `−34′ refraction` only.
+
+  * `:interpolation` — how the Moon's position is evaluated during
+    bisection:
+    * `:direct` (default) — evaluate the JPL ephemeris at every
+      bisection probe.
+    * `:lagrange` — three-point Lagrange quadratic interpolation
+      of the geocentric position, mimicking the Meeus Ch.15 approach.
+
+  * `:time_zone` — the time zone for the returned `DateTime`. The
+    default is `:default` which resolves the time zone from the
+    location. `:utc` returns UTC, or pass a time zone name string
+    (e.g. `"Asia/Tokyo"`).
+
+  * `:time_zone_database` — the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is `:configured`
+    which uses the application's configured time zone database.
+
+  * `:time_zone_resolver` — a 1-arity function that receives a
+    `%Geo.Point{}` and returns `{:ok, time_zone_name}` or
+    `{:error, reason}`. The default uses `TzWorld.timezone_at/1`
+    if `:tz_world` is configured.
+
+  ### Returns
+
+  * `{:ok, datetime}` where `datetime` is a `t:DateTime.t/0` in the
+    requested time zone.
+
+  * `{:error, :no_time}` if the Moon does not set on the requested
+    date at the given location (the Moon can remain above the horizon
+    for an entire calendar day).
+
+  * `{:error, :time_zone_not_found}` if the requested time zone is
+    unknown.
+
+  * `{:error, :time_zone_not_resolved}` if the time zone cannot be
+    resolved from the location.
+
+  ### Examples
+
+      iex> moment = Astro.Time.date_time_to_moment(~D[2026-03-01])
+      iex> {:ok, moonset} = Astro.Lunar.MoonRiseSet.moonset({151.20666584, -33.8559799094}, moment, time_zone: :utc)
+      iex> moonset.hour
+      17
+      iex> moonset.minute
+      59
+
+  """
   @spec moonset(Astro.location(), number(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
   def moonset(location, moment, options \\ []) when is_number(moment) do
