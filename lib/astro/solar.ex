@@ -1,11 +1,56 @@
 defmodule Astro.Solar do
   @moduledoc """
-  Solar position, orbital mechanics, and equinox/solstice calculations based upon
-  [Astronomical Algorithms](https://www.amazon.com/Astronomical-Algorithms-Jean-Meeus/dp/0943396352)
-  by Jean Meeus.
+  Solar position, orbital mechanics, and equinox/solstice calculations.
 
-  For sunrise and sunset calculations see `Astro.Solar.SunRiseSet`.
+  This module implements the analytical (polynomial + periodic-term)
+  algorithms from Jean Meeus' *Astronomical Algorithms* for the Sun's
+  geometric and apparent position, declination, equation of time, and
+  equinox/solstice events.
 
+  For sunrise and sunset calculations see `Astro.Solar.SunRiseSet`,
+  which uses the JPL DE440s ephemeris rather than the Meeus
+  approximations in this module.
+
+  ## Function groups
+
+  ### Position
+
+  * `solar_position/1` — right ascension, declination and distance
+  * `solar_declination/1` — declination from Julian centuries
+  * `solar_distance/1` — Earth–Sun distance in AU
+  * `solar_ecliptic_longitude/1` — ecliptic longitude at a moment
+  * `solar_ecliptic_longitude_after/2`, `estimate_prior_solar_ecliptic_longitude/2`
+
+  ### Apparent longitude and related
+
+  * `sun_apparent_longitude/1` — apparent longitude (nutation + aberration corrected)
+  * `sun_apparent_longitude_alt/1` — higher-precision 49-term series (Meeus Table 25.D)
+  * `sun_true_longitude/1`, `sun_equation_of_center/1`
+  * `sun_geometric_mean_longitude/1`, `sun_geometric_mean_anomaly/1`
+  * `aberration/1`
+
+  ### Time and geometry
+
+  * `equation_of_time/1` — difference between apparent and mean solar time
+  * `solar_noon_utc/2` — UTC solar noon for a given longitude
+  * `earth_orbit_eccentricity/1`
+  * `obliquity_correction/1`, `mean_obliquity_of_ecliptic/1`
+
+  ### Equinoxes and solstices
+
+  * `equinox_and_solstice/2` — March/September equinox or June/December solstice
+
+  ### Solar elevation
+
+  * `solar_elevation/1` — zenith angle for geometric, civil, nautical,
+    astronomical twilight or a custom elevation
+
+  ## Time conventions
+
+  Functions in this module accept either a **moment** (fractional days
+  since epoch) or **Julian centuries** from J2000.0, as noted in each
+  function's documentation. Use `Astro.Time.julian_centuries_from_moment/1`
+  to convert between the two.
   """
 
   alias Astro.{Math, Time, Earth}

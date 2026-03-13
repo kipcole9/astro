@@ -1,7 +1,35 @@
 defmodule Astro.Earth do
   @moduledoc """
-  Constants and astronomical calculations
-  related to the Earth.
+  Earth constants, nutation, and elevation-related corrections
+  for rise/set calculations.
+
+  This module provides physical and geometric constants for the
+  Earth (equatorial radius, atmospheric refraction, apparent solar
+  radius, mean obliquity) together with the IAU 1980 nutation
+  series and elevation adjustments used by the rise/set algorithms
+  in `Astro.Solar.SunRiseSet` and `Astro.Lunar.MoonRiseSet`.
+
+  ## Function groups
+
+  ### Physical constants
+
+  * `earth_radius/0` — equatorial radius in kilometers
+  * `obliquity_j2000/0` — mean obliquity of the ecliptic at J2000.0
+
+  ### Optical constants
+
+  * `refraction/0` — standard atmospheric refraction at the horizon
+  * `solar_radius/0` — apparent solar semi-diameter at the horizon
+
+  ### Nutation
+
+  * `nutation/1` — IAU 1980 nutation in longitude and obliquity (17-term)
+
+  ### Observer geometry
+
+  * `horizon_distance/1` — geometric distance to the horizon
+  * `elevation_adjustment/1` — dip angle correction for observer elevation
+  * `adjusted_solar_elevation/2` — combined refraction, radius and elevation correction
 
   """
   alias Astro.Time
@@ -96,9 +124,26 @@ defmodule Astro.Earth do
     @earth_radius_m
   end
 
+  @doc """
+  Returns the geometric distance to the horizon in meters.
+
+  Uses the exact formula `√(h² + 2Rh)` where `h` is the
+  observer's elevation and `R` is the Earth's equatorial
+  radius. Atmospheric refraction is not included.
+
+  ### Arguments
+
+  * `observer_elevation_m` is the observer's elevation above
+    sea level in meters. Defaults to `0.0`.
+
+  ### Returns
+
+  * The distance to the geometric horizon in meters.
+
+  """
   def horizon_distance(observer_elevation_m \\ 0.0) do
     # Distance to the geometric horizon in metres (standard formula).
-    # apprimation is d = sqrt(2 * R * h)  (without refraction k the pure geometric distance)
+    # approximation is d = sqrt(2 * R * h)  (without refraction, the pure geometric distance)
     # exact formula is d = √(h² + 2Rh)
     :math.sqrt(
       observer_elevation_m * observer_elevation_m + 2 * @earth_radius_m * observer_elevation_m
@@ -110,8 +155,8 @@ defmodule Astro.Earth do
   of the [ecliptic](https://en.wikipedia.org/wiki/Ecliptic) at
   [epoch](https://en.wikipedia.org/wiki/Epoch_(astronomy)) J2000.0.
 
-  Obliquity, or axial tilt, is the angle between an the
-  earth's rotational axis and its orbital axis, which is
+  Obliquity, or axial tilt, is the angle between the
+  Earth's rotational axis and its orbital axis, which is
   the line perpendicular to its orbital plane.
 
   The rotational axis of Earth, for example, is the imaginary
@@ -146,7 +191,7 @@ defmodule Astro.Earth do
   ### Returns
 
   * `{delta_psi_rad, delta_eps_rad, eps0_rad}` representing
-    the longitude, obliquity and mean obliquiy.
+    the longitude, obliquity and mean obliquity.
 
   """
   @spec nutation(c :: Time.julian_centuries()) :: {float(), float(), float()}
@@ -225,7 +270,7 @@ defmodule Astro.Earth do
   ### Arguments
 
   * `solar_elevation` is the requested solar elevation
-    in degress. It will be 90° for sunrise and sunset.
+    in degrees. It will be 90° for sunrise and sunset.
 
   * `elevation` is elevation in meters
 
