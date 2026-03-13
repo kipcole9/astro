@@ -13,8 +13,9 @@ defmodule Astro.Time do
   The public API in `Astro` accepts `Date` and `DateTime` parameters and
   converts them to moments before delegating to the implementation modules
   (`Astro.Solar`, `Astro.Lunar`, `Astro.Solar.SunRiseSet`,
-  `Astro.Lunar.MoonRiseSet`). Those modules work exclusively with moments
-  and should never convert back to `Date` or `DateTime` internally.
+  `Astro.Lunar.MoonRiseSet`). Those modules work primarily with moments
+  and aim to never convert back to `Date` or `DateTime` internally for
+  performance reasons.
 
   Use `date_time_to_moment/1` to convert a `Date` or `DateTime` to a
   moment, and `date_time_from_moment/1` to convert a moment back to a
@@ -31,7 +32,7 @@ defmodule Astro.Time do
   solar time at 0° longitude by the occasional insertion of leap seconds.
   It is the base time scale for moments: a moment is always in UTC.
 
-  Functions: `universal_from_local/2`, `universal_from_standard/2`,
+  See: `universal_from_local/2`, `universal_from_standard/2`,
   `universal_from_dynamical/1`.
 
   ### Standard Time
@@ -40,7 +41,7 @@ defmodule Astro.Time do
   including any daylight-saving offset. Standard time has discrete zone
   boundaries and changes at politically determined transition points.
 
-  Functions: `standard_from_universal/2`, `universal_from_standard/2`.
+  See: `standard_from_universal/2`, `universal_from_standard/2`.
 
   ### Local (Mean Solar) Time
 
@@ -48,12 +49,12 @@ defmodule Astro.Time do
   The offset is `longitude / 360` of a day, a smooth function of
   position with no zone boundaries or daylight-saving rules.
 
-  Functions: `local_from_universal/2`, `universal_from_local/2`.
+  See: `local_from_universal/2`, `universal_from_local/2`.
 
   ### Dynamical Time
 
   The uniform time scale used for computing planetary and lunar orbits.
-  In this library, "dynamical time" refers to TDB (Barycentric Dynamical
+  In Astro, "dynamical time" refers to TDB (Barycentric Dynamical
   Time) — the time argument expected by JPL ephemerides.
 
   Two representations coexist:
@@ -75,8 +76,9 @@ defmodule Astro.Time do
   successor to Ephemeris Time (ET). TT is related to International
   Atomic Time (TAI) by a fixed offset: TT = TAI + 32.184 s. For
   solar-system calculations at Earth's distance, TT ≈ TDB to within
-  ~1.7 ms, and this library treats them as identical. The conversion
-  The `DateTime`-domain conversion `utc_datetime_from_dynamical_datetime/1`
+  ~1.7 ms, and Astro treats them as identical.
+
+  The `DateTime` conversion `utc_datetime_from_dynamical_datetime/1`
   delegates to `universal_from_dynamical/1` internally.
 
   ### Sidereal Time
@@ -98,14 +100,14 @@ defmodule Astro.Time do
   another (column). Each cell describes the conversion algorithm.
   A dash (—) marks the identity diagonal.
 
-  | From \\ To      | UTC              | Standard            | Local               | Dynamical           | Terrestrial         | Sidereal              |
-  |:----------------|:-----------------|:--------------------|:--------------------|:--------------------|:--------------------|:----------------------|
-  | **UTC**         | —                | + zone offset       | + longitude/360     | + ΔT                | + ΔT (≈ dynamical)  | GMST polynomial in UTC |
-  | **Standard**    | − zone offset    | —                   | − zone + long/360   | − zone + ΔT         | − zone + ΔT         | via UTC then GMST     |
-  | **Local**       | − longitude/360  | − long/360 + zone   | —                   | − long/360 + ΔT     | − long/360 + ΔT     | via UTC then GMST     |
-  | **Dynamical**   | − ΔT             | − ΔT + zone         | − ΔT + long/360     | —                   | identity (≈)        | via UTC then GMST     |
-  | **Terrestrial** | − ΔT (≈ dyn)     | − ΔT + zone         | − ΔT + long/360     | identity (≈)        | —                   | via UTC then GMST     |
-  | **Sidereal**    | not invertible†  | not invertible†     | not invertible†     | not invertible†     | not invertible†     | —                     |
+  | From \\ To          | Universal (UTC)  | Standard            | Local               | Dynamical           | Terrestrial         | Sidereal              |
+  |:--------------------|:-----------------|:--------------------|:--------------------|:--------------------|:--------------------|:----------------------|
+  | **Universal** (UTC) | —                | + zone offset       | + longitude/360     | + ΔT                | + ΔT (≈ dynamical)  | GMST polynomial in UTC |
+  | **Standard**        | − zone offset    | —                   | − zone + long/360   | − zone + ΔT         | − zone + ΔT         | via UTC then GMST     |
+  | **Local**           | − longitude/360  | − long/360 + zone   | —                   | − long/360 + ΔT     | − long/360 + ΔT     | via UTC then GMST     |
+  | **Dynamical**       | − ΔT             | − ΔT + zone         | − ΔT + long/360     | —                   | identity (≈)        | via UTC then GMST     |
+  | **Terrestrial**     | − ΔT (≈ dyn)     | − ΔT + zone         | − ΔT + long/360     | identity (≈)        | —                   | via UTC then GMST     |
+  | **Sidereal**        | not invertible†  | not invertible†     | not invertible†     | not invertible†     | not invertible†     | —                     |
 
   **Notes:**
 
@@ -116,7 +118,7 @@ defmodule Astro.Time do
   * **ΔT** = TT − UTC in seconds, converted to fractional days by
     dividing by 86400. Computed by `delta_t/1`.
   * **Terrestrial ≈ Dynamical**: TT and TDB differ by at most ~1.7 ms;
-    this library treats them as identical.
+    Astro treats them as identical.
   * **† Sidereal → other**: sidereal time is not uniquely invertible
     because multiple UTC instants map to the same sidereal angle within
     a sidereal day. In practice, sidereal time is computed *from* UTC
@@ -354,8 +356,8 @@ defmodule Astro.Time do
 
       iex> t = Astro.Time.date_time_to_moment(~U[2000-01-01 12:00:00Z])
       iex> dyn = Astro.Time.dynamical_from_universal(t)
-      iex> Astro.Time.universal_from_dynamical(dyn) == t
-      true
+      iex> Astro.Time.universal_from_dynamical(dyn)
+      730485.5
 
   """
   @spec universal_from_dynamical(time()) :: time()
@@ -432,7 +434,7 @@ defmodule Astro.Time do
 
   @doc """
   Returns the standard time moment for a given universal (UTC) moment
-  and time zone.
+  and time zone name or time zone offset.
 
   Standard time is UTC adjusted by the named time zone's UTC offset
   and any daylight-saving offset in effect at the given instant.
@@ -451,6 +453,10 @@ defmodule Astro.Time do
   ### Examples
 
       iex> t = Astro.Time.date_time_to_moment(~U[2024-01-15 12:00:00Z])
+      iex> Astro.Time.standard_from_universal(t, "Australia/Sydney")
+      739265.9200462963
+
+      iex> t = Astro.Time.date_time_to_moment(~U[2024-01-15 12:00:00Z])
       iex> standard = Astro.Time.standard_from_universal(t, 0.25)
       iex> standard - t
       0.25
@@ -458,7 +464,10 @@ defmodule Astro.Time do
   """
   @spec standard_from_universal(time(), zone_name() | number()) :: time()
   def standard_from_universal(t, zone_name) when is_binary(zone_name) do
-    t + offset_for_zone(t, zone_name)
+    case offset_for_zone(t, zone_name) do
+      {:ok, offset} -> t + offset
+      {:error, reason} -> raise ArgumentError, inspect(reason)
+    end
   end
 
   def standard_from_universal(t, offset) when is_number(offset) do
@@ -495,14 +504,16 @@ defmodule Astro.Time do
   """
   @spec universal_from_standard(time(), zone_name() | number()) :: time()
   def universal_from_standard(t, zone_name) when is_binary(zone_name) do
-    t - offset_for_zone(t, zone_name)
+    case offset_for_zone(t, zone_name) do
+      {:ok, offset} -> t - offset
+      {:error, reason} -> raise ArgumentError, inspect(reason)
+    end
   end
 
   def universal_from_standard(t, offset) when is_number(offset) do
     t - offset
   end
 
-  @doc false
   def mean_sidereal_from_moment(t) do
     # c = (t - j2000()) / @julian_days_per_century
     c = julian_centuries_from_moment(t)
@@ -1119,16 +1130,45 @@ defmodule Astro.Time do
     {:ok, DateTime.add(datetime, date_adjustment * @seconds_per_day, :second, time_zone_database)}
   end
 
-  # Local Mean Time offset for the expected time zone (in ms).
-  #
-  # The offset is the difference between Local Mean Time at the given
-  # longitude and Standard Time in effect for the given time zone.
+  @doc """
+  Returns the Local Mean Time offset in seconds for a given location and time zone.
 
-  @doc false
+  The offset is the difference between Local Mean Time at the given
+  longitude and Standard Time in effect for the given time zone.
+  Local Mean Time is the solar time at a specific longitude, while
+  Standard Time is the civil time for the time zone.
+
+  ### Arguments
+
+  * `location` is a `Geo.PointZ` struct with `{longitude, latitude, altitude}`
+    coordinates.
+
+  * `gregorian_seconds` is the number of seconds since the Gregorian
+    epoch (0000-01-01 00:00:00).
+
+  * `time_zone` is a time zone name string (e.g. `"Etc/UTC"`).
+
+  ### Returns
+
+  * A `float` representing the offset in seconds between Local Mean Time
+    and Standard Time.
+
+  ### Examples
+
+      iex> location = %Geo.PointZ{coordinates: {0.0, 51.5, 0.0}}
+      iex> gregorian_seconds = 63_871_632_000
+      iex> Astro.Time.local_mean_time_offset(location, gregorian_seconds, "Etc/UTC")
+      0.0
+
+  """
   def local_mean_time_offset(%Geo.PointZ{} = location, gregorian_seconds, time_zone) do
     %Geo.PointZ{coordinates: {longitude, _, _}} = location
     local_mean_time = longitude * @minutes_per_degree * @seconds_per_minute
-    local_mean_time - offset_for_zone(gregorian_seconds, time_zone) * seconds_per_day()
+
+    case offset_for_zone(gregorian_seconds, time_zone) do
+      {:ok, offset} -> local_mean_time - offset * seconds_per_day()
+      {:error, reason} -> raise ArgumentError, inspect(reason)
+    end
   end
 
   @doc """
@@ -1159,10 +1199,12 @@ defmodule Astro.Time do
 
       iex> t = Date.to_gregorian_days(~D[2021-08-01]) * (60 * 60 * 24)
       iex> Astro.Time.offset_for_zone(t, "Europe/London")
-      0.041666666666666664
+      {:ok, 0.041666666666666664}
 
   """
-  @spec offset_for_zone(moment(), zone_name()) :: fraction_of_day()
+  @spec offset_for_zone(moment(), zone_name()) ::
+      {:ok, fraction_of_day()} | {:error, atom()}
+
   def offset_for_zone(
         gregorian_seconds,
         time_zone,
@@ -1171,17 +1213,56 @@ defmodule Astro.Time do
       when is_number(gregorian_seconds) and is_binary(time_zone) do
     case periods_for_time(time_zone, gregorian_seconds, time_zone_database) do
       [period] ->
-        (period.utc_offset + period.std_offset) / @seconds_per_day
+        {:ok, (period.utc_offset + period.std_offset) / @seconds_per_day}
 
       [_period_a | _period_b] ->
-        :ambiguous_time
+        {:error, :ambiguous_time}
 
       [] ->
-        :no_such_time_or_zone
+        {:error, :no_such_time_in_zone}
+
+      other ->
+        other
     end
   end
 
-  @doc false
+  @doc """
+  Returns a `DateTime` shifted to the requested time zone.
+
+  Converts a UTC `DateTime` to the time zone specified in `options`.
+  When the time zone is `:utc`, the datetime is returned unchanged.
+  When `:default`, the time zone is resolved from the location using
+  `TzWorld` (or a custom `:time_zone_resolver`). When a time zone
+  name string is given, the datetime is shifted to that zone.
+
+  ### Arguments
+
+  * `utc_event_time` is a UTC `DateTime`.
+
+  * `location` is a `Geo.PointZ` struct with `{longitude, latitude, altitude}`
+    coordinates. Used only when `:time_zone` is `:default`.
+
+  * `options` is a map containing:
+    * `:time_zone` — `:utc`, `:default`, or a time zone name string.
+    * `:time_zone_database` — the time zone database module
+      (e.g. `Tz.TimeZoneDatabase`).
+    * `:time_zone_resolver` — (optional) a 1-arity function
+      `(%Geo.Point{}) → {:ok, String.t()}` for custom zone resolution.
+
+  ### Returns
+
+  * `{:ok, datetime}` — the `DateTime` in the requested time zone.
+  * `{:error, reason}` — if the time zone cannot be resolved or shifted.
+
+  ### Examples
+
+      iex> utc = ~U[2024-06-21 12:00:00Z]
+      iex> location = %Geo.PointZ{coordinates: {0.0, 51.5, 0.0}}
+      iex> options = %{time_zone: :utc, time_zone_database: Tz.TimeZoneDatabase}
+      iex> Astro.Time.datetime_in_requested_zone(utc, location, options)
+      {:ok, ~U[2024-06-21 12:00:00Z]}
+
+  """
   def datetime_in_requested_zone(utc_event_time, location, options) do
     %{time_zone_database: time_zone_database} = options
 

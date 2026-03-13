@@ -12,6 +12,8 @@ This is the changelog for Astro version 2.0.0 released on ______.  For older cha
 
 * Rename `Astro.Time.utc_datetime_from_terrestrial_datetime/1` to `Astro.Time.utc_datetime_from_dynamical_datetime/1` to reflect the standard "dynamical time" terminology used in modern astronomical references.
 
+* `Astro.Time.offset_for_zone/2` now returns `{:ok, offset}` or raises if there is an error resolving an offset. That can happen if the time zone is unknown, if there is no time in the zone or if the result is ambiguous due to DST shift.
+
 * `Astro.obliquity/0` now returns its value in degrees (was previously radians). The only impact is to code that directly calls this function.
 
 * `Astro.Earth.nutation/1` now returns a 3-tuple `{nutation_in_longitude, nutation_in_obliquity, obliquity}` instead of a single scalar value. The first element in the tuple has the same purpose as the return value of the original function. However its value may be slightly different due to the new underlying algorithms.

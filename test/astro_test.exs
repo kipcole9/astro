@@ -59,7 +59,7 @@ defmodule AstroTest do
 
   test "Time zone offset for float t" do
     assert Astro.Time.offset_for_zone(63_794_995_200.96832, "Europe/London") ==
-             0.041666666666666664
+             {:ok, 0.041666666666666664}
   end
 
   test "sunrise and sunset handle date gaps gracefully" do
