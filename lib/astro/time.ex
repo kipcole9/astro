@@ -1418,6 +1418,9 @@ defmodule Astro.Time do
   # J2000.0 Julian date (TT): 2000-01-01 12:00:00 TT
   @jd_j2000 2_451_545.0
 
+  @doc false
+  def jd_j2000, do: @jd_j2000
+
   # Offset from Gregorian day 0 (0000-01-01) to JD 0.
   @jd_gregorian_epoch 1_721_059.5
 

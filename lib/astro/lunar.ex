@@ -84,11 +84,10 @@ defmodule Astro.Lunar do
 
   @months_epoch_to_j2000 24_724
   @average_distance_earth_to_moon 385_000_560.0
-  @meters_per_kilometer 1000.0
 
   # IAU 2015 lunar radius in km
   @lunar_radius 1_737.4
-  @lunar_radius_m @lunar_radius * @meters_per_kilometer
+  @lunar_radius_m @lunar_radius * Earth.meters_per_kilometer()
 
   # Moon's mean radius / Earth's equatorial radius (Meeus Ch.47).
   @lunar_k @lunar_radius_m / Earth.earth_radius_m()

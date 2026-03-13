@@ -38,6 +38,9 @@ defmodule Astro.Earth do
 
   @meters_per_kilometer 1000.0
 
+  @doc false
+  def meters_per_kilometer, do: @meters_per_kilometer
+
   @geometric_solar_elevation 90.0
 
   # 34 arc minutes in degrees
@@ -51,6 +54,9 @@ defmodule Astro.Earth do
 
   # Arcseconds per degree
   @arcsec_per_deg 3600.0
+
+  @doc false
+  def arcsec_per_deg, do: @arcsec_per_deg
 
   # Equatorial radius in kilometers
   @earth_radius 6_378.1366

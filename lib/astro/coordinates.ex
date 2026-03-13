@@ -29,16 +29,11 @@ defmodule Astro.Coordinates do
 
   """
 
-  alias Astro.Earth
+  alias Astro.{Earth, Time}
 
-  # J2000.0 Julian date (TT): 2000-01-01 12:00:00 TT
-  @jd_j2000 2_451_545.0
-
-  # Seconds per day
-  @seconds_per_day 86_400.0
-
-  # Arcseconds per degree
-  @arcsec_per_deg 3600.0
+  @jd_j2000 Time.jd_j2000()
+  @seconds_per_day Time.seconds_per_day()
+  @arcsec_per_deg Earth.arcsec_per_deg()
 
   # ── Time conversions ─────────────────────────────────────────────────────────
 
