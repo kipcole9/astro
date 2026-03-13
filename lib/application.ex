@@ -1,4 +1,6 @@
 defmodule Astro.Application do
+  @moduledoc false
+
   use Application
 
   @default_ephemeris "priv/de440s.bsp"
