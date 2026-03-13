@@ -61,7 +61,8 @@ defmodule Astro.Ephemeris do
 
   def moon_position(%DateTime{} = utc_date_time) do
     utc_date_time
-    |> Coordinates.utc_to_et()
+    |> Astro.Time.date_time_to_moment()
+    |> Coordinates.moment_to_et()
     |> moon_position_et()
   end
 
@@ -110,7 +111,7 @@ defmodule Astro.Ephemeris do
   @spec sun_position(DateTime.t()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
   def sun_position(%DateTime{} = utc_date_time) do
-    et = Coordinates.utc_to_et(utc_date_time)
+    et = utc_date_time |> Astro.Time.date_time_to_moment() |> Coordinates.moment_to_et()
     sun_position_et(et)
   end
 

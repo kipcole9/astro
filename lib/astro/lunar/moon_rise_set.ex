@@ -103,23 +103,24 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   # ── Public API ───────────────────────────────────────────────────────────────
 
-  @spec moonrise(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec moonrise(Astro.location(), number(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def moonrise(location, date, options \\ []) do
-    moon_event(location, to_date(date), :rise, options)
+  def moonrise(location, moment, options \\ []) when is_number(moment) do
+    moon_event(location, moment, :rise, options)
   end
 
-  @spec moonset(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec moonset(Astro.location(), number(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def moonset(location, date, options \\ []) do
-    moon_event(location, to_date(date), :set, options)
+  def moonset(location, moment, options \\ []) when is_number(moment) do
+    moon_event(location, moment, :set, options)
   end
 
   # ── Core ─────────────────────────────────────────────────────────────────────
 
-  defp moon_event(location, date, event, options) do
+  defp moon_event(location, moment, event, options) do
     %Geo.PointZ{coordinates: {lng, lat, elev_m}} = Astro.Location.normalize_location(location)
 
+    date = Date.from_gregorian_days(trunc(moment))
     {rho_sin_phi, rho_cos_phi} = geocentric_observer(lat, elev_m)
 
     # Build the altitude function. When :interpolation is :lagrange, we use
@@ -137,8 +138,8 @@ defmodule Astro.Lunar.MoonRiseSet do
     # Always use direct ephemeris for the coarse scan
     direct_fn = fn et -> topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
 
-    {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
-    et_start = Coordinates.utc_to_et(utc_midnight) - @scan_pre_window_s
+    et_midnight = Coordinates.moment_to_et(moment)
+    et_start = et_midnight - @scan_pre_window_s
     et_end = et_start + @scan_window_s
 
     # Evaluate f at each scan point.
@@ -179,7 +180,7 @@ defmodule Astro.Lunar.MoonRiseSet do
 
         et_event = bisect_with_fn(et_lo, f_lo_b, et_hi, f_hi_b, alt_fn, @bisect_max)
 
-        utc_dt = Coordinates.et_to_utc(et_event)
+        {:ok, utc_dt} = Astro.Time.date_time_from_moment(Coordinates.et_to_moment(et_event))
 
         case apply_time_zone(utc_dt, location, options) do
           {:ok, local_dt}
@@ -441,7 +442,4 @@ defmodule Astro.Lunar.MoonRiseSet do
   defp fmod(x, m) when x >= 0, do: :math.fmod(x, m)
   defp fmod(x, m), do: :math.fmod(x, m) + m
 
-  defp to_date(%Date{} = d), do: d
-  defp to_date(%DateTime{} = dt), do: DateTime.to_date(dt)
-  defp to_date(%NaiveDateTime{} = ndt), do: NaiveDateTime.to_date(ndt)
 end

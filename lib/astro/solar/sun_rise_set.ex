@@ -69,11 +69,16 @@ defmodule Astro.Solar.SunRiseSet do
   # ── Public API ───────────────────────────────────────────────────────────────
 
   @doc """
-  Returns the sunrise time for `location` on `date`.
+  Returns the sunrise time for `location` on the date represented by `moment`.
 
-  Mirrors `Astro.sunrise/3` in signature and return value, but derives
-  the solar position from the JPL DE440s ephemeris rather than the
-  Chapront truncated series.
+  The solar position is derived from the JPL DE440s ephemeris.
+
+  ## Arguments
+
+    * `location` — `{lng, lat}`, `Geo.Point.t()`, or `Geo.PointZ.t()`
+    * `moment` — a moment (fractional Gregorian days) representing UTC midnight
+      of the requested date
+    * `options` — keyword list
 
   ## Options
 
@@ -85,36 +90,36 @@ defmodule Astro.Solar.SunRiseSet do
       * a number — custom zenith angle in degrees (90 = geometric horizon)
     * `:time_zone`, `:time_zone_database`, `:time_zone_resolver` — as for `Astro.sunrise/3`
   """
-  @spec sunrise(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec sunrise(Astro.location(), number(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def sunrise(location, date, options \\ []) do
-    sun_event(location, to_date(date), :rise, options)
+  def sunrise(location, moment, options \\ []) when is_number(moment) do
+    sun_event(location, moment, :rise, options)
   end
 
   @doc """
-  Returns the sunset time for `location` on `date`.
+  Returns the sunset time for `location` on the date represented by `moment`.
 
-  Mirrors `Astro.sunset/3` in signature and return value, but derives
-  the solar position from the JPL DE440s ephemeris.
+  The solar position is derived from the JPL DE440s ephemeris.
 
-  Accepts the same options as `sunrise/3`.
+  Accepts the same arguments and options as `sunrise/3`.
   """
-  @spec sunset(Astro.location(), Date.t() | DateTime.t(), keyword()) ::
+  @spec sunset(Astro.location(), number(), keyword()) ::
           {:ok, DateTime.t()} | {:error, atom()}
-  def sunset(location, date, options \\ []) do
-    sun_event(location, to_date(date), :set, options)
+  def sunset(location, moment, options \\ []) when is_number(moment) do
+    sun_event(location, moment, :set, options)
   end
 
   # ── Core ─────────────────────────────────────────────────────────────────────
 
-  defp sun_event(location, date, event, options) do
+  defp sun_event(location, moment, event, options) do
     %Geo.PointZ{coordinates: {lng, lat, _elev_m}} =
       Astro.Location.normalize_location(location)
 
+    date = Date.from_gregorian_days(trunc(moment))
     h0 = h0_from_options(options)
 
-    {:ok, utc_midnight} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
-    et_start = Coordinates.utc_to_et(utc_midnight) - @scan_pre_window_s
+    et_midnight = Coordinates.moment_to_et(moment)
+    et_start = et_midnight - @scan_pre_window_s
     et_end = et_start + @scan_window_s
 
     scan_pairs =
@@ -135,7 +140,7 @@ defmodule Astro.Solar.SunRiseSet do
     result =
       Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
         et_event = bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, h0, @bisect_max)
-        utc_dt = Coordinates.et_to_utc(et_event)
+        {:ok, utc_dt} = Astro.Time.date_time_from_moment(Coordinates.et_to_moment(et_event))
 
         case apply_time_zone(utc_dt, location, options) do
           {:ok, local_dt}
@@ -260,7 +265,4 @@ defmodule Astro.Solar.SunRiseSet do
   defp fmod(x, m) when x >= 0, do: :math.fmod(x, m)
   defp fmod(x, m), do: :math.fmod(x, m) + m
 
-  defp to_date(%Date{} = d), do: d
-  defp to_date(%DateTime{} = dt), do: DateTime.to_date(dt)
-  defp to_date(%NaiveDateTime{} = ndt), do: NaiveDateTime.to_date(ndt)
 end

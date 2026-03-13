@@ -326,7 +326,8 @@ defmodule Astro.UmmAlQura.Astronomical do
     # and Skyfield's `risings_and_settings(radius_degrees=0)`.
     #
     # solar_elevation: 90.5667 → h0 = -(90.5667 - 90) = -0.5667°
-    case Astro.Solar.SunRiseSet.sunset(@mecca_location, date, solar_elevation: 90.5667) do
+    moment = Astro.Time.date_time_to_moment(date)
+    case Astro.Solar.SunRiseSet.sunset(@mecca_location, moment, solar_elevation: 90.5667) do
       {:ok, sunset_local} ->
         {:ok, DateTime.shift_zone!(sunset_local, "Etc/UTC")}
 
@@ -341,7 +342,8 @@ defmodule Astro.UmmAlQura.Astronomical do
   # horizon (no semi-diameter correction).  This matches the convention used by
   # van Gent and Skyfield's `risings_and_settings(radius_degrees=0)`.
   defp moonset_utc_at_mecca(date) do
-    case Astro.Lunar.MoonRiseSet.moonset(@mecca_location, date, limb: :center) do
+    moment = Astro.Time.date_time_to_moment(date)
+    case Astro.Lunar.MoonRiseSet.moonset(@mecca_location, moment, limb: :center) do
       {:ok, moonset_local} ->
         {:ok, DateTime.shift_zone!(moonset_local, "Etc/UTC")}
 

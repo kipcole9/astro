@@ -54,7 +54,8 @@ defmodule Astro.MoonRiseSetTest do
        ) do
     expected = time!(expected_hour, expected_minute)
 
-    assert {:ok, actual} = Astro.Lunar.MoonRiseSet.moonrise({lon, lat}, date),
+    moment = Astro.Time.date_time_to_moment(date)
+    assert {:ok, actual} = Astro.Lunar.MoonRiseSet.moonrise({lon, lat}, moment),
            "Expected moonrise on #{date} at #{lat},#{lon} to return {:ok, time}, got :no_event"
 
     assert within_tolerance?(actual, expected, tolerance),
@@ -75,7 +76,8 @@ defmodule Astro.MoonRiseSetTest do
        ) do
     expected = time!(expected_hour, expected_minute)
 
-    assert {:ok, actual} = Astro.Lunar.MoonRiseSet.moonset({lon, lat}, date),
+    moment = Astro.Time.date_time_to_moment(date)
+    assert {:ok, actual} = Astro.Lunar.MoonRiseSet.moonset({lon, lat}, moment),
            "Expected moonset on #{date} at #{lat},#{lon} to return {:ok, time}, got :no_event"
 
     assert within_tolerance?(actual, expected, tolerance),
@@ -87,12 +89,14 @@ defmodule Astro.MoonRiseSetTest do
   end
 
   defp assert_no_moonrise(date, lat, lon) do
-    assert {:error, :no_time} = Astro.Lunar.MoonRiseSet.moonrise({lon, lat}, date),
+    moment = Astro.Time.date_time_to_moment(date)
+    assert {:error, :no_time} = Astro.Lunar.MoonRiseSet.moonrise({lon, lat}, moment),
            "Expected no moonrise on #{date} at #{lat},#{lon}, but got an event"
   end
 
   defp assert_no_moonset(date, lat, lon) do
-    assert {:error, :no_time} = Astro.Lunar.MoonRiseSet.moonset({lon, lat}, date),
+    moment = Astro.Time.date_time_to_moment(date)
+    assert {:error, :no_time} = Astro.Lunar.MoonRiseSet.moonset({lon, lat}, moment),
            "Expected no moonset on #{date} at #{lat},#{lon}, but got an event"
   end
 

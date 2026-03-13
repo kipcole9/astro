@@ -161,7 +161,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> Solar.solar_position()
     |> convert_distance_to_m()
     |> Location.normalize_location()
@@ -215,7 +215,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> moon_position_at_moment()
   end
 
@@ -267,7 +267,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> Lunar.illuminated_fraction_of_moon()
   end
 
@@ -290,7 +290,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_new_moon_before(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:49:07.000000Z]}
+      {:ok, ~U[2021-08-08 13:49:07.193556Z]}
 
   """
   @doc since: "0.5.0"
@@ -313,7 +313,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_new_moon_before()
     |> Time.date_time_from_moment()
   end
@@ -337,7 +337,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:49:07.000000Z]}
+      {:ok, ~U[2021-08-08 13:49:07.368128Z]}
 
   """
   @doc since: "2.0.0"
@@ -360,7 +360,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_new_moon_nearest()
     |> Time.date_time_from_moment()
   end
@@ -385,7 +385,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_new_moon_at_or_after(~D[2021-08-23])
-      {:ok, ~U[2021-09-07 00:50:43.000000Z]}
+      {:ok, ~U[2021-09-07 00:50:43.811493Z]}
 
   """
   @doc since: "0.5.0"
@@ -408,7 +408,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_new_moon_at_or_after()
     |> Time.date_time_from_moment()
   end
@@ -454,7 +454,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> Lunar.lunar_phase_at()
   end
 
@@ -536,7 +536,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
-      {:ok, ~U[2021-07-10 01:15:33.000000Z]}
+      {:ok, ~U[2021-07-10 01:15:33.373067Z]}
 
   """
 
@@ -560,7 +560,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_lunar_phase_at_or_before(phase)
     |> Time.date_time_from_moment()
   end
@@ -589,7 +589,7 @@ defmodule Astro do
   ### Example
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
-      {:ok, ~U[2021-08-22 12:01:02.000000Z]}
+      {:ok, ~U[2021-08-22 12:01:02.166993Z]}
 
   """
 
@@ -613,7 +613,7 @@ defmodule Astro do
     _ = calendar
 
     date
-    |> Date.to_gregorian_days()
+    |> Time.date_time_to_moment()
     |> Lunar.date_time_lunar_phase_at_or_after(phase)
     |> Time.date_time_from_moment()
   end
@@ -726,7 +726,7 @@ defmodule Astro do
           | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
 
   def sunrise(location, date, options \\ []) when is_list(options) do
-    Solar.SunRiseSet.sunrise(location, date, options)
+    Solar.SunRiseSet.sunrise(location, date_to_moment(date), options)
   end
 
   @doc """
@@ -837,7 +837,7 @@ defmodule Astro do
           | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
 
   def sunset(location, date, options \\ []) when is_list(options) do
-    Solar.SunRiseSet.sunset(location, date, options)
+    Solar.SunRiseSet.sunset(location, date_to_moment(date), options)
   end
 
   @spec moonrise(location, date, options) ::
@@ -846,7 +846,7 @@ defmodule Astro do
   def moonrise(location, date, options \\ default_options())
 
   def moonrise(location, date, options) when is_list(options) do
-    Lunar.MoonRiseSet.moonrise(location, date, options)
+    Lunar.MoonRiseSet.moonrise(location, date_to_moment(date), options)
   end
 
   @spec moonset(location, date, options) ::
@@ -855,7 +855,7 @@ defmodule Astro do
   def moonset(location, date, options \\ default_options())
 
   def moonset(location, date, options) when is_list(options) do
-    Lunar.MoonRiseSet.moonset(location, date, options)
+    Lunar.MoonRiseSet.moonset(location, date_to_moment(date), options)
   end
 
   @doc """
@@ -1177,5 +1177,11 @@ defmodule Astro do
       time_zone: :default,
       time_zone_database: default_time_zone_db
     ]
+  end
+
+  # Convert a Date, DateTime or NaiveDateTime to a moment
+  # (integer Gregorian days representing UTC midnight).
+  defp date_to_moment(date) do
+    Time.date_time_to_moment(date)
   end
 end

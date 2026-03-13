@@ -918,21 +918,51 @@ defmodule Astro.Time do
       iex> Astro.Time.date_time_from_moment 740047.0
       {:ok, ~U[2026-03-07 00:00:00.000000Z]}
       iex> Astro.Time.date_time_from_moment 740047.999999
-      {:ok, ~U[2026-03-07 23:59:59.000000Z]}
+      {:ok, ~U[2026-03-07 23:59:59.913599Z]}
 
   """
   @spec date_time_from_moment(moment()) :: {:ok, NaiveDateTime.t()}
 
   def date_time_from_moment(t) do
     days = trunc(t)
-    hours = (t - days) * @hours_per_day
+    frac_us = round((t - days) * @seconds_per_day * 1_000_000)
+
+    # Handle rounding that pushes past midnight
+    us_per_day = 86_400_000_000
+    {days, frac_us} =
+      if frac_us >= us_per_day, do: {days + 1, frac_us - us_per_day}, else: {days, frac_us}
+
+    total_seconds = div(frac_us, 1_000_000)
+    microseconds = rem(frac_us, 1_000_000)
+    hours = div(total_seconds, 3600)
+    minutes = div(rem(total_seconds, 3600), 60)
+    seconds = rem(total_seconds, 60)
 
     date = Elixir.Date.from_gregorian_days(days)
-    hours_and_date_to_datetime(hours, date)
+
+    with {:ok, naive} <- NaiveDateTime.new(date.year, date.month, date.day, hours, minutes, seconds, {microseconds, 6}) do
+      datetime_in_utc(naive)
+    end
   end
 
-  @doc false
-  @spec date_time_to_moment(Calendar.datetime()) :: moment()
+  @doc """
+  Converts a date, datetime or naive datetime to a moment.
+
+  A moment is a float where the integer part is the number of Gregorian
+  days since 0000-01-01 and the fractional part is the fraction of a day
+  since midnight.
+
+  When given a `Date`, returns the integer Gregorian day number (midnight).
+  """
+  @spec date_time_to_moment(Calendar.date() | Calendar.datetime()) :: moment()
+
+  def date_time_to_moment(unquote(Guards.date()) = date) when not is_map_key(date, :hour) do
+    {days, {_numerator, _denominator}} =
+      calendar.naive_datetime_to_iso_days(date.year, date.month, date.day, 0, 0, 0, {0, 0})
+
+    days
+  end
+
   def date_time_to_moment(unquote(Guards.datetime()) = date_time) do
     %{year: year, month: month, day: day, hour: hour} = date_time
     %{minute: minute, second: second, microsecond: microsecond} = date_time

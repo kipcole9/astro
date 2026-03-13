@@ -61,9 +61,6 @@ defmodule Astro.Coordinates do
   # J2000.0 Julian date (TT): 2000-01-01 12:00:00 TT
   @jd_j2000 2_451_545.0
 
-  # Julian date of Unix epoch (1970-01-01 00:00:00 UTC)
-  @jd_unix_epoch 2_440_587.5
-
   # Seconds per day
   @seconds_per_day 86_400.0
 
@@ -73,15 +70,19 @@ defmodule Astro.Coordinates do
   # ── Time conversions ─────────────────────────────────────────────────────────
 
   @doc """
-  Converts a UTC `DateTime` to TDB seconds past J2000.0.
+  Converts a moment (fractional Gregorian days since the epoch) to
+  TDB seconds past J2000.0.
 
-  This is the `et` (ephemeris time) argument expected by the SPK kernel.
-  Uses a date-dependent ΔT derived from IERS observations.
+  A moment is the time representation used by `Astro.Time` — the number
+  of days (and fractional day) since the Gregorian epoch (0000-01-01).
+  This function applies a date-dependent ΔT to produce the ephemeris
+  time expected by the SPK kernel.
   """
-  @spec utc_to_et(DateTime.t()) :: float()
-  def utc_to_et(%DateTime{} = utc_dt) do
-    unix_seconds = DateTime.to_unix(utc_dt, :millisecond) / 1000.0
-    jd_utc = @jd_unix_epoch + unix_seconds / @seconds_per_day
+  @jd_gregorian_epoch 1_721_059.5
+
+  @spec moment_to_et(float()) :: float()
+  def moment_to_et(moment) do
+    jd_utc = moment + @jd_gregorian_epoch
     year = jd_to_decimal_year(jd_utc)
     dt = delta_t(year)
     jd_tt = jd_utc + dt / @seconds_per_day
@@ -89,21 +90,18 @@ defmodule Astro.Coordinates do
   end
 
   @doc """
-  Converts TDB seconds past J2000.0 back to a UTC `DateTime`,
-  rounded to the nearest second.
+  Converts TDB seconds past J2000.0 back to a moment (fractional Gregorian
+  days since the epoch).
 
   Uses a date-dependent ΔT derived from IERS observations.
   """
-  @spec et_to_utc(float()) :: DateTime.t()
-  def et_to_utc(et) do
+  @spec et_to_moment(float()) :: float()
+  def et_to_moment(et) do
     jd_tt = et / @seconds_per_day + @jd_j2000
-    # First approximation: use ΔT at the TT date (error < 0.01 s)
     year = jd_to_decimal_year(jd_tt)
     dt = delta_t(year)
     jd_utc = jd_tt - dt / @seconds_per_day
-    unix_float = (jd_utc - @jd_unix_epoch) * @seconds_per_day
-    unix_seconds = round(unix_float)
-    DateTime.from_unix!(unix_seconds, :second)
+    jd_utc - @jd_gregorian_epoch
   end
 
   @doc """

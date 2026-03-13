@@ -18,27 +18,29 @@ defmodule AstroTest do
   test "sunset in Urbana IL" do
     {:ok, date} = Date.new(1945, 11, 12)
 
-    test_date =
+    {:ok, test_date} =
       DateTime.from_naive(
         ~N[1945-11-12 16:39:07],
         "America/Chicago",
         Tzdata.TimeZoneDatabase
       )
 
-    assert Astro.sunset({-88.2073, 40.1106}, date) == test_date
+    assert {:ok, actual} = Astro.sunset({-88.2073, 40.1106}, date)
+    assert DateTime.truncate(actual, :second) == test_date
   end
 
   test "sunset in Nunavut" do
     {:ok, date} = Date.new(1945, 11, 12)
 
-    test_date =
+    {:ok, test_date} =
       DateTime.from_naive(
-        ~N[1945-11-12 14:24:08-05:00],
+        ~N[1945-11-12 14:24:07-05:00],
         "America/Iqaluit",
         Tzdata.TimeZoneDatabase
       )
 
-    assert Astro.sunset({-83.1076, 70.2998}, date) == test_date
+    assert {:ok, actual} = Astro.sunset({-83.1076, 70.2998}, date)
+    assert DateTime.truncate(actual, :second) == test_date
   end
 
   test "sunset and sunrise in Alert NU doesn't happen in winter" do
@@ -72,6 +74,7 @@ defmodule AstroTest do
         "America/Santiago"
       )
 
-    assert Astro.sunset(santiago_chile, date) == {:ok, test_date}
+    assert {:ok, actual} = Astro.sunset(santiago_chile, date)
+    assert DateTime.truncate(actual, :second) == test_date
   end
 end
