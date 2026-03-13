@@ -6,21 +6,41 @@ This is the changelog for Astro version 2.0.0 released on ______.  For older cha
 
 ### Breaking changes
 
-* `Astro.obliquity/0` now returns its value in degrees (was previously radians). This change has no impact on the validity of the test suite. The only impact is to code that directly calls this function.
+* Rename `Astro.Solar.solar_longitude/1` to `Astro.Solar.solar_ecliptic_longitude/1` and `Astro.Lunar.lunar_longitude/1` to `Astro.Lunar.lunar_ecliptic_longitude/1` to use unambiguous astronomical terminology.
 
-* Rename `Astro.Lunar.full_moon/0` to `Astro.Lunar.full_moon_phase/0` (the same for the `Astro.Lunar.{new_moon, first_quarter, last_quarter}/0`).
+* Rename `Astro.Lunar.new_moon/0` to `Astro.Lunar.new_moon_phase/0`, `Astro.Lunar.full_moon/0` to `Astro.Lunar.full_moon_phase/0`, `Astro.Lunar.first_quarter/0` to `Astro.Lunar.first_quarter_phase/0`, and `Astro.Lunar.last_quarter/0` to `Astro.Lunar.last_quarter_phase/0` to clarify that these return phase angle constants.
 
-* `Astro.Earth.nutation/1` now returns a 3-tuple instead of a single scalar value. The first element in the tuple has the same purpose as the return value of the original function. However its value may be slightly different due to the new underlying algoriths.
+* Rename `Astro.Time.utc_datetime_from_terrestrial_datetime/1` to `Astro.Time.utc_datetime_from_dynamical_datetime/1` to reflect the standard "dynamical time" terminology used in modern astronomical references.
+
+* `Astro.obliquity/0` now returns its value in degrees (was previously radians). The only impact is to code that directly calls this function.
+
+* `Astro.Earth.nutation/1` now returns a 3-tuple `{nutation_in_longitude, nutation_in_obliquity, obliquity}` instead of a single scalar value. The first element in the tuple has the same purpose as the return value of the original function. However its value may be slightly different due to the new underlying algorithms.
+
+* `Astro.moon_position_at/1` now returns distance to the Moon in kilometres instead of metres.
+
+* `Astro.sunrise/3` and `Astro.sunset/3` default options changed from `default_options()` to `[]`. These functions now delegate to `Astro.Solar.SunRiseSet` which uses centre-of-disk calculations rather than the previous geometric-centre approach.
+
+* Improved ΔT (delta-T) computation now uses variable ΔT based on IERS observations (1972–2025) and Meeus polynomial approximations for historical dates, replacing the previous fixed ΔT value. This improves the accuracy of all astronomical calculations but changes computed times for equinoxes, solstices, new moons, and lunar phases by up to ~22 seconds compared to version 1.x.
+
+* Sunrise/sunset and moonrise/moonset bisection tolerance tightened from 1.0 second to 0.01 seconds, yielding sub-second precision.
 
 ### Enhancements
 
-* Adds `Astro.moonrise/3` and `Astro.moonset/3`.
+* Add `Astro.moonrise/3` and `Astro.moonset/3` to compute moonrise and moonset times for a given location and date.
 
-* Adds `Astro.date_time_new_moon_nearest/1` (takes a date or date time parameter)
+* Add `Astro.date_time_new_moon_nearest/1` which returns the new moon nearest to a given date or datetime.
 
-* Adds `Astro.Lunar.date_time_new_moon_nearest/1` (takes a moment parameter)
+* Add `Astro.Lunar.date_time_new_moon_nearest/1` (takes a moment parameter).
 
-* Adds `Astro.Time.date_from_julian_days/1`.
+* Add `Astro.Time.date_from_julian_days/1` to convert Julian Day Numbers to `Date` structs.
+
+* Add new `Astro.Solar.SunRiseSet` module implementing sunrise/sunset calculations with centre-of-disk convention and configurable bisection tolerance.
+
+* Add new `Astro.Lunar.MoonRiseSet` module implementing moonrise/moonset calculations with centre-of-disk convention and configurable bisection tolerance.
+
+* Add new `Astro.Coordinates` module for coordinate system conversions.
+
+* Add new types `Astro.radians/0`, `Astro.astronomical_units/0`, and `Astro.kilometers/0`.
 
 ## Astro version 1.1.2
 
