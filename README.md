@@ -7,9 +7,24 @@
 
 Astro is a library to provide accurate astronomical functions with a focus on functions that support solar, lunar and lunisolar calendars such as the Islamic, Chinese, Hebrew and Persian calendars.
 
+## Migration from Astro 1.x
+
+The public API functions in the `Astro` module retain the same signatures in Astro 2.x which should mean a smooth migration in most cases.
+
+When upgrading to Astro 2.x the following should be applied:
+
+* **Download the JPL ephemeris.** Astro 2.x uses the JPL DE440s ephemeris for its calculations. See [Download the JPL Ephemeris](#download-the-jpl-ephemeris) for instructions.
+
+* **Numerical results may differ slightly.** The move from NOAA/Meeus polynomial approximations to the JPL DE440s ephemeris, combined with an improved ΔT computation, means that computed times for events such as equinoxes, solstices and new moons may shift by up to ~22 seconds.
+
+* **Functions outside the `Astro` module may have changed.** Several functions in `Astro.Solar`, `Astro.Lunar`, `Astro.Time` and `Astro.Earth` have been renamed or have changed return types. See the [changelog](CHANGELOG.md) for full details.
+
 ## Usage
 
-**NOTE: It's important to install and configure `Astro` correctly before use. See the [installation](#installation) notes below.**
+> #### Installation and Configuration {: .Warning}
+>
+> It's important to install and configure `Astro` correctly before use.
+> See the [installation](#installation) notes below.
 
 The primary functions are:
 

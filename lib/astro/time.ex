@@ -1201,7 +1201,7 @@ defmodule Astro.Time do
   * `options` is a map containing:
     * `:time_zone` — `:utc`, `:default`, or a time zone name string.
     * `:time_zone_database` — the time zone database module
-      (e.g. `Tz.TimeZoneDatabase`).
+      (e.g. Tz.TimeZoneDatabase).
     * `:time_zone_resolver` — (optional) a 1-arity function
       `(%Geo.Point{}) → {:ok, String.t()}` for custom zone resolution.
 
