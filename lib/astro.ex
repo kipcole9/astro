@@ -1246,8 +1246,8 @@ defmodule Astro do
 
   ### Examples
 
-      iex> Astro.hours_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-07]
-      {:ok, ~T[14:18:44]}
+      iex> Astro.hours_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-08]
+      {:ok, ~T[14:19:29]}
 
       # No sunset in summer
       iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-06-07]

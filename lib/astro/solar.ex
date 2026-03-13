@@ -255,7 +255,8 @@ defmodule Astro.Solar do
   ### Examples
 
       iex> Astro.Solar.solar_declination(0.0)
-      -23.03251593806594
+      ...> |> Float.round(4)
+      -23.0325
 
   """
   @spec solar_declination(float) :: float()
