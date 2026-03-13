@@ -1084,51 +1084,7 @@ defmodule Astro.Time do
     {:ok, DateTime.add(datetime, trunc(minutes * @seconds_per_minute), :second)}
   end
 
-  @doc false
-  def adjust_for_wraparound(datetime, location, %{rise_or_set: :rise}) do
-    # sunrise after 6pm indicates the UTC date has occurred earlier
-    if datetime.hour + local_hour_offset(datetime, location) > 18 do
-      {:ok, DateTime.add(datetime, -@seconds_per_day, :second)}
-    else
-      {:ok, datetime}
-    end
-  end
 
-  def adjust_for_wraparound(datetime, location, %{rise_or_set: :set}) do
-    # sunset before 6am indicates the UTC date has occurred later
-    if datetime.hour + local_hour_offset(datetime, location) < 6 do
-      {:ok, DateTime.add(datetime, @seconds_per_day, :second)}
-    else
-      {:ok, datetime}
-    end
-  end
-
-  defp local_hour_offset(datetime, location) do
-    gregorian_seconds = date_time_to_gregorian_seconds(datetime)
-
-    local_mean_time_offset =
-      local_mean_time_offset(location, gregorian_seconds, datetime.time_zone)
-
-    (local_mean_time_offset + datetime.std_offset) / @seconds_per_hour
-  end
-
-  @doc false
-  def antimeridian_adjustment(location, %{time_zone: time_zone} = datetime, options) do
-    %{time_zone_database: time_zone_database} = options
-    gregorian_seconds = date_time_to_gregorian_seconds(datetime)
-
-    local_hours_offset =
-      local_mean_time_offset(location, gregorian_seconds, time_zone) / @seconds_per_hour
-
-    date_adjustment =
-      cond do
-        local_hours_offset >= 20 -> 1
-        local_hours_offset <= -20 -> -1
-        true -> 0
-      end
-
-    {:ok, DateTime.add(datetime, date_adjustment * @seconds_per_day, :second, time_zone_database)}
-  end
 
   @doc """
   Returns the Local Mean Time offset in seconds for a given location and time zone.
@@ -1679,18 +1635,7 @@ defmodule Astro.Time do
     days
   end
 
-  defp date_time_to_gregorian_seconds(datetime) do
-    {numerator, denominator} = DateTime.to_gregorian_seconds(datetime)
-
-    if denominator == 0 do
-      numerator
-    else
-      numerator / denominator
-    end
-  end
-
-  @doc false
-  def periods_for_time(time_zone, gregorian_seconds, time_zone_database) do
+  defp periods_for_time(time_zone, gregorian_seconds, time_zone_database) do
     {:ok, date_time} = date_time_from_moment(gregorian_seconds / @seconds_per_day)
 
     case time_zone_database.time_zone_periods_from_wall_datetime(date_time, time_zone) do
@@ -1699,8 +1644,7 @@ defmodule Astro.Time do
     end
   end
 
-  @doc false
-  def date_time_in_utc(
+  defp date_time_in_utc(
         datetime,
         time_zone \\ @utc_zone,
         time_zone_database \\ Calendar.get_time_zone_database()
