@@ -1,21 +1,60 @@
 defmodule Astro.Lunar do
   @moduledoc """
-  Calculates lunar phases.
+  Calculates lunar position, phases, distance and related quantities.
 
-  Each of the phases of the Moon is defined by the
-  angle between the Moon and Sun in the sky. When the Moon
-  is in between the Earth and the Sun, so that there is nearly a
-  zero degree separation, we see a New Moon.
+  This module provides the analytical (Meeus Ch. 47) periodic-term
+  series for the Moon’s ecliptic longitude, latitude and distance,
+  as well as derived quantities such as illuminated fraction,
+  parallax and angular semi-diameter. These functions underpin the
+  higher-level lunar API in `Astro` and the topocentric
+  moonrise/moonset algorithm in `Astro.Lunar.MoonRiseSet`.
 
-  Because the orbit of the Moon is tilted in relation to the
-  Earth’s orbit around the Sun, a New Moon can still be as much
-  as 5.2 degrees away from the Sun, thus why there isn't a
-  solar eclipse every month.
+  ## Lunar phases
 
-  A crescent moon is 45 degrees from the Sun, a quarter moon
-  is 90 degrees from the Sun, a gibbous moon is 135 degrees
-  from the Sun, and the Full Moon is 180 degrees away from
-  the Sun.
+  The phase of the Moon is defined by the elongation — the
+  geocentric angle between the Moon and the Sun. A **new moon**
+  occurs at 0° elongation, **first quarter** at 90°, **full moon**
+  at 180° and **last quarter** at 270°.
+
+  Because the Moon’s orbital plane is tilted ~5.1° relative to
+  the ecliptic, a new moon can be up to ~5.2° from the Sun,
+  which is why a solar eclipse does not occur every month.
+
+  ## Function groups
+
+  ### Position and geometry
+
+  * `lunar_position/1` — ecliptic longitude, latitude and distance
+  * `lunar_ecliptic_longitude/1`, `lunar_latitude/1`, `lunar_distance/1`
+  * `lunar_altitude/2`, `topocentric_lunar_altitude/2`
+  * `equatorial_horizontal_parallax/1`, `topocentric_lunar_parallax/2`
+  * `angular_semi_diameter/1`, `horizontal_dip/1`
+
+  ### Phases and illumination
+
+  * `lunar_phase_at/1` — phase angle (0–360°) at a moment
+  * `illuminated_fraction_of_moon/1`
+  * `new_moon_phase/0`, `full_moon_phase/0`, `first_quarter_phase/0`,
+    `last_quarter_phase/0`
+
+  ### New moon and phase search
+
+  * `date_time_new_moon_before/1`, `date_time_new_moon_at_or_after/1`,
+    `date_time_new_moon_nearest/1`
+  * `date_time_lunar_phase_at_or_before/2`, `date_time_lunar_phase_at_or_after/2`
+  * `nth_new_moon/1`
+
+  ### Fundamental arguments (Julian centuries)
+
+  * `mean_lunar_ecliptic_longitude/1`, `lunar_elongation/1`
+  * `solar_anomaly/1`, `lunar_anomaly/1`, `lunar_node/1`, `moon_node/1`
+
+  ## Time convention
+
+  Most functions in this module accept a **moment** (fractional
+  days since the epoch 0000-01-01). Use `Astro.Time.date_time_to_moment/1`
+  to convert dates or datetimes. Functions that accept Julian centuries
+  note this in their documentation.
 
   """
 
