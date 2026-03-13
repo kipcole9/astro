@@ -378,6 +378,7 @@ defmodule Astro.Time do
   ### Arguments
 
   * `t` is a moment (float Gregorian days since 0000-01-01) in UTC.
+
   * `location` is a `Geo.PointZ` with `{longitude, latitude, altitude}`.
 
   ### Returns
@@ -409,6 +410,7 @@ defmodule Astro.Time do
 
   * `t` is a moment (float Gregorian days since 0000-01-01) in
     local mean solar time.
+
   * `location` is a `Geo.PointZ` with `{longitude, latitude, altitude}`.
 
   ### Returns
@@ -438,6 +440,7 @@ defmodule Astro.Time do
   ### Arguments
 
   * `t` is a moment (float Gregorian days since 0000-01-01) in UTC.
+
   * `zone_name` is either a time zone name string
     (e.g. `"America/New_York"`) or a numeric offset in fractional days.
 
@@ -474,6 +477,7 @@ defmodule Astro.Time do
 
   * `t` is a moment (float Gregorian days since 0000-01-01) in
     standard time.
+
   * `zone_name` is either a time zone name string
     (e.g. `"America/New_York"`) or a numeric offset in fractional days.
 
@@ -570,6 +574,7 @@ defmodule Astro.Time do
 
   * `location` is any `t:Astro.location/0` (a `Geo.Point`,
     `Geo.PointZ`, or `{longitude, latitude}` tuple).
+
   * `date_time` is any `t:Calendar.datetime/0`.
 
   ### Returns
@@ -929,6 +934,7 @@ defmodule Astro.Time do
 
   * `time_of_day` is a float number of hours since midnight
     (e.g. 13.5 for 1:30 PM).
+
   * `date` is any `t:Calendar.date/0`.
 
   ### Returns
@@ -1047,6 +1053,7 @@ defmodule Astro.Time do
   ### Arguments
 
   * `minutes` is a float number of minutes since midnight.
+
   * `date` is any `t:Calendar.date/0`.
 
   ### Returns
@@ -1132,7 +1139,9 @@ defmodule Astro.Time do
 
   * `gregorian_seconds` is the number of seconds since the Gregorian
     epoch (0000-01-01 00:00:00).
+
   * `time_zone` is a time zone name string (e.g. `"Europe/London"`).
+
   * `time_zone_database` is the time zone database module (defaults
     to `Calendar.get_time_zone_database()`).
 
@@ -1140,7 +1149,9 @@ defmodule Astro.Time do
 
   * The total offset (UTC offset + DST) as a fraction of a day
     (float).
+
   * `:ambiguous_time` if the instant falls in a DST overlap.
+
   * `:no_such_time_or_zone` if the zone is unknown or the instant
     falls in a DST gap.
 

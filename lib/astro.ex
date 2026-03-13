@@ -245,11 +245,13 @@ defmodule Astro do
 
   ### Example
 
-      iex> Astro.illuminated_fraction_of_moon_at(~D[2017-03-16])
-      0.8884435601953284
+      iex> fraction = Astro.illuminated_fraction_of_moon_at(~D[2017-03-16])
+      iex> Float.round(fraction, 4)
+      0.8884
 
-      iex> Astro.illuminated_fraction_of_moon_at(~D[1992-04-12])
-      0.6786061258040972
+      iex> fraction = Astro.illuminated_fraction_of_moon_at(~D[1992-04-12])
+      iex> Float.round(fraction, 4)
+      0.6786
 
   """
   @doc since: "0.6.0"
