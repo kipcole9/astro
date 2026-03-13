@@ -39,7 +39,7 @@ defmodule Astro.Solar.SunRiseSet do
 
   """
 
-  alias Astro.{Ephemeris, Coordinates}
+  alias Astro.{Ephemeris, Coordinates, Time}
 
   # Coarse scan step (seconds). The Sun is always visible for at least a few
   # minutes when it rises, so 24-minute steps bracket the event reliably.
@@ -118,19 +118,19 @@ defmodule Astro.Solar.SunRiseSet do
     date = Date.from_gregorian_days(trunc(moment))
     h0 = h0_from_options(options)
 
-    et_midnight = Coordinates.moment_to_et(moment)
-    et_start = et_midnight - @scan_pre_window_s
-    et_end = et_start + @scan_window_s
+    dt_midnight = Time.dynamical_time_from_moment(moment)
+    dt_start = dt_midnight - @scan_pre_window_s
+    dt_end = dt_start + @scan_window_s
 
     scan_pairs =
-      Stream.iterate(et_start, &(&1 + @scan_step_s))
-      |> Stream.take_while(&(&1 <= et_end))
-      |> Enum.map(fn et -> {et, altitude_f(et, lat, lng, h0)} end)
+      Stream.iterate(dt_start, &(&1 + @scan_step_s))
+      |> Stream.take_while(&(&1 <= dt_end))
+      |> Enum.map(fn dynamical_time -> {dynamical_time, altitude_f(dynamical_time, lat, lng, h0)} end)
 
     brackets =
       scan_pairs
       |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.filter(fn [{_et1, f1}, {_et2, f2}] ->
+      |> Enum.filter(fn [{_dt1, f1}, {_dt2, f2}] ->
         case event do
           :rise -> f1 < 0.0 and f2 >= 0.0
           :set -> f1 > 0.0 and f2 <= 0.0
@@ -138,9 +138,9 @@ defmodule Astro.Solar.SunRiseSet do
       end)
 
     result =
-      Enum.find_value(brackets, fn [{et_lo, f_lo}, {et_hi, f_hi}] ->
-        et_event = bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, h0, @bisect_max)
-        {:ok, utc_dt} = Astro.Time.date_time_from_moment(Coordinates.et_to_moment(et_event))
+      Enum.find_value(brackets, fn [{dt_lo, f_lo}, {dt_hi, f_hi}] ->
+        dt_event = bisect(dt_lo, f_lo, dt_hi, f_hi, lat, lng, h0, @bisect_max)
+        {:ok, utc_dt} = Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event))
 
         case apply_time_zone(utc_dt, location, options) do
           {:ok, local_dt}
@@ -180,15 +180,15 @@ defmodule Astro.Solar.SunRiseSet do
 
   # ── Altitude function ────────────────────────────────────────────────────────
 
-  # f(et) = geometric_alt_centre(et) − h0
+  # f(dynamical_time) = geometric_alt_centre(dynamical_time) − h0
   #
   # Event occurs at f = 0, i.e. when the Sun's geometric altitude equals h0.
   # Positive f: Sun above the event threshold.
   # Negative f: Sun below the event threshold.
-  defp altitude_f(et, lat, lng, h0) do
-    {:ok, {ra, dec, _dist}} = Ephemeris.sun_position_et(et)
+  defp altitude_f(dynamical_time, lat, lng, h0) do
+    {:ok, {ra, dec, _dist}} = Ephemeris.sun_position_dt(dynamical_time)
 
-    gast = Coordinates.gast(et)
+    gast = Coordinates.gast(dynamical_time)
     h = fmod(gast + lng - ra, 360.0)
     h = if h > 180.0, do: h - 360.0, else: h
 
@@ -202,20 +202,20 @@ defmodule Astro.Solar.SunRiseSet do
 
   # ── Bisection ────────────────────────────────────────────────────────────────
 
-  defp bisect(et_lo, _f_lo, et_hi, _f_hi, _lat, _lng, _h0, 0),
-    do: (et_lo + et_hi) / 2.0
+  defp bisect(dt_lo, _f_lo, dt_hi, _f_hi, _lat, _lng, _h0, 0),
+    do: (dt_lo + dt_hi) / 2.0
 
-  defp bisect(et_lo, f_lo, et_hi, f_hi, lat, lng, h0, iters) do
-    if et_hi - et_lo <= @bisect_tol_s do
-      (et_lo + et_hi) / 2.0
+  defp bisect(dt_lo, f_lo, dt_hi, f_hi, lat, lng, h0, iters) do
+    if dt_hi - dt_lo <= @bisect_tol_s do
+      (dt_lo + dt_hi) / 2.0
     else
-      et_mid = (et_lo + et_hi) / 2.0
-      f_mid = altitude_f(et_mid, lat, lng, h0)
+      dt_mid = (dt_lo + dt_hi) / 2.0
+      f_mid = altitude_f(dt_mid, lat, lng, h0)
 
       if f_lo * f_mid <= 0.0 do
-        bisect(et_lo, f_lo, et_mid, f_mid, lat, lng, h0, iters - 1)
+        bisect(dt_lo, f_lo, dt_mid, f_mid, lat, lng, h0, iters - 1)
       else
-        bisect(et_mid, f_mid, et_hi, f_hi, lat, lng, h0, iters - 1)
+        bisect(dt_mid, f_mid, dt_hi, f_hi, lat, lng, h0, iters - 1)
       end
     end
   end

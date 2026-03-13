@@ -70,47 +70,20 @@ defmodule Astro.Coordinates do
   # ── Time conversions ─────────────────────────────────────────────────────────
 
   @doc """
-  Converts a moment (fractional Gregorian days since the epoch) to
-  TDB seconds past J2000.0.
-
-  A moment is the time representation used by `Astro.Time` — the number
-  of days (and fractional day) since the Gregorian epoch (0000-01-01).
-  This function applies a date-dependent ΔT to produce the ephemeris
-  time expected by the SPK kernel.
+  Converts a moment to dynamical time. Delegates to `Astro.Time.dynamical_time_from_moment/1`.
   """
-  @jd_gregorian_epoch 1_721_059.5
-
-  @spec moment_to_et(float()) :: float()
-  def moment_to_et(moment) do
-    jd_utc = moment + @jd_gregorian_epoch
-    year = jd_to_decimal_year(jd_utc)
-    dt = delta_t(year)
-    jd_tt = jd_utc + dt / @seconds_per_day
-    (jd_tt - @jd_j2000) * @seconds_per_day
-  end
+  defdelegate dynamical_time_from_moment(moment), to: Astro.Time
 
   @doc """
-  Converts TDB seconds past J2000.0 back to a moment (fractional Gregorian
-  days since the epoch).
-
-  Uses a date-dependent ΔT derived from IERS observations.
+  Converts dynamical time to a moment. Delegates to `Astro.Time.dynamical_time_to_moment/1`.
   """
-  @spec et_to_moment(float()) :: float()
-  def et_to_moment(et) do
-    jd_tt = et / @seconds_per_day + @jd_j2000
-    year = jd_to_decimal_year(jd_tt)
-    dt = delta_t(year)
-    jd_utc = jd_tt - dt / @seconds_per_day
-    jd_utc - @jd_gregorian_epoch
-  end
+  defdelegate dynamical_time_to_moment(dynamical_time), to: Astro.Time
 
   @doc """
-  Returns Julian centuries from J2000.0 for the given ET (TDB seconds past J2000).
+  Returns Julian centuries from J2000.0 for the given dynamical time.
+  Delegates to `Astro.Time.julian_centuries_from_dynamical_time/1`.
   """
-  @spec julian_centuries(float()) :: float()
-  def julian_centuries(et) do
-    et / (@seconds_per_day * 36_525.0)
-  end
+  defdelegate julian_centuries_from_dynamical_time(dynamical_time), to: Astro.Time
 
   # ── Precession and nutation (IAU 1980) ───────────────────────────────────────
 
@@ -122,8 +95,8 @@ defmodule Astro.Coordinates do
   """
   @spec icrf_to_true_equator({float(), float(), float()}, float()) ::
           {float(), float(), float()}
-  def icrf_to_true_equator({x, y, z}, et) do
-    t = julian_centuries(et)
+  def icrf_to_true_equator({x, y, z}, dynamical_time) do
+    t = julian_centuries_from_dynamical_time(dynamical_time)
 
     # Precession angles (Lieske 1977), arcseconds → radians
     zeta_a = arcsec_to_rad(2306.2181 * t + 1.39656 * t * t - 0.000139 * t * t * t)
@@ -174,16 +147,16 @@ defmodule Astro.Coordinates do
   Computes Greenwich Apparent Sidereal Time (GAST) in degrees.
 
   Includes the equation of the equinoxes (nutation in RA).
-  `et` is TDB seconds past J2000.0.
+  `dynamical_time` is TDB seconds past J2000.0.
   """
   @spec gast(float()) :: float()
-  def gast(et) do
+  def gast(dynamical_time) do
     # GMST must be computed from UT1 (≈ UTC), not TDB.
-    # et is TDB seconds past J2000.0; subtract ΔT to recover UTC seconds.
-    jd_tt = et / @seconds_per_day + @jd_j2000
+    # dynamical_time is TDB seconds past J2000.0; subtract ΔT to recover UTC seconds.
+    jd_tt = dynamical_time / @seconds_per_day + @jd_j2000
     year = jd_to_decimal_year(jd_tt)
     dt = delta_t(year)
-    jd_utc = (et - dt) / @seconds_per_day + @jd_j2000
+    jd_utc = (dynamical_time - dt) / @seconds_per_day + @jd_j2000
 
     # Julian centuries in UT1 — for the quadratic/cubic polynomial terms.
     t_ut = (jd_utc - @jd_j2000) / 36_525.0
@@ -203,7 +176,7 @@ defmodule Astro.Coordinates do
 
     # Equation of the equinoxes: Δψ · cos(ε), converted to degrees.
     # Nutation uses TDB centuries — consistent with the ephemeris frame.
-    t_tdb = julian_centuries(et)
+    t_tdb = julian_centuries_from_dynamical_time(dynamical_time)
     {dpsi, _deps, eps0} = Earth.nutation(t_tdb)
     eq_eq = dpsi * :math.cos(eps0) * 180.0 / :math.pi()
 

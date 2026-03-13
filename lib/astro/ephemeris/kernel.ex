@@ -9,9 +9,9 @@ defmodule Astro.Ephemeris.Kernel do
 
       {:ok, kernel} = Spk.Kernel.load("priv/de440s.bsp")
       {:ok, seg}    = Spk.Kernel.find_segment(kernel, 301, 3)   # Moon wrt EMB
-      {x, y, z}     = Spk.Kernel.position(kernel, seg, et_seconds)
+      {x, y, z}     = Spk.Kernel.position(kernel, seg, dynamical_time)
 
-  `et_seconds` is TDB seconds past J2000.0 (2000-01-01T12:00:00 TT).
+  `dynamical_time` is TDB seconds past J2000.0 (2000-01-01T12:00:00 TT).
   Returned `{x, y, z}` are in km relative to the segment's centre body.
 
   ## Design notes
@@ -83,17 +83,17 @@ defmodule Astro.Ephemeris.Kernel do
 
   @doc """
   Returns the first segment matching `target` and `centre` NAIF IDs that
-  covers the given `et`, or the first matching segment if `et` is `nil`.
+  covers the given `dynamical_time`, or the first matching segment if `dynamical_time` is `nil`.
   """
   @spec find_segment(integer(), integer(), float() | nil) ::
           {:ok, map()} | {:error, :not_found}
-  def find_segment(target, centre, et \\ nil) do
+  def find_segment(target, centre, dynamical_time \\ nil) do
     %__MODULE__{segments: segs} = ephemeris()
 
     match =
       Enum.find(segs, fn seg ->
         seg.target == target and seg.centre == centre and
-          (is_nil(et) or (et >= seg.start_et and et <= seg.end_et))
+          (is_nil(dynamical_time) or (dynamical_time >= seg.start_et and dynamical_time <= seg.end_et))
       end)
 
     case match do
@@ -103,11 +103,11 @@ defmodule Astro.Ephemeris.Kernel do
   end
 
   @doc """
-  Evaluates a Type 2 segment at TDB epoch `et` (seconds past J2000.0).
+  Evaluates a Type 2 segment at `dynamical_time` (TDB seconds past J2000.0).
   Returns `{x, y, z}` in km relative to the segment's centre body.
   """
   @spec position(map(), float()) :: {float(), float(), float()}
-  def position(segment, et) do
+  def position(segment, dynamical_time) do
     %__MODULE__{data: data, endian: endian} = ephemeris()
 
     %{
@@ -119,8 +119,8 @@ defmodule Astro.Ephemeris.Kernel do
       degree: degree
     } = segment
 
-    # Identify which Chebyshev record covers `et` (0-based index).
-    idx = trunc((et - init_et) / intlen)
+    # Identify which Chebyshev record covers `dynamical_time` (0-based index).
+    idx = trunc((dynamical_time - init_et) / intlen)
     idx = max(0, min(idx, n_records - 1))
 
     # Byte offset of this record in the file.
@@ -134,7 +134,7 @@ defmodule Astro.Ephemeris.Kernel do
     t_half = read_double(rec_bin, 1, endian)
 
     # Normalise time to [-1, +1].
-    s = (et - t_mid) / t_half
+    s = (dynamical_time - t_mid) / t_half
 
     n = degree + 1
     cx = read_doubles_range(rec_bin, 2, n, endian)

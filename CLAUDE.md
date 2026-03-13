@@ -57,7 +57,10 @@ Rise/set functions accept options:
 
 - **Location order**: `{longitude, latitude}` (matching `Geo.Point`). West/south negative.
 - **Angles**: degrees throughout; `to_radians/1` and `to_degrees/1` macros for conversion.
-- **Time scales**: moments (float days since 0000-01-01 epoch), Julian centuries from J2000.0, TDB/ET (seconds past J2000.0 for ephemeris).
+- **Time scales**: moments (float days since 0000-01-01 epoch), Julian centuries from J2000.0, dynamical time (TDB seconds past J2000.0 for ephemeris).
+- Use `Astro.Time.dynamical_time_from_moment/1` to convert a moment to dynamical time (TDB seconds past J2000.0)
+- Use `Astro.Time.dynamical_time_to_moment/1` to convert dynamical time back to a moment
+- Use `Astro.Time.julian_centuries_from_dynamical_time/1` to convert dynamical time to Julian centuries from J2000.0
 - Functions in Astro take time parameters as dates or datetimes
 - Functions in Astro.Solar, Astro.Lunar, Astro.Lunar.MoonRiseSet and Astro.Solar.SunRiseSet all take a **moment** as a time parameter.
 - Functions in Astro validate their arguments and convert their date or datetime arguments into moment timescales. It is these moments that are passed to implementation functions.

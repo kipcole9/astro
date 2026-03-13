@@ -62,29 +62,29 @@ defmodule Astro.Ephemeris do
   def moon_position(%DateTime{} = utc_date_time) do
     utc_date_time
     |> Astro.Time.date_time_to_moment()
-    |> Coordinates.moment_to_et()
-    |> moon_position_et()
+    |> Astro.Time.dynamical_time_from_moment()
+    |> moon_position_dt()
   end
 
   @doc """
-  Computes the apparent geocentric position of the Moon for the given TDB
-  epoch `et` (seconds past J2000.0).
+  Computes the apparent geocentric position of the Moon for the given
+  dynamical time (TDB seconds past J2000.0).
 
   Returns `{:ok, {ra_deg, dec_deg, distance_km}}`.
   """
-  @spec moon_position_et(float()) ::
+  @spec moon_position_dt(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
-  def moon_position_et(et) do
-    with {:ok, seg_moon} <- Kernel.find_segment(@moon_id, @emb_id, et),
-         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, et) do
-      {mx, my, mz} = Kernel.position(seg_moon, et)
-      {ex, ey, ez} = Kernel.position(seg_earth, et)
+  def moon_position_dt(dynamical_time) do
+    with {:ok, seg_moon} <- Kernel.find_segment(@moon_id, @emb_id, dynamical_time),
+         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
+      {mx, my, mz} = Kernel.position(seg_moon, dynamical_time)
+      {ex, ey, ez} = Kernel.position(seg_earth, dynamical_time)
 
       # Moon relative to Earth (geocentric), ICRF/J2000 Cartesian (km)
       geo = {mx - ex, my - ey, mz - ez}
 
       # Rotate to true equator and equinox of date (precession + nutation)
-      apparent = Coordinates.icrf_to_true_equator(geo, et)
+      apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time)
 
       # Convert to spherical coordinates
       {ra, dec, dist} = Coordinates.cartesian_to_spherical(apparent)
@@ -111,31 +111,35 @@ defmodule Astro.Ephemeris do
   @spec sun_position(DateTime.t()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
   def sun_position(%DateTime{} = utc_date_time) do
-    et = utc_date_time |> Astro.Time.date_time_to_moment() |> Coordinates.moment_to_et()
-    sun_position_et(et)
+    dynamical_time =
+      utc_date_time
+      |> Astro.Time.date_time_to_moment()
+      |> Astro.Time.dynamical_time_from_moment()
+
+    sun_position_dt(dynamical_time)
   end
 
   @doc """
-  Computes the apparent geocentric position of the Sun for the given TDB
-  epoch `et` (seconds past J2000.0).
+  Computes the apparent geocentric position of the Sun for the given
+  dynamical time (TDB seconds past J2000.0).
 
   Returns `{:ok, {ra_deg, dec_deg, distance_km}}`.
   """
-  @spec sun_position_et(float()) ::
+  @spec sun_position_dt(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
-  def sun_position_et(et) do
-    with {:ok, seg_sun} <- Kernel.find_segment(@sun_id, @ssb_id, et),
-         {:ok, seg_emb} <- Kernel.find_segment(@emb_id, @ssb_id, et),
-         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, et) do
-      {sx, sy, sz} = Kernel.position(seg_sun, et)
-      {bx, by, bz} = Kernel.position(seg_emb, et)
-      {ex, ey, ez} = Kernel.position(seg_earth, et)
+  def sun_position_dt(dynamical_time) do
+    with {:ok, seg_sun} <- Kernel.find_segment(@sun_id, @ssb_id, dynamical_time),
+         {:ok, seg_emb} <- Kernel.find_segment(@emb_id, @ssb_id, dynamical_time),
+         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
+      {sx, sy, sz} = Kernel.position(seg_sun, dynamical_time)
+      {bx, by, bz} = Kernel.position(seg_emb, dynamical_time)
+      {ex, ey, ez} = Kernel.position(seg_earth, dynamical_time)
 
       # Sun relative to Earth (geocentric), ICRF/J2000 Cartesian (km):
       #   Sun/SSB − (EMB/SSB − Earth/EMB) = Sun/SSB − EMB/SSB + Earth/EMB
       geo = {sx - bx + ex, sy - by + ey, sz - bz + ez}
 
-      apparent = Coordinates.icrf_to_true_equator(geo, et)
+      apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time)
       {ra, dec, dist} = Coordinates.cartesian_to_spherical(apparent)
       {:ok, {ra, dec, dist}}
     end

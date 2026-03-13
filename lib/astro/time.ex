@@ -901,8 +901,66 @@ defmodule Astro.Time do
     end
   end
 
+  # ── Dynamical time / moment conversions ──────────────────────────────────────
+
+  # J2000.0 Julian date (TT): 2000-01-01 12:00:00 TT
+  @jd_j2000 2_451_545.0
+
+  # Offset from Gregorian day 0 (0000-01-01) to JD 0.
+  @jd_gregorian_epoch 1_721_059.5
+
   @doc """
-  Converts an `t:Astro.moment/0` into a `t:NaiveDateTime.t/0`.
+  Converts a moment (fractional Gregorian days since the epoch) to
+  dynamical time (TDB seconds past J2000.0).
+
+  A moment is the time representation used by `Astro.Time` — the number
+  of days (and fractional day) since the Gregorian epoch (0000-01-01).
+  This function applies a date-dependent ΔT to produce the dynamical
+  time expected by the SPK kernel.
+  """
+  @spec dynamical_time_from_moment(float()) :: float()
+  def dynamical_time_from_moment(moment) do
+    jd_utc = moment + @jd_gregorian_epoch
+    year = jd_to_decimal_year(jd_utc)
+    dt = Astro.Coordinates.delta_t(year)
+    jd_tt = jd_utc + dt / @seconds_per_day
+    (jd_tt - @jd_j2000) * @seconds_per_day
+  end
+
+  @doc """
+  Converts dynamical time (TDB seconds past J2000.0) back to a moment
+  (fractional Gregorian days since the epoch).
+
+  Uses a date-dependent ΔT derived from IERS observations.
+  """
+  @spec dynamical_time_to_moment(float()) :: float()
+  def dynamical_time_to_moment(dynamical_time) do
+    jd_tt = dynamical_time / @seconds_per_day + @jd_j2000
+    year = jd_to_decimal_year(jd_tt)
+    dt = Astro.Coordinates.delta_t(year)
+    jd_utc = jd_tt - dt / @seconds_per_day
+    jd_utc - @jd_gregorian_epoch
+  end
+
+  @doc """
+  Returns Julian centuries from J2000.0 for the given dynamical time
+  (TDB seconds past J2000.0).
+  """
+  @spec julian_centuries_from_dynamical_time(float()) :: float()
+  def julian_centuries_from_dynamical_time(dynamical_time) do
+    dynamical_time / (@seconds_per_day * 36_525.0)
+  end
+
+  # Converts a Julian Date to a decimal year (approximate, for ΔT lookup).
+  defp jd_to_decimal_year(jd) do
+    2000.0 + (jd - @jd_j2000) / 365.25
+  end
+
+  @doc """
+  Converts an `t:Astro.moment/0` into a UTC `t:DateTime.t/0`.
+
+  A moment is by definition in the UTC timezone, so the returned
+  DateTime always has `time_zone: "Etc/UTC"`.
 
   ### Arguments
 
@@ -921,7 +979,7 @@ defmodule Astro.Time do
       {:ok, ~U[2026-03-07 23:59:59.913599Z]}
 
   """
-  @spec date_time_from_moment(moment()) :: {:ok, NaiveDateTime.t()}
+  @spec date_time_from_moment(moment()) :: {:ok, DateTime.t()}
 
   def date_time_from_moment(t) do
     days = trunc(t)
@@ -946,13 +1004,14 @@ defmodule Astro.Time do
   end
 
   @doc """
-  Converts a date, datetime or naive datetime to a moment.
+  Converts a date or datetime to a moment.
 
   A moment is a float where the integer part is the number of Gregorian
   days since 0000-01-01 and the fractional part is the fraction of a day
-  since midnight.
+  since midnight. Moments are always in UTC.
 
-  When given a `Date`, returns the integer Gregorian day number (midnight).
+  When given a `DateTime`, it is first shifted to UTC before conversion.
+  When given a `Date`, returns the integer Gregorian day number (midnight UTC).
   """
   @spec date_time_to_moment(Calendar.date() | Calendar.datetime()) :: moment()
 
@@ -964,8 +1023,9 @@ defmodule Astro.Time do
   end
 
   def date_time_to_moment(unquote(Guards.datetime()) = date_time) do
-    %{year: year, month: month, day: day, hour: hour} = date_time
-    %{minute: minute, second: second, microsecond: microsecond} = date_time
+    utc_dt = DateTime.shift_zone!(date_time, "Etc/UTC")
+    %{year: year, month: month, day: day, hour: hour} = utc_dt
+    %{minute: minute, second: second, microsecond: microsecond} = utc_dt
 
     {days, {numerator, denominator}} =
       calendar.naive_datetime_to_iso_days(year, month, day, hour, minute, second, microsecond)

@@ -54,7 +54,7 @@ defmodule Astro.Lunar.MoonRiseSet do
     * `:time_zone_resolver` — 1-arity fn `(%Geo.Point{}) → {:ok, String.t()}`
   """
 
-  alias Astro.{Ephemeris, Coordinates}
+  alias Astro.{Ephemeris, Coordinates, Time}
 
   # WGS-84 geodetic → geocentric latitude conversion factor.
   @geodetic_factor 0.99664719
@@ -136,23 +136,23 @@ defmodule Astro.Lunar.MoonRiseSet do
     limb = Keyword.get(options, :limb, :upper)
 
     # Always use direct ephemeris for the coarse scan
-    direct_fn = fn et -> topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
+    direct_fn = fn dynamical_time -> topocentric_f(dynamical_time, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
 
-    et_midnight = Coordinates.moment_to_et(moment)
-    et_start = et_midnight - @scan_pre_window_s
-    et_end = et_start + @scan_window_s
+    dt_midnight = Time.dynamical_time_from_moment(moment)
+    dt_start = dt_midnight - @scan_pre_window_s
+    dt_end = dt_start + @scan_window_s
 
     # Evaluate f at each scan point.
     scan_pairs =
-      Stream.iterate(et_start, &(&1 + @scan_step_s))
-      |> Stream.take_while(&(&1 <= et_end))
-      |> Enum.map(fn et -> {et, direct_fn.(et)} end)
+      Stream.iterate(dt_start, &(&1 + @scan_step_s))
+      |> Stream.take_while(&(&1 <= dt_end))
+      |> Enum.map(fn dynamical_time -> {dynamical_time, direct_fn.(dynamical_time)} end)
 
     # Collect every bracket with the correct sign-change polarity.
     brackets =
       scan_pairs
       |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.filter(fn [{_et1, f1}, {_et2, f2}] ->
+      |> Enum.filter(fn [{_dt1, f1}, {_dt2, f2}] ->
         case event do
           :rise -> f1 < 0.0 and f2 >= 0.0
           :set -> f1 > 0.0 and f2 <= 0.0
@@ -160,27 +160,27 @@ defmodule Astro.Lunar.MoonRiseSet do
       end)
 
     result =
-      Enum.find_value(brackets, fn [{et_lo, _f_lo}, {et_hi, _f_hi}] ->
+      Enum.find_value(brackets, fn [{dt_lo, _f_lo}, {dt_hi, _f_hi}] ->
         # For Lagrange mode, build an interpolator centred on the bracket
         # midpoint and use it for bisection refinement.
         alt_fn =
           case interpolation do
             :lagrange ->
-              et_mid = (et_lo + et_hi) / 2.0
-              interp = build_lagrange_interpolator(date, et_mid)
-              fn et -> lagrange_topocentric_f(et, interp, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
+              dt_mid = (dt_lo + dt_hi) / 2.0
+              interp = build_lagrange_interpolator(date, dt_mid)
+              fn dynamical_time -> lagrange_topocentric_f(dynamical_time, interp, lat, lng, rho_sin_phi, rho_cos_phi, limb) end
 
             :direct ->
               direct_fn
           end
 
         # Re-evaluate bracket endpoints with the chosen function
-        f_lo_b = alt_fn.(et_lo)
-        f_hi_b = alt_fn.(et_hi)
+        f_lo_b = alt_fn.(dt_lo)
+        f_hi_b = alt_fn.(dt_hi)
 
-        et_event = bisect_with_fn(et_lo, f_lo_b, et_hi, f_hi_b, alt_fn, @bisect_max)
+        dt_event = bisect_with_fn(dt_lo, f_lo_b, dt_hi, f_hi_b, alt_fn, @bisect_max)
 
-        {:ok, utc_dt} = Astro.Time.date_time_from_moment(Coordinates.et_to_moment(et_event))
+        {:ok, utc_dt} = Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event))
 
         case apply_time_zone(utc_dt, location, options) do
           {:ok, local_dt}
@@ -202,22 +202,22 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   # ── Altitude function ────────────────────────────────────────────────────────
 
-  # f(et) = apparent_topocentric_altitude(et) + semi_diameter(et)
+  # f(dynamical_time) = apparent_topocentric_altitude(dynamical_time) + semi_diameter(dynamical_time)
   #
   # The event (rise/set) occurs when f = 0, i.e. when the apparent altitude
   # of the Moon's centre equals −semi_diameter (upper limb on apparent horizon).
   #
   # Positive f: Moon is above the horizon.
   # Negative f: Moon is below the horizon.
-  defp topocentric_f(et, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
-    {:ok, {ra_geo, dec_geo, dist_km}} = Ephemeris.moon_position_et(et)
+  defp topocentric_f(dynamical_time, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
+    {:ok, {ra_geo, dec_geo, dist_km}} = Ephemeris.moon_position_dt(dynamical_time)
 
     semi_diam = :math.asin(@moon_radius_km / dist_km) * 180.0 / :math.pi()
 
     parallax = Ephemeris.equatorial_horizontal_parallax(dist_km)
     sin_pi = :math.sin(to_rad(parallax))
 
-    gast = Coordinates.gast(et)
+    gast = Coordinates.gast(dynamical_time)
     h_geo = fmod(gast + lng - ra_geo, 360.0)
     h_geo = if h_geo > 180.0, do: h_geo - 360.0, else: h_geo
 
@@ -262,22 +262,22 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   # Build a Lagrange interpolator from 3 tabular positions.
   # The tabular points are spaced by @lagrange_interval_s seconds, centred
-  # on the midpoint of the given bracket [et_lo, et_hi].
-  defp build_lagrange_interpolator(_date, et_center) do
+  # on the midpoint of the given bracket [dt_lo, dt_hi].
+  defp build_lagrange_interpolator(_date, dt_center) do
     # Default: centre on 12h UTC of the date
-    et_center = et_center || raise("must provide et_center")
-    et0 = et_center - @lagrange_interval_s
-    et2 = et_center + @lagrange_interval_s
+    dt_center = dt_center || raise("must provide dt_center")
+    dt0 = dt_center - @lagrange_interval_s
+    dt2 = dt_center + @lagrange_interval_s
 
-    {:ok, {ra0, dec0, dist0}} = Ephemeris.moon_position_et(et0)
-    {:ok, {ra1, dec1, dist1}} = Ephemeris.moon_position_et(et_center)
-    {:ok, {ra2, dec2, dist2}} = Ephemeris.moon_position_et(et2)
+    {:ok, {ra0, dec0, dist0}} = Ephemeris.moon_position_dt(dt0)
+    {:ok, {ra1, dec1, dist1}} = Ephemeris.moon_position_dt(dt_center)
+    {:ok, {ra2, dec2, dist2}} = Ephemeris.moon_position_dt(dt2)
 
     # Fix RA discontinuities near 0/360 boundary
     {ra0, ra1, ra2} = fix_ra_wrap(ra0, ra1, ra2)
 
     %{
-      et_center: et_center,
+      dt_center: dt_center,
       interval: @lagrange_interval_s * 1.0,
       ra: {ra0, ra1, ra2},
       dec: {dec0, dec1, dec2},
@@ -294,7 +294,7 @@ defmodule Astro.Lunar.MoonRiseSet do
   end
 
   # Three-point Lagrange quadratic interpolation.
-  # n is the interpolation parameter: n=0 at et_center, n=±1 at the
+  # n is the interpolation parameter: n=0 at dt_center, n=±1 at the
   # adjacent tabular points. Meeus eq 3.3.
   defp lagrange_3pt(n, {y1, y2, y3}) do
     a = y2 - y1
@@ -306,8 +306,8 @@ defmodule Astro.Lunar.MoonRiseSet do
   # Altitude function using Lagrange-interpolated Moon position.
   # This mimics the Meeus Ch.15 approach where the Moon's geocentric
   # RA, Dec, and distance are interpolated from 3 daily tabular points.
-  defp lagrange_topocentric_f(et, interp, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
-    n = (et - interp.et_center) / interp.interval
+  defp lagrange_topocentric_f(dynamical_time, interp, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
+    n = (dynamical_time - interp.dt_center) / interp.interval
 
     ra_geo = lagrange_3pt(n, interp.ra)
     dec_geo = lagrange_3pt(n, interp.dec)
@@ -321,7 +321,7 @@ defmodule Astro.Lunar.MoonRiseSet do
     parallax = Ephemeris.equatorial_horizontal_parallax(dist_km)
     sin_pi = :math.sin(to_rad(parallax))
 
-    gast = Coordinates.gast(et)
+    gast = Coordinates.gast(dynamical_time)
     h_geo = fmod(gast + lng - ra_geo, 360.0)
     h_geo = if h_geo > 180.0, do: h_geo - 360.0, else: h_geo
 
@@ -355,20 +355,20 @@ defmodule Astro.Lunar.MoonRiseSet do
   # ── Bisection ────────────────────────────────────────────────────────────────
 
   # Bisection using a generic altitude function (for :lagrange and :direct modes)
-  defp bisect_with_fn(et_lo, _f_lo, et_hi, _f_hi, _f, 0),
-    do: (et_lo + et_hi) / 2.0
+  defp bisect_with_fn(dt_lo, _f_lo, dt_hi, _f_hi, _f, 0),
+    do: (dt_lo + dt_hi) / 2.0
 
-  defp bisect_with_fn(et_lo, f_lo, et_hi, f_hi, f, iters) do
-    if et_hi - et_lo <= @bisect_tol_s do
-      (et_lo + et_hi) / 2.0
+  defp bisect_with_fn(dt_lo, f_lo, dt_hi, f_hi, f, iters) do
+    if dt_hi - dt_lo <= @bisect_tol_s do
+      (dt_lo + dt_hi) / 2.0
     else
-      et_mid = (et_lo + et_hi) / 2.0
-      f_mid = f.(et_mid)
+      dt_mid = (dt_lo + dt_hi) / 2.0
+      f_mid = f.(dt_mid)
 
       if f_lo * f_mid <= 0.0 do
-        bisect_with_fn(et_lo, f_lo, et_mid, f_mid, f, iters - 1)
+        bisect_with_fn(dt_lo, f_lo, dt_mid, f_mid, f, iters - 1)
       else
-        bisect_with_fn(et_mid, f_mid, et_hi, f_hi, f, iters - 1)
+        bisect_with_fn(dt_mid, f_mid, dt_hi, f_hi, f, iters - 1)
       end
     end
   end
