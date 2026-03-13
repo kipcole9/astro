@@ -195,7 +195,7 @@ defmodule Astro.Lunar do
   @spec lunar_phase_at(t :: Astro.Time.moment()) :: Astro.angle()
 
   def lunar_phase_at(t) when is_number(t) do
-    phi = mod(lunar_longitude(t) - solar_longitude(t), 360)
+    phi = mod(lunar_ecliptic_longitude(t) - solar_ecliptic_longitude(t), 360)
     t0 = nth_new_moon(0)
     n = round((t - t0) / mean_synodic_month())
     phi_prime = deg(360) * mod((t - nth_new_moon(n)) / mean_synodic_month(), 1)
@@ -284,7 +284,7 @@ defmodule Astro.Lunar do
           {Astro.angle(), Astro.angle(), Astro.meters()}
 
   def lunar_position(t) do
-    lambda = lunar_longitude(t)
+    lambda = lunar_ecliptic_longitude(t)
     beta = lunar_latitude(t)
     distance = lunar_distance(t)
 
@@ -371,11 +371,11 @@ defmodule Astro.Lunar do
 
   @doc false
   @doc since: "0.5.0"
-  @spec lunar_longitude(Time.moment()) :: Astro.phase()
+  @spec lunar_ecliptic_longitude(Time.moment()) :: Astro.phase()
 
-  def lunar_longitude(t) do
+  def lunar_ecliptic_longitude(t) do
     c = julian_centuries_from_moment(t)
-    l = mean_lunar_longitude(c)
+    l = mean_lunar_ecliptic_longitude(c)
     d = lunar_elongation(c)
     m = solar_anomaly(c)
     m_prime = lunar_anomaly(c)
@@ -722,7 +722,7 @@ defmodule Astro.Lunar do
 
   def lunar_latitude(t) do
     c = julian_centuries_from_moment(t)
-    l = mean_lunar_longitude(c)
+    l = mean_lunar_ecliptic_longitude(c)
     d = lunar_elongation(c)
     m = solar_anomaly(c)
     m_prime = lunar_anomaly(c)
@@ -1072,7 +1072,7 @@ defmodule Astro.Lunar do
   @spec lunar_altitude(Time.moment(), Geo.PointZ.t()) :: Astro.angle()
 
   def lunar_altitude(t, %Geo.PointZ{coordinates: {psi, phi, _alt}}) do
-    lambda = lunar_longitude(t)
+    lambda = lunar_ecliptic_longitude(t)
     beta = lunar_latitude(t)
     alpha = Astro.right_ascension(t, beta, lambda)
     delta = Astro.declination(t, beta, lambda)
@@ -1722,8 +1722,8 @@ defmodule Astro.Lunar do
   end
 
   @doc false
-  @spec mean_lunar_longitude(c :: Astro.julian_centuries()) :: Astro.angle()
-  def mean_lunar_longitude(c) do
+  @spec mean_lunar_ecliptic_longitude(c :: Astro.julian_centuries()) :: Astro.angle()
+  def mean_lunar_ecliptic_longitude(c) do
     c
     |> poly([218.3164477, 481_267.88123421, -0.0015786, 1 / 538_841.0, -1 / 65_194_000.0])
     |> degrees()
@@ -1766,7 +1766,7 @@ defmodule Astro.Lunar do
     |> degrees()
   end
 
-  defp solar_longitude(t) do
+  defp solar_ecliptic_longitude(t) do
     c = julian_centuries_from_moment(t)
     Astro.Solar.sun_apparent_longitude_alt(c)
   end

@@ -317,7 +317,7 @@ defmodule Astro.Solar do
   and calendar imperfections.
 
   """
-  def solar_longitude(t) do
+  def solar_ecliptic_longitude(t) do
     c = Time.julian_centuries_from_moment(t)
     sun_apparent_longitude(c)
   end
@@ -327,15 +327,15 @@ defmodule Astro.Solar do
   when the solar longitude will be lambda degrees.
 
   """
-  @spec solar_longitude_after(number(), Time.time()) :: Time.time()
+  @spec solar_ecliptic_longitude_after(number(), Time.time()) :: Time.time()
 
-  def solar_longitude_after(lambda, t) do
+  def solar_ecliptic_longitude_after(lambda, t) do
     rate = Time.mean_tropical_year() / deg(360)
-    tau = t + rate * mod(lambda - solar_longitude(t), 360)
+    tau = t + rate * mod(lambda - solar_ecliptic_longitude(t), 360)
     a = max(t, tau - 5)
     b = tau + 5
 
-    Math.invert_angular(&solar_longitude/1, lambda, a, b)
+    Math.invert_angular(&solar_ecliptic_longitude/1, lambda, a, b)
   end
 
   @doc """
@@ -343,10 +343,10 @@ defmodule Astro.Solar do
   when solar longitude just exceeded lambda degrees.
 
   """
-  def estimate_prior_solar_longitude(lambda, t) do
+  def estimate_prior_solar_ecliptic_longitude(lambda, t) do
     rate = Time.mean_tropical_year() / deg(360)
-    tau = t - rate * mod(solar_longitude(t) - lambda, 360)
-    cap_delta = mod(solar_longitude(tau) - lambda + deg(180), 360) - deg(180)
+    tau = t - rate * mod(solar_ecliptic_longitude(t) - lambda, 360)
+    cap_delta = mod(solar_ecliptic_longitude(tau) - lambda + deg(180), 360) - deg(180)
     min(t, tau - rate * cap_delta)
   end
 
