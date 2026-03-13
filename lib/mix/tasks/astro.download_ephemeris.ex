@@ -78,7 +78,13 @@ defmodule Mix.Tasks.Astro.DownloadEphemeris do
   end
 
   defp resolve_dest(nil) do
-    priv_dir = :code.priv_dir(:astro)
+    priv_dir = :code.priv_dir(:astro) |> to_string()
+
+    unless File.dir?(priv_dir) do
+      Mix.shell().info("Creating #{priv_dir}")
+      File.mkdir_p!(priv_dir)
+    end
+
     Path.join(priv_dir, @filename)
   end
 
