@@ -1084,8 +1084,6 @@ defmodule Astro.Time do
     {:ok, DateTime.add(datetime, trunc(minutes * @seconds_per_minute), :second)}
   end
 
-
-
   @doc """
   Returns the Local Mean Time offset in seconds for a given location and time zone.
 
@@ -1159,7 +1157,7 @@ defmodule Astro.Time do
 
   """
   @spec offset_for_zone(moment(), zone_name()) ::
-      {:ok, fraction_of_day()} | {:error, atom()}
+          {:ok, fraction_of_day()} | {:error, atom()}
 
   def offset_for_zone(
         gregorian_seconds,
@@ -1648,10 +1646,10 @@ defmodule Astro.Time do
   end
 
   defp date_time_in_utc(
-        datetime,
-        time_zone \\ @utc_zone,
-        time_zone_database \\ Calendar.get_time_zone_database()
-      ) do
+         datetime,
+         time_zone \\ @utc_zone,
+         time_zone_database \\ Calendar.get_time_zone_database()
+       ) do
     case DateTime.from_naive(datetime, time_zone, time_zone_database) do
       {:ok, datetime} -> {:ok, datetime}
       {:error, error} -> {:error, error}
