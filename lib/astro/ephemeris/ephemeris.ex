@@ -21,8 +21,10 @@ defmodule Astro.Ephemeris do
 
   Load the kernel once at application startup and pass it to all calls:
 
+      # This step is performed automatically at application start
       {:ok, kernel} = Astro.Ephemeris.Kernel.load("priv/de440s.bsp")
-      {:ok, {ra, dec, dist}} = Astro.Ephemeris.moon_position(kernel, utc_dt)
+
+      {:ok, {ra, dec, dist}} = Astro.Ephemeris.moon_position(utc_dt)
 
   ## Accuracy
 
@@ -50,14 +52,27 @@ defmodule Astro.Ephemeris do
   Computes the apparent geocentric position of the Moon for the given
   datetime.
 
-  Returns `{:ok, {ra_deg, dec_deg, distance_km}}` in the true equator and
-  equinox of date (mean equinox with nutation applied), or `{:error, reason}`.
+  Chains the Moon/EMB and Earth/EMB segments from the loaded JPL
+  ephemeris, then applies IAU 1980 precession and nutation to
+  produce coordinates in the true equator and equinox of date.
 
-  `ra_deg` is in [0, 360), `dec_deg` in [-90, 90].
+  ### Arguments
+
+  * `date_time` is a `DateTime` in any time zone (converted
+    internally to a moment and then to dynamical time).
+
+  ### Returns
+
+  * `{:ok, {ra_deg, dec_deg, distance_km}}` where right ascension
+    is in degrees in the range [0, 360), declination is in degrees
+    in the range [-90, 90], and distance is in kilometers.
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
   """
   @doc since: "2.0.0"
   @spec moon_position(DateTime.t()) ::
-          {:ok, {right_asention :: Astro.angle(), float(), float()}} | {:error, term()}
+          {:ok, {right_ascension :: Astro.angle(), float(), float()}} | {:error, term()}
 
   def moon_position(%DateTime{} = date_time) do
     date_time
@@ -68,9 +83,20 @@ defmodule Astro.Ephemeris do
 
   @doc """
   Computes the apparent geocentric position of the Moon for the given
-  dynamical time (TDB seconds past J2000.0).
+  dynamical time.
 
-  Returns `{:ok, {ra_deg, dec_deg, distance_km}}`.
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * `{:ok, {ra_deg, dec_deg, distance_km}}` where right ascension
+    is in degrees in the range [0, 360), declination is in degrees
+    in the range [-90, 90], and distance is in kilometers.
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
   """
   @spec moon_position_dt(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
@@ -96,17 +122,22 @@ defmodule Astro.Ephemeris do
   Computes the apparent geocentric position of the Sun for the given
   datetime.
 
-  Returns `{:ok, {ra_deg, dec_deg, distance_km}}` in the true equator and
-  equinox of date, or `{:error, reason}`.
+  Chains the Sun/SSB, EMB/SSB and Earth/EMB segments from the loaded
+  JPL ephemeris (Sun/SSB − EMB/SSB + Earth/EMB), then applies
+  IAU 1980 precession and nutation.
 
-  ## Segment chaining (DE440s)
+  ### Arguments
 
-  `de440s.bsp` supplies:
-    - Body 10 (Sun) relative to body 0 (Solar System Barycenter, SSB)
-    - Body 3  (EMB) relative to body 0 (SSB)
-    - Body 399 (Earth) relative to body 3 (EMB)
+  * `date_time` is a `DateTime` in any time zone.
 
-  Sun relative to Earth = Sun/SSB − EMB/SSB + Earth/EMB.
+  ### Returns
+
+  * `{:ok, {ra_deg, dec_deg, distance_km}}` where right ascension
+    is in degrees in the range [0, 360), declination is in degrees
+    in the range [-90, 90], and distance is in kilometers.
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
   """
   @spec sun_position(DateTime.t()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
@@ -121,9 +152,20 @@ defmodule Astro.Ephemeris do
 
   @doc """
   Computes the apparent geocentric position of the Sun for the given
-  dynamical time (TDB seconds past J2000.0).
+  dynamical time.
 
-  Returns `{:ok, {ra_deg, dec_deg, distance_km}}`.
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * `{:ok, {ra_deg, dec_deg, distance_km}}` where right ascension
+    is in degrees in the range [0, 360), declination is in degrees
+    in the range [-90, 90], and distance is in kilometers.
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
   """
   @spec sun_position_dt(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
@@ -146,11 +188,20 @@ defmodule Astro.Ephemeris do
   end
 
   @doc """
-  Returns the equatorial horizontal parallax (degrees) for the given
-  geocentric distance in km.
+  Returns the equatorial horizontal parallax for a given geocentric
+  distance.
 
-  π = asin(R_earth / distance)
-  where R_earth = 6378.137 km (WGS-84 equatorial radius).
+  Computed as `asin(R_earth / distance)` using the WGS-84
+  equatorial radius of 6378.137 km.
+
+  ### Arguments
+
+  * `distance_km` is the geocentric distance in kilometers.
+
+  ### Returns
+
+  * The equatorial horizontal parallax in degrees.
+
   """
   @spec equatorial_horizontal_parallax(float()) :: float()
   def equatorial_horizontal_parallax(distance_km) do

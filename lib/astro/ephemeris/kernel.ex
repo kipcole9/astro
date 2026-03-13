@@ -5,22 +5,25 @@ defmodule Astro.Ephemeris.Kernel do
   Supports Type 2 segments (Chebyshev position polynomials), which is the
   type used for planetary and lunar positions in DE440s and related files.
 
-  ## Usage
+  ### Usage
 
-      {:ok, kernel} = Astro.Ephemeris.Kernel("priv/de440s.bsp")
-      {:ok, seg}    = Astro.Ephemeris.Kernel.find_segment(kernel, 301, 3)   # Moon wrt EMB
-      {x, y, z}     = Astro.Ephemeris.Kernel.position(kernel, seg, dynamical_time)
+      # This step is performed automatically at application start
+      {:ok, kernel} = Astro.Ephemeris.Kernel.load("priv/de440s.bsp")
+
+      # Moon wrt EMB
+      {:ok, seg} = Astro.Ephemeris.Kernel.find_segment(301, 3)
+      {x, y, z} = Astro.Ephemeris.Kernel.position(seg, dynamical_time)
 
   `dynamical_time` is TDB seconds past J2000.0 (2000-01-01T12:00:00 TT).
   Returned `{x, y, z}` are in km relative to the segment's centre body.
 
-  ## Design notes
+  ### Design notes
 
   The full file binary is stored inside the kernel struct so that
   `position/3` does not re-read the file on every call. For a 32 MB
   DE440s file this avoids ~thousands of disk reads per rise/set computation.
 
-  ## DAF/SPK Type 2 format
+  ### DAF/SPK Type 2 format
 
   A DAF (Double Precision Array File) consists of 1024-byte records.
   Record 1 is the file header. Subsequent records form a comment area
@@ -40,9 +43,6 @@ defmodule Astro.Ephemeris.Kernel do
     [t_mid, t_half, cx_0..cx_d, cy_0..cy_d, cz_0..cz_d]
   ```
   where `d = degree = (rsize - 2) / 3 - 1`.
-
-  Download the data from https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
-  and place it in priv/
 
   """
   alias Astro.Math
@@ -64,6 +64,27 @@ defmodule Astro.Ephemeris.Kernel do
 
   # ── Public API ──────────────────────────────────────────────────────────────
 
+  @doc """
+  Loads and parses a JPL DE-series SPK binary ephemeris file.
+
+  The entire file is read into memory and all Type 2 segment
+  descriptors are extracted so that subsequent `position/2` calls
+  do not require disk I/O.
+
+  ### Arguments
+
+  * `path` is the filesystem path to a DAF/SPK file
+    (e.g. `"priv/de440s.bsp"`).
+
+  ### Returns
+
+  * `{:ok, kernel}` where `kernel` is an `Astro.Ephemeris.Kernel`
+    struct containing the parsed segments and the raw binary data.
+
+  * `{:error, reason}` if the file cannot be read or is not a
+    valid DAF/SPK file.
+
+  """
   @spec load(Path.t()) :: {:ok, t()} | {:error, term()}
   def load(path) do
     with {:ok, data} <- File.read(path),
@@ -74,6 +95,17 @@ defmodule Astro.Ephemeris.Kernel do
     end
   end
 
+  @doc """
+  Returns the loaded ephemeris kernel from `:persistent_term` storage.
+
+  The kernel is loaded at application start by `Astro.Application`
+  and stored under `ephemeris_key/0`.
+
+  ### Returns
+
+  * An `Astro.Ephemeris.Kernel` struct.
+
+  """
   def ephemeris do
     :persistent_term.get(@ephemeris_key)
   end
@@ -84,8 +116,30 @@ defmodule Astro.Ephemeris.Kernel do
   end
 
   @doc """
-  Returns the first segment matching `target` and `centre` NAIF IDs that
-  covers the given `dynamical_time`, or the first matching segment if `dynamical_time` is `nil`.
+  Finds the first segment matching `target` and `centre` NAIF IDs.
+
+  If `dynamical_time` is provided, only segments whose time span
+  covers the given instant are considered. If `nil` (the default),
+  the first matching segment regardless of time span is returned.
+
+  ### Arguments
+
+  * `target` is the NAIF body ID of the target body
+    (e.g. `301` for the Moon).
+
+  * `centre` is the NAIF body ID of the centre body
+    (e.g. `3` for the Earth–Moon Barycenter).
+
+  * `dynamical_time` is TDB seconds past J2000.0, or `nil`
+    to match any time span. Defaults to `nil`.
+
+  ### Returns
+
+  * `{:ok, segment}` where `segment` is a map describing the
+    matching Type 2 segment.
+
+  * `{:error, :not_found}` if no matching segment exists.
+
   """
   @spec find_segment(integer(), integer(), float() | nil) ::
           {:ok, map()} | {:error, :not_found}
@@ -106,8 +160,23 @@ defmodule Astro.Ephemeris.Kernel do
   end
 
   @doc """
-  Evaluates a Type 2 segment at `dynamical_time` (TDB seconds past J2000.0).
-  Returns `{x, y, z}` in km relative to the segment's centre body.
+  Evaluates a Type 2 Chebyshev segment at the given dynamical time.
+
+  Reads the appropriate Chebyshev record from the in-memory kernel
+  data, normalizes the time argument to [-1, +1], and evaluates the
+  polynomial for each Cartesian axis.
+
+  ### Arguments
+
+  * `segment` is a segment map as returned by `find_segment/3`.
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * `{x, y, z}` position in kilometers relative to the segment's
+    centre body.
+
   """
   @spec position(map(), float()) :: {float(), float(), float()}
   def position(segment, dynamical_time) do
