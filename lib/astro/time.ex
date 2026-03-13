@@ -78,7 +78,7 @@ defmodule Astro.Time do
   solar-system calculations at Earth's distance, TT ≈ TDB to within
   ~1.7 ms, and Astro treats them as identical.
 
-  The `DateTime` conversion `utc_datetime_from_dynamical_datetime/1`
+  The `DateTime` conversion `utc_date_time_from_dynamical_date_time/1`
   delegates to `universal_from_dynamical/1` internally.
 
   ### Sidereal Time
@@ -146,7 +146,7 @@ defmodule Astro.Time do
   Day boundaries fall at noon, not midnight — JD 2451545.0 corresponds
   to 2000-01-01 12:00:00 TT.
 
-  Functions: `julian_day_from_date/1`, `datetime_from_julian_days/1`,
+  Functions: `julian_day_from_date/1`, `date_time_from_julian_days/1`,
   `date_from_julian_days/1`.
 
   ### J2000.0
@@ -802,15 +802,15 @@ defmodule Astro.Time do
 
   ### Examples
 
-      iex> Astro.Time.datetime_from_julian_days(2458822.5)
+      iex> Astro.Time.date_time_from_julian_days(2458822.5)
       {:ok, ~U[2019-12-05 00:00:00Z]}
 
-      iex> Astro.Time.datetime_from_julian_days(2451545.0)
+      iex> Astro.Time.date_time_from_julian_days(2451545.0)
       {:ok, ~U[2000-01-01 12:00:00Z]}
 
   """
-  @spec datetime_from_julian_days(julian_days()) :: {:ok, Calendar.datetime()}
-  def datetime_from_julian_days(julian_days) when is_float(julian_days) do
+  @spec date_time_from_julian_days(julian_days()) :: {:ok, Calendar.datetime()}
+  def date_time_from_julian_days(julian_days) when is_float(julian_days) do
     z = trunc(julian_days + 0.5)
     f = julian_days + 0.5 - z
 
@@ -841,7 +841,7 @@ defmodule Astro.Time do
     {:ok, time} = Time.new(hours, minutes, seconds)
     {:ok, naive_datetime} = NaiveDateTime.new(date, time)
 
-    datetime_in_utc(naive_datetime)
+    date_time_in_utc(naive_datetime)
   end
 
   @doc """
@@ -898,14 +898,14 @@ defmodule Astro.Time do
 
   ### Examples
 
-      iex> {:ok, dyn} = Astro.Time.datetime_from_julian_days(2451545.0)
-      iex> {:ok, utc} = Astro.Time.utc_datetime_from_dynamical_datetime(dyn)
+      iex> {:ok, dyn} = Astro.Time.date_time_from_julian_days(2451545.0)
+      iex> {:ok, utc} = Astro.Time.utc_date_time_from_dynamical_date_time(dyn)
       iex> DateTime.truncate(utc, :second)
       ~U[2000-01-01 11:58:56Z]
 
   """
-  @spec utc_datetime_from_dynamical_datetime(Calendar.datetime()) :: {:ok, Calendar.datetime()}
-  def utc_datetime_from_dynamical_datetime(datetime) do
+  @spec utc_date_time_from_dynamical_date_time(Calendar.datetime()) :: {:ok, Calendar.datetime()}
+  def utc_date_time_from_dynamical_date_time(datetime) do
     dyn_moment = date_time_to_moment(datetime)
     utc_moment = universal_from_dynamical(dyn_moment)
     date_time_from_moment(utc_moment)
@@ -954,16 +954,16 @@ defmodule Astro.Time do
 
   ### Examples
 
-      iex> {:ok, dt} = Astro.Time.hours_and_date_to_datetime(12.0, ~D[2024-06-21])
+      iex> {:ok, dt} = Astro.Time.hours_and_date_to_date_time(12.0, ~D[2024-06-21])
       iex> DateTime.truncate(dt, :second)
       ~U[2024-06-21 12:00:00Z]
 
   """
-  @spec hours_and_date_to_datetime(hours(), Calendar.date()) :: {:ok, Calendar.datetime()}
-  def hours_and_date_to_datetime(time_of_day, %{year: year, month: month, day: day}) do
+  @spec hours_and_date_to_date_time(hours(), Calendar.date()) :: {:ok, Calendar.datetime()}
+  def hours_and_date_to_date_time(time_of_day, %{year: year, month: month, day: day}) do
     with {hours, minutes, seconds} <- hours_to_hms(time_of_day),
          {:ok, naive_datetime} <- NaiveDateTime.new(year, month, day, hours, minutes, seconds, 0) do
-      datetime_in_utc(naive_datetime)
+      date_time_in_utc(naive_datetime)
     end
   end
 
@@ -1073,14 +1073,14 @@ defmodule Astro.Time do
 
   ### Examples
 
-      iex> Astro.Time.datetime_from_date_and_minutes(720.0, ~D[2024-06-21])
+      iex> Astro.Time.date_time_from_date_and_minutes(720.0, ~D[2024-06-21])
       {:ok, ~U[2024-06-21 12:00:00Z]}
 
   """
-  @spec datetime_from_date_and_minutes(minutes(), Calendar.date()) :: {:ok, Calendar.datetime()}
-  def datetime_from_date_and_minutes(minutes, date) do
+  @spec date_time_from_date_and_minutes(minutes(), Calendar.date()) :: {:ok, Calendar.datetime()}
+  def date_time_from_date_and_minutes(minutes, date) do
     {:ok, naive_datetime} = NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0)
-    {:ok, datetime} = datetime_in_utc(naive_datetime)
+    {:ok, datetime} = date_time_in_utc(naive_datetime)
     {:ok, DateTime.add(datetime, trunc(minutes * @seconds_per_minute), :second)}
   end
 
@@ -1259,11 +1259,11 @@ defmodule Astro.Time do
       iex> utc = ~U[2024-06-21 12:00:00Z]
       iex> location = %Geo.PointZ{coordinates: {0.0, 51.5, 0.0}}
       iex> options = %{time_zone: :utc, time_zone_database: Tz.TimeZoneDatabase}
-      iex> Astro.Time.datetime_in_requested_zone(utc, location, options)
+      iex> Astro.Time.date_time_in_requested_zone(utc, location, options)
       {:ok, ~U[2024-06-21 12:00:00Z]}
 
   """
-  def datetime_in_requested_zone(utc_event_time, location, options) do
+  def date_time_in_requested_zone(utc_event_time, location, options) do
     %{time_zone_database: time_zone_database} = options
 
     case Map.fetch!(options, :time_zone) do
@@ -1626,7 +1626,7 @@ defmodule Astro.Time do
              seconds,
              {microseconds, 6}
            ) do
-      datetime_in_utc(naive)
+      date_time_in_utc(naive)
     end
   end
 
@@ -1700,7 +1700,7 @@ defmodule Astro.Time do
   end
 
   @doc false
-  def datetime_in_utc(
+  def date_time_in_utc(
         datetime,
         time_zone \\ @utc_zone,
         time_zone_database \\ Calendar.get_time_zone_database()

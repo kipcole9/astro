@@ -1013,7 +1013,7 @@ defmodule Astro do
 
     julian_centuries
     |> Solar.solar_noon_utc(-longitude)
-    |> Time.datetime_from_date_and_minutes(date)
+    |> Time.date_time_from_date_and_minutes(date)
   end
 
   @doc """

@@ -12,6 +12,8 @@ This is the changelog for Astro version 2.0.0 released on ______.  For older cha
 
 * Rename `Astro.Time.utc_datetime_from_terrestrial_datetime/1` to `Astro.Time.utc_datetime_from_dynamical_datetime/1` to reflect the standard "dynamical time" terminology used in modern astronomical references.
 
+* Rename functions in `Astro.Time` that had names including "datetime" and consistently use the form "date_time".
+
 * `Astro.Time.offset_for_zone/2` now returns `{:ok, offset}` or raises if there is an error resolving an offset. That can happen if the time zone is unknown, if there is no time in the zone or if the result is ambiguous due to DST shift.
 
 * `Astro.obliquity/0` now returns its value in degrees (was previously radians). The only impact is to code that directly calls this function.

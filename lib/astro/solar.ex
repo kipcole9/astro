@@ -791,8 +791,8 @@ defmodule Astro.Solar do
     s = periodic24(t)
     jde = jde0 + 0.00001 * s / dl
 
-    {:ok, tdt} = Time.datetime_from_julian_days(jde)
-    Time.utc_datetime_from_dynamical_datetime(tdt)
+    {:ok, tdt} = Time.date_time_from_julian_days(jde)
+    Time.utc_date_time_from_dynamical_date_time(tdt)
   end
 
   defp initial_estimate(year, event) do
