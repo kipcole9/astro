@@ -64,6 +64,10 @@ defmodule Astro do
   * `date_time_lunar_phase_at_or_before/2`
   * `date_time_lunar_phase_at_or_after/2`
 
+  ### Crescent visibility
+
+  * `new_visible_crescent/3` — predict visibility of the new crescent moon
+
   ### Equinoxes and solstices
 
   * `equinox/2` — March or September equinox
@@ -1015,6 +1019,145 @@ defmodule Astro do
 
   def moonset(location, date, options) when is_list(options) do
     Lunar.MoonRiseSet.moonset(location, date_to_moment(date), options)
+  end
+
+  @doc """
+  Predicts the visibility of the new crescent moon at a given location
+  on a given date using one of three published criteria.
+
+  At the optimal observation time after sunset, the function evaluates
+  the geometric and photometric conditions to classify the crescent
+  into one of five visibility categories.
+
+  ### Arguments
+
+  * `location` is the latitude, longitude and optionally elevation for
+    the observation site. It can be expressed as:
+
+    * `{lng, lat}` - a tuple with longitude and latitude as floating
+      point numbers. **Note** the order of the arguments.
+
+    * a `t:Geo.Point.t/0` struct to represent a location without elevation.
+
+    * a `t:Geo.PointZ.t/0` struct to represent a location and elevation.
+
+  * `date` is a `t:Date.t/0` or `t:DateTime.t/0` indicating the evening
+    on which crescent visibility is to be evaluated.
+
+  * `method` selects the prediction criterion. Default `:odeh`.
+
+    * `:odeh` — Odeh (2006). Empirical criterion based on 737 observations.
+      Uses topocentric ARCV with a Danjon limit of 6.4°. The most widely
+      used modern criterion.
+
+    * `:yallop` — Yallop (1997). Empirical criterion based on 295
+      observations. Uses geocentric ARCV. The original single-parameter
+      approach that Odeh later refined.
+
+    * `:schaefer` — Schaefer (1988/2000). Physics-based model computing
+      the contrast between crescent brightness and twilight sky brightness
+      against the human contrast detection threshold. The best observation
+      time is found by scanning from sunset to moonset.
+
+  ### Options
+
+  When `method` is `:schaefer`, the following options are accepted as
+  an optional fourth argument (a keyword list):
+
+  * `:extinction` — V-band zenith extinction coefficient. Default `0.172`
+    (clean sea-level site). Typical values: `0.12` (high mountain),
+    `0.17` (sea level), `0.25` (hazy conditions).
+
+  ### Returns
+
+  * `{:ok, visibility}` where `visibility` is one of:
+
+    * `:A` — Visible to the naked eye.
+
+    * `:B` — Visible with optical aid.
+
+    * `:C` — May need optical aid.
+
+    * `:D` — Not visible with optical aid.
+
+    * `:E` — Not visible.
+
+  * `{:error, :no_sunset}` if no sunset occurs on the given date at
+    the given location (e.g. polar day).
+
+  ### Method comparison
+
+  | Aspect | Yallop (1997) | Odeh (2006) | Schaefer (1988/2000) |
+  |--------|---------------|-------------|----------------------|
+  | Basis | Empirical polynomial | Empirical polynomial | Physical model |
+  | Observations | 295 | 737 | N/A (theory) |
+  | ARCV type | Geocentric | Topocentric | N/A |
+  | Best time | Sunset + 4/9 lag | Sunset + 4/9 lag | Scanned (max Rs) |
+  | Atmosphere | Not modelled | Not modelled | Extinction coefficient |
+
+  ### Examples
+
+      iex> location = {-0.1275, 51.5072}
+      iex> Astro.new_visible_crescent(location, ~D[2025-03-31])
+      {:ok, :A}
+
+      iex> location = {-0.1275, 51.5072}
+      iex> Astro.new_visible_crescent(location, ~D[2025-03-31], :yallop)
+      {:ok, :A}
+
+  """
+  @doc since: "2.1.0"
+  @type method :: :odeh | :yallop | :schaefer
+
+  @spec new_visible_crescent(location(), date(), method()) ::
+          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset}
+
+  def new_visible_crescent(location, date, method \\ :odeh)
+
+  def new_visible_crescent(location, date, :yallop) do
+    moment = Time.date_time_to_moment(date)
+    normalized = Location.normalize_location(location)
+    Lunar.CrescentVisibility.yallop_new_visible_crescent(normalized, moment)
+  end
+
+  def new_visible_crescent(location, date, :odeh) do
+    moment = Time.date_time_to_moment(date)
+    normalized = Location.normalize_location(location)
+    Lunar.CrescentVisibility.odeh_new_visible_crescent(normalized, moment)
+  end
+
+  def new_visible_crescent(location, date, :schaefer) do
+    moment = Time.date_time_to_moment(date)
+    normalized = Location.normalize_location(location)
+    Lunar.CrescentVisibility.schaefer_new_visible_crescent(normalized, moment)
+  end
+
+  @doc """
+  Same as `new_visible_crescent/3` with `method: :schaefer` but
+  accepts additional atmospheric options.
+
+  See `new_visible_crescent/3` for full documentation.
+
+  ### Options
+
+  * `:extinction` — V-band zenith extinction coefficient. Default `0.172`.
+
+  ### Example
+
+      iex> location = {39.8579, 21.3891}
+      iex> {:ok, visibility} = Astro.new_visible_crescent(location, ~D[2025-03-31], :schaefer, extinction: 0.25)
+      iex> visibility in [:A, :B, :C, :D, :E]
+      true
+
+  """
+  @doc since: "2.1.0"
+  @spec new_visible_crescent(location(), date(), :schaefer, keyword()) ::
+          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset}
+
+  def new_visible_crescent(location, date, :schaefer, options) when is_list(options) do
+    moment = Time.date_time_to_moment(date)
+    normalized = Location.normalize_location(location)
+    Lunar.CrescentVisibility.schaefer_new_visible_crescent(normalized, moment, options)
   end
 
   @doc """

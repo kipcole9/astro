@@ -1,5 +1,21 @@
 # Changelog
 
+## Astro version 2.1.0
+
+This is the changelog for Astro version 2.1.0 released on March 19th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Enhancements
+
+* Add `Astro.new_visible_crescent/3` to predict the visibility of the new crescent moon at a given location on a given date. Three published criteria are supported via the `method` argument:
+
+  * `:odeh` (default) — Odeh (2006) empirical criterion based on 737 observations using topocentric ARCV and a Danjon limit of 6.4°.
+
+  * `:yallop` — Yallop (1997) empirical criterion based on 295 observations using geocentric ARCV.
+
+  * `:schaefer` — Schaefer (1988/2000) physics-based model computing the contrast between crescent brightness and twilight sky brightness against the human contrast detection threshold.
+
+* Add `Astro.new_visible_crescent/4` accepting atmospheric options for the Schaefer method (`:extinction` parameter).
+
 ## Astro version 2.0.0
 
 This is the changelog for Astro version 2.0.0 released on March 14th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
