@@ -1474,6 +1474,9 @@ defmodule Astro do
 
         Code.ensure_loaded?(Tz.TimeZoneDatabase) ->
           Tz.TimeZoneDatabase
+
+        true ->
+          nil
       end
 
     [

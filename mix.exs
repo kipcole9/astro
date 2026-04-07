@@ -61,11 +61,11 @@ defmodule Astro.MixProject do
   end
 
   defp extra_applications(:dev) do
-    [:logger, :observer, :wx]
+    [:logger, :inets, :ssl, :public_key, :observer, :wx]
   end
 
   defp extra_applications(_) do
-    [:logger]
+    [:logger, :inets, :ssl, :public_key]
   end
 
   defp package do

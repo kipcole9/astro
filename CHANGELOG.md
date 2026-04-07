@@ -4,6 +4,12 @@
 
 This is the changelog for Astro version 2.1.0 released on April 7th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
+### Bug Fixes
+
+* Fix application startup when neither `:tz` nor `:tzdata` is configured. `Astro.default_options/0` now falls back to `time_zone_database: nil` instead of raising `CondClauseError`. Calls that do not require a time zone database (e.g. `time_zone: :utc`) now work without any time zone library installed.
+
+* Fix `Astro.Supervisor.start_link/2` to gracefully handle the case where `:tz_world` is not installed. Previously the supervisor unconditionally referenced `TzWorld.Backend.DetsWithIndexCache` and crashed at startup when the optional dependency was missing.
+
 ### Enhancements
 
 * Add `Astro.new_visible_crescent/3` to predict the visibility of the new crescent moon at a given location on a given date. Three published criteria are supported via the `method` argument:
@@ -15,6 +21,8 @@ This is the changelog for Astro version 2.1.0 released on April 7th, 2026.  For 
   * `:schaefer` — Schaefer (1988/2000) physics-based model computing the contrast between crescent brightness and twilight sky brightness against the human contrast detection threshold.
 
 * Add `Astro.new_visible_crescent/4` accepting atmospheric options for the Schaefer method (`:extinction` parameter).
+
+* Add `Astro.Ephemeris.Downloader` which automatically downloads the JPL DE440s ephemeris file (~32 MB) from NASA NAIF on first application start and caches it under the user cache directory. The download URL and cache path can be overridden with the `:ephemeris_url` and `:ephemeris` application environment keys. If the download fails, `Astro.Application.start/2` now returns a clear error message explaining how to install the file manually.
 
 ## Astro version 2.0.0
 
