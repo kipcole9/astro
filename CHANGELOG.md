@@ -2,7 +2,7 @@
 
 ## Astro version 2.1.0
 
-This is the changelog for Astro version 2.1.0 released on March 19th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 2.1.0 released on April 7th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Enhancements
 
