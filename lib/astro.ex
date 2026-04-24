@@ -108,6 +108,21 @@ defmodule Astro do
   @type date :: Calendar.date() | Calendar.datetime()
   @type options :: keyword()
 
+  # Selects the preferred time zone database at compile time based on which
+  # optional dependency (`:tzdata` or `:tz`) is available. The `:elixir`
+  # `:time_zone_database` application config still takes precedence at
+  # runtime — see `default_options/0`.
+  @compile_time_time_zone_db (cond do
+                                Code.ensure_loaded?(Tzdata.TimeZoneDatabase) ->
+                                  Tzdata.TimeZoneDatabase
+
+                                Code.ensure_loaded?(Tz.TimeZoneDatabase) ->
+                                  Tz.TimeZoneDatabase
+
+                                true ->
+                                  nil
+                              end)
+
   defguard is_lunar_phase(phase) when phase >= 0.0 and phase <= 360.0
 
   @doc """
@@ -1465,19 +1480,7 @@ defmodule Astro do
   @doc false
   def default_options do
     default_time_zone_db =
-      cond do
-        Application.get_env(:elixir, :time_zone_database) ->
-          Application.get_env(:elixir, :time_zone_database)
-
-        Code.ensure_loaded?(Tzdata.TimeZoneDatabase) ->
-          Tzdata.TimeZoneDatabase
-
-        Code.ensure_loaded?(Tz.TimeZoneDatabase) ->
-          Tz.TimeZoneDatabase
-
-        true ->
-          nil
-      end
+      Application.get_env(:elixir, :time_zone_database) || @compile_time_time_zone_db
 
     [
       solar_elevation: Solar.solar_elevation(:geometric),

@@ -15,15 +15,14 @@ defmodule Astro.Supervisor do
   supervisor called Astro.Supervisor.
 
   """
-  def start_link(_type \\ [], _args \\ []) do
-    children =
-      if Code.ensure_loaded?(TzWorld.Backend.DetsWithIndexCache) do
-        [TzWorld.Backend.DetsWithIndexCache]
-      else
-        []
-      end
+  if Code.ensure_loaded?(TzWorld.Backend.DetsWithIndexCache) do
+    @tz_world_backend [TzWorld.Backend.DetsWithIndexCache]
+  else
+    @tz_world_backend []
+  end
 
+  def start_link(_type \\ [], _args \\ []) do
     opts = [strategy: :one_for_one, name: Astro.Supervisor]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(@tz_world_backend, opts)
   end
 end

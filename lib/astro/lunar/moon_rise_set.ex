@@ -635,10 +635,10 @@ defmodule Astro.Lunar.MoonRiseSet do
     resolver.(%Geo.Point{coordinates: {lng, lat}})
   end
 
-  defp default_resolver(point) do
-    if Code.ensure_loaded?(TzWorld),
-      do: TzWorld.timezone_at(point),
-      else: {:error, :time_zone_not_resolved}
+  if Code.ensure_loaded?(TzWorld) do
+    defp default_resolver(point), do: TzWorld.timezone_at(point)
+  else
+    defp default_resolver(_point), do: {:error, :time_zone_not_resolved}
   end
 
   defp shift_zone(utc_dt, tz, :configured), do: DateTime.shift_zone(utc_dt, tz)

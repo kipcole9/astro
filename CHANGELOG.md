@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 2.1.1
+
+This is the changelog for Astro version 2.1.1 released on April 25th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Properly ensure `tz_world` is actually optional.
+
 ## Astro version 2.1.0
 
 This is the changelog for Astro version 2.1.0 released on April 7th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
