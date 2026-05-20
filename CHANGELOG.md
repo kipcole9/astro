@@ -1,5 +1,17 @@
 # Changelog
 
+## Astro version 2.2.0
+
+This is the changelog for Astro version 2.2.0 released on May 21st, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Recover from unwriteable ephemeric download directory by attempting to write to `/temp/astro`
+
+### Enhancements
+
+* Improve logging for the ephemeric downloading events to aid debugging.
+
 ## Astro version 2.1.1
 
 This is the changelog for Astro version 2.1.1 released on April 25th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
