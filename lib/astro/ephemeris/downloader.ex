@@ -9,15 +9,20 @@ defmodule Astro.Ephemeris.Downloader do
   ### Cache location
 
   By default the file is cached under the user cache directory as
-  resolved by `:filename.basedir(:user_cache, "astro")`. The location
-  can be overridden by setting the `:ephemeris` application environment
-  key:
+  resolved by `:filename.basedir(:user_cache, "astro")`. If that
+  directory cannot be created (for example, the OS user has no
+  writable home directory — a common situation for service accounts
+  in containers), Astro falls back to `<System.tmp_dir!()>/astro` and
+  logs a warning. The cache location can be overridden by setting
+  the `:ephemeris` application environment key:
 
       config :astro,
         ephemeris: "/path/to/de440s.bsp"
 
   When the configured path already contains a valid ephemeris file no
-  download is performed.
+  download is performed. Setting an explicit path is the recommended
+  approach for production deployments, since the user-cache fallback
+  to `tmp` is ephemeral.
 
   ### Source URL
 
@@ -48,6 +53,9 @@ defmodule Astro.Ephemeris.Downloader do
 
   * The user cache directory as resolved by
     `:filename.basedir(:user_cache, "astro")`.
+
+  * `<System.tmp_dir!()>/astro` if the user cache directory cannot
+    be created.
 
   ### Returns
 
@@ -88,8 +96,10 @@ defmodule Astro.Ephemeris.Downloader do
   @spec ensure_ephemeris(String.t()) :: {:ok, String.t()} | {:error, term()}
   def ensure_ephemeris(path) do
     if File.exists?(path) do
+      Logger.info("[Astro] Ephemeris file present at #{path}; no download required.")
       {:ok, path}
     else
+      Logger.info("[Astro] Ephemeris file not found at #{path}; will download.")
       download(path)
     end
   end
@@ -109,20 +119,45 @@ defmodule Astro.Ephemeris.Downloader do
   * `{:ok, path}` on success.
 
   * `{:error, reason}` if the download failed. `reason` is a tuple
-    describing the failure, e.g. `{:http_status, 404}` or an `:httpc`
+    describing the failure, e.g. `{:http_status, 404}`,
+    `{:cache_dir_unwritable, dir, posix_reason}`, or an `:httpc`
     error term.
 
   """
   @spec download(String.t()) :: {:ok, String.t()} | {:error, term()}
   def download(path) do
     url = Application.get_env(:astro, :ephemeris_url, @default_url)
+    dir = Path.dirname(path)
 
-    File.mkdir_p!(Path.dirname(path))
+    with :ok <- ensure_directory(dir) do
+      do_download(path, url)
+    end
+  end
 
-    Logger.info(
-      "[Astro] Ephemeris file not found at #{path}. " <>
-        "Downloading ~32 MB from #{url} (one-time)."
-    )
+  defp ensure_directory(dir) do
+    if File.dir?(dir) do
+      :ok
+    else
+      Logger.info("[Astro] Creating ephemeris cache directory #{dir}.")
+
+      case File.mkdir_p(dir) do
+        :ok ->
+          :ok
+
+        {:error, reason} ->
+          Logger.error(
+            "[Astro] Could not create ephemeris cache directory #{dir}: " <>
+              "#{:file.format_error(reason)}. Set `config :astro, ephemeris: " <>
+              "\"/path/to/de440s.bsp\"` to a writable location."
+          )
+
+          {:error, {:cache_dir_unwritable, dir, reason}}
+      end
+    end
+  end
+
+  defp do_download(path, url) do
+    Logger.info("[Astro] Downloading ephemeris (~32 MB) from #{url} to #{path}.")
 
     {:ok, _} = Application.ensure_all_started(:inets)
     {:ok, _} = Application.ensure_all_started(:ssl)
@@ -139,20 +174,48 @@ defmodule Astro.Ephemeris.Downloader do
 
     case :httpc.request(:get, request, http_options, options) do
       {:ok, :saved_to_file} ->
-        Logger.info("[Astro] Ephemeris saved to #{path}")
+        Logger.info("[Astro] Ephemeris saved to #{path}.")
         {:ok, path}
 
       {:ok, {{_version, status, _phrase}, _headers, _body}} ->
         _ = File.rm(path)
+        Logger.error("[Astro] Ephemeris download failed: HTTP #{status} from #{url}.")
         {:error, {:http_status, status}}
 
       {:error, reason} ->
         _ = File.rm(path)
+
+        Logger.error(
+          "[Astro] Ephemeris download from #{url} failed: #{inspect(reason)}."
+        )
+
         {:error, reason}
     end
   end
 
   defp cache_dir do
+    primary = primary_cache_dir()
+
+    case File.mkdir_p(primary) do
+      :ok ->
+        primary
+
+      {:error, reason} ->
+        fallback = Path.join(System.tmp_dir!(), "astro")
+
+        Logger.warning(
+          "[Astro] Default cache directory #{primary} could not be created " <>
+            "(#{:file.format_error(reason)}). Falling back to #{fallback}. " <>
+            "Set `config :astro, ephemeris: \"/path/to/de440s.bsp\"` to a " <>
+            "persistent writable location to avoid re-downloading the ~32 MB " <>
+            "ephemeris file on every restart."
+        )
+
+        fallback
+    end
+  end
+
+  defp primary_cache_dir do
     case :filename.basedir(:user_cache, ~c"astro") do
       cache when is_list(cache) -> List.to_string(cache)
       cache when is_binary(cache) -> cache
