@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 2.2.1
+
+This is the changelog for Astro version 2.2.1 released on May 23rd, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Fix date_time_from_julian_days to always return proleptic-Gregorian dates.
+
 ## Astro version 2.2.0
 
 This is the changelog for Astro version 2.2.0 released on May 21st, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
