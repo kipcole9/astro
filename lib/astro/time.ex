@@ -814,13 +814,11 @@ defmodule Astro.Time do
     z = trunc(julian_days + 0.5)
     f = julian_days + 0.5 - z
 
-    a =
-      if z < 2_299_161 do
-        z
-      else
-        alpha = trunc((z - 1_867_216.25) / 36_524.25)
-        z + 1 + alpha - trunc(alpha / 4.0)
-      end
+    # Always use the proleptic-Gregorian branch so the result matches
+    # `julian_day_from_date/1` (which is proleptic-Gregorian for all years)
+    # and round-trips cleanly across the historical 1582-10-15 reform date.
+    alpha = trunc((z - 1_867_216.25) / 36_524.25)
+    a = z + 1 + alpha - trunc(alpha / 4.0)
 
     b = a + 1_524
     c = trunc((b - 122.1) / 365.25)
