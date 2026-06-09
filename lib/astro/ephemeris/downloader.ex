@@ -185,9 +185,7 @@ defmodule Astro.Ephemeris.Downloader do
       {:error, reason} ->
         _ = File.rm(path)
 
-        Logger.error(
-          "[Astro] Ephemeris download from #{url} failed: #{inspect(reason)}."
-        )
+        Logger.error("[Astro] Ephemeris download from #{url} failed: #{inspect(reason)}.")
 
         {:error, reason}
     end
@@ -223,8 +221,16 @@ defmodule Astro.Ephemeris.Downloader do
   end
 
   defp ssl_options do
+    # NAIF's server advertises TLS 1.3 but its handshake is broken: it replies
+    # with a `protocol_version` alert and closes the connection, which surfaces
+    # as `{:failed_connect, ..., :closed}`. OTP 26+ offers TLS 1.3 by default,
+    # so pin to 1.2 — the only version the server can actually negotiate.
+    # (System curl works only because its LibreSSL build does not offer TLS 1.3
+    # at all.) The pin is kept on the cert-verification fallback path too, since
+    # the broken handshake fails regardless of `verify` mode.
     try do
       [
+        versions: [:"tlsv1.2"],
         verify: :verify_peer,
         cacerts: :public_key.cacerts_get(),
         depth: 3,
@@ -233,9 +239,9 @@ defmodule Astro.Ephemeris.Downloader do
         ]
       ]
     rescue
-      _ -> [verify: :verify_none]
+      _ -> [versions: [:"tlsv1.2"], verify: :verify_none]
     catch
-      _, _ -> [verify: :verify_none]
+      _, _ -> [versions: [:"tlsv1.2"], verify: :verify_none]
     end
   end
 end

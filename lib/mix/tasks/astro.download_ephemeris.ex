@@ -101,6 +101,13 @@ defmodule Mix.Tasks.Astro.DownloadEphemeris do
   defp download(url) do
     ssl_opts = [
       ssl: [
+        # NAIF's server advertises TLS 1.3 but its handshake is broken: it
+        # replies with a `protocol_version` alert and closes the connection,
+        # which surfaces as `{:failed_connect, ..., :closed}`. OTP 26+ offers
+        # TLS 1.3 by default, so pin to 1.2 — the only version the server can
+        # actually negotiate. (System curl works only because its LibreSSL
+        # build does not offer TLS 1.3 at all.)
+        versions: [:"tlsv1.2"],
         verify: :verify_peer,
         cacerts: :public_key.cacerts_get(),
         depth: 3,

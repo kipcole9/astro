@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 2.2.2
+
+This is the changelog for Astro version 2.2.2.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Fix ephemeris download failing with `:failed_connect`/`:closed` on OTP 26+, where Erlang offers TLS 1.3 by default but NASA NAIF's server has a broken TLS 1.3 handshake. Both `mix astro.download_ephemeris` and the runtime auto-downloader now pin to TLS 1.2 (the version `curl` already negotiates).
+
 ## Astro version 2.2.1
 
 This is the changelog for Astro version 2.2.1 released on May 23rd, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
