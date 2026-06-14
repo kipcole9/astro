@@ -1,8 +1,16 @@
 # Changelog
 
+## Astro version 2.2.3
+
+This is the changelog for Astro version 2.2.3 released on June 15th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Fix hours_of_daylight/2 for sub-polar latitudes near the solstice. Thanks to @andykent for the issue. Closes #11.
+
 ## Astro version 2.2.2
 
-This is the changelog for Astro version 2.2.2 Release on June 9th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 2.2.2 released on June 9th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Bug Fixes
 

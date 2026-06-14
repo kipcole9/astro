@@ -277,6 +277,41 @@ defmodule Astro.Solar.SunRiseSet do
     sun_event(location, moment, :set, options)
   end
 
+  @doc """
+  Returns whether the Sun is above the rise/set horizon at a given instant.
+
+  This is used to distinguish polar day from polar night on dates where the
+  Sun neither rises nor sets within the local calendar day. During such a
+  period the Sun stays above (polar day) or below (polar night) the horizon
+  for the entire 24 hours, so any instant within the day yields the correct
+  answer.
+
+  ### Arguments
+
+  * `location` is the location as a `{longitude, latitude}` tuple,
+    a `Geo.Point.t` or a `Geo.PointZ.t`.
+
+  * `moment` is a moment (float Gregorian days since 0000-01-01).
+
+  * `options` is a keyword list accepting the same `:solar_elevation`
+    option as `sunrise/3` and `sunset/3`.
+
+  ### Returns
+
+  * `true` if the Sun's upper limb is at or above the event threshold,
+    otherwise `false`.
+
+  """
+  @spec sun_above_horizon?(Astro.location(), number(), keyword()) :: boolean()
+  def sun_above_horizon?(location, moment, options \\ []) when is_number(moment) do
+    %Geo.PointZ{coordinates: {lng, lat, _elev_m}} =
+      Astro.Location.normalize_location(location)
+
+    h0 = h0_from_options(options)
+    dynamical_time = Time.dynamical_time_from_moment(moment)
+    altitude_f(dynamical_time, lat, lng, h0) >= 0.0
+  end
+
   # ── Core ─────────────────────────────────────────────────────────────────────
 
   defp sun_event(location, moment, event, options) do

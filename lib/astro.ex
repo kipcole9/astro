@@ -108,6 +108,8 @@ defmodule Astro do
   @type date :: Calendar.date() | Calendar.datetime()
   @type options :: keyword()
 
+  @seconds_per_day 86_400
+
   # Selects the preferred time zone database at compile time based on which
   # optional dependency (`:tzdata` or `:tz`) is available. The `:elixir`
   # `:time_zone_database` application config still takes precedence at
@@ -1400,12 +1402,23 @@ defmodule Astro do
 
   ### Returns
 
-  * `{:ok, time}` where `time` is a `Time.t()`
+  * `{:ok, time}` where `time` is a `Time.t()`. The maximum value is
+    `~T[23:59:59]`, representing 24 hours of daylight (a `Time.t()`
+    cannot hold `24:00:00`).
+
+  * `{:error, reason}` if the time zone for the location cannot be
+    resolved.
 
   ### Examples
 
       iex> Astro.hours_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-08]
       {:ok, ~T[14:19:29]}
+
+      # Just below the Arctic Circle near the summer solstice the Sun sets
+      # shortly after midnight and rises again a few hours later, so daylight
+      # is the whole day less the short night.
+      iex> Astro.hours_of_daylight {-147.7164, 64.8378}, ~D[2026-06-13]
+      {:ok, ~T[21:34:55]}
 
       # No sunset in summer
       iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-06-07]
@@ -1417,38 +1430,86 @@ defmodule Astro do
 
   ### Notes
 
-  In latitudes above the polar circles (approximately
-  +/- 66.5631 degrees) there will be no hours of daylight
-  in winter and 24 hours of daylight in summer.
+  Daylight is measured as the total time the Sun is above the horizon
+  during the local calendar day, so the result is correct regardless of
+  whether sunrise precedes sunset.
+
+  In latitudes above the polar circles (approximately +/- 66.5631
+  degrees) there will be no hours of daylight in winter and 24 hours of
+  daylight in summer. Just below the polar circles, near the solstice,
+  a single calendar day can contain a sunset (shortly after midnight)
+  followed by a sunrise (a few hours later); such days are handled
+  correctly and report close to, but less than, 24 hours.
 
   """
-  @spec hours_of_daylight(Astro.location(), Calendar.date()) :: {:ok, Elixir.Time.t()}
+  @spec hours_of_daylight(Astro.location(), Calendar.date()) ::
+          {:ok, Elixir.Time.t()} | {:error, atom()}
   def hours_of_daylight(location, date) do
-    with {:ok, sunrise} <- sunrise(location, date),
-         {:ok, sunset} <- sunset(location, date) do
-      seconds_of_sunlight = DateTime.diff(sunset, sunrise)
-      {hours, minutes, seconds} = Time.seconds_to_hms(seconds_of_sunlight)
-      Elixir.Time.new(hours, minutes, seconds)
-    else
-      {:error, :no_time} ->
-        if no_daylight_hours?(location, date) do
-          Elixir.Time.new(0, 0, 0)
-        else
-          Elixir.Time.new(23, 59, 59)
-        end
+    case daylight_seconds(location, date) do
+      {:ok, seconds} when seconds >= @seconds_per_day ->
+        # 24 hours of daylight (polar day). A `Time.t/0` cannot represent
+        # 24:00:00, so it is reported one second short.
+        Elixir.Time.new(23, 59, 59)
+
+      {:ok, seconds} ->
+        {hours, minutes, seconds} = Time.seconds_to_hms(seconds)
+        Elixir.Time.new(hours, minutes, seconds)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
-  @polar_circle_latitude 66.5631
-  defp no_daylight_hours?(location, date) do
-    %Geo.PointZ{coordinates: {_longitude, latitude, _elevation}} =
-      Location.normalize_location(location)
+  # Total seconds the Sun is above the horizon during the local calendar day,
+  # in the range 0..86_400. Rather than subtracting sunrise from sunset (which
+  # breaks at sub-polar latitudes near the solstice, where the Sun can set just
+  # after local midnight and rise again hours later, so sunset precedes
+  # sunrise), the daylight is derived from which events fall within the day:
+  #
+  #   * both events present  → normal day (rise then set) is set − rise; a
+  #     reversed day (set then rise) is the whole day minus the night between.
+  #   * only sunrise present → Sun rises and stays up to end of day.
+  #   * only sunset present  → Sun is up at midnight and sets during the day.
+  #   * neither present      → polar day (24h) or polar night (0h).
+  #
+  defp daylight_seconds(location, date) do
+    case {sunrise(location, date), sunset(location, date)} do
+      {{:ok, sunrise}, {:ok, sunset}} ->
+        {:ok, daylight_between(sunrise, sunset)}
 
-    cond do
-      (latitude >= @polar_circle_latitude and date.month in 10..12) or date.month in 1..3 -> true
-      latitude <= -@polar_circle_latitude and date.month in 4..9 -> true
-      true -> false
+      {{:error, :no_time}, {:ok, sunset}} ->
+        {:ok, seconds_since_midnight(sunset)}
+
+      {{:ok, sunrise}, {:error, :no_time}} ->
+        {:ok, @seconds_per_day - seconds_since_midnight(sunrise)}
+
+      {{:error, :no_time}, {:error, :no_time}} ->
+        if Solar.SunRiseSet.sun_above_horizon?(location, date_to_moment(date)) do
+          {:ok, @seconds_per_day}
+        else
+          {:ok, 0}
+        end
+
+      {{:error, reason}, _} ->
+        {:error, reason}
+
+      {_, {:error, reason}} ->
+        {:error, reason}
     end
+  end
+
+  # When sunset precedes sunrise on the same calendar day the Sun was already
+  # up at local midnight, set briefly, then rose again — daylight is the whole
+  # day less the night between the two events (`DateTime.diff` is negative).
+  defp daylight_between(sunrise, sunset) do
+    case DateTime.diff(sunset, sunrise) do
+      seconds when seconds >= 0 -> seconds
+      night -> @seconds_per_day + night
+    end
+  end
+
+  defp seconds_since_midnight(%DateTime{hour: hour, minute: minute, second: second}) do
+    hour * 3600 + minute * 60 + second
   end
 
   @doc false
