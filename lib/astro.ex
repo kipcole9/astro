@@ -1378,6 +1378,11 @@ defmodule Astro do
   Returns the number of hours of daylight for a given
   location on a given date.
 
+  On Elixir 1.17+, the function `duration_of_daylight/2`
+  is recommended over this function since it returns a
+  `t:Duration.t/0` which can represent a full 24 hours
+  of daylight.
+
   ### Arguments
 
   * `location` is the latitude, longitude and
