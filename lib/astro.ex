@@ -1448,15 +1448,86 @@ defmodule Astro do
     case daylight_seconds(location, date) do
       {:ok, seconds} when seconds >= @seconds_per_day ->
         # 24 hours of daylight (polar day). A `Time.t/0` cannot represent
-        # 24:00:00, so it is reported one second short.
+        # 24:00:00, so it is reported one second short. Use
+        # `duration_of_daylight/2` for an uncapped `Duration.t/0`.
         Elixir.Time.new(23, 59, 59)
 
       {:ok, seconds} ->
-        {hours, minutes, seconds} = Time.seconds_to_hms(seconds)
-        Elixir.Time.new(hours, minutes, seconds)
+        Elixir.Time.new(div(seconds, 3600), div(rem(seconds, 3600), 60), rem(seconds, 60))
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  if Code.ensure_loaded?(Duration) do
+    @doc """
+    Returns the duration of daylight for a given location on a
+    given date as a `t:Duration.t/0`.
+
+    This is the same calculation as `hours_of_daylight/2` but,
+    because a `t:Duration.t/0` is not bounded like a `t:Time.t/0`,
+    it can represent a full 24 hours of daylight (returned as
+    `%Duration{hour: 24}`) during the polar summer rather than
+    capping at `~T[23:59:59]`.
+
+    This function is only defined when running on Elixir 1.17 or
+    later, where the `Duration` module is available.
+
+    ### Arguments
+
+    * `location` is the latitude, longitude and optionally
+      elevation for the desired duration of daylight. It can be
+      expressed as:
+
+      * `{lng, lat}` - a tuple with longitude and latitude
+        as floating point numbers. **Note** the order of the
+        arguments.
+      * a `Geo.Point.t` struct to represent a location without elevation.
+      * a `Geo.PointZ.t` struct to represent a location and elevation.
+
+    * `date` is any `t:Date.t/0` in the Gregorian calendar
+      (for example, `Calendar.ISO`).
+
+    ### Returns
+
+    * `{:ok, duration}` where `duration` is a `t:Duration.t/0`
+      between `%Duration{}` (no daylight) and `%Duration{hour: 24}`
+      (24 hours of daylight).
+
+    * `{:error, reason}` if the time zone for the location cannot
+      be resolved.
+
+    ### Examples
+
+        iex> Astro.duration_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-08]
+        {:ok, %Duration{hour: 14, minute: 19, second: 29}}
+
+        # 24 hours of daylight in the polar summer, uncapped
+        iex> Astro.duration_of_daylight {-62.3481, 82.5018}, ~D[2019-06-07]
+        {:ok, %Duration{hour: 24}}
+
+        # No daylight in the polar winter
+        iex> Astro.duration_of_daylight {-62.3481, 82.5018}, ~D[2019-12-07]
+        {:ok, %Duration{}}
+
+    """
+    @doc since: "2.3.0"
+    @spec duration_of_daylight(Astro.location(), Calendar.date()) ::
+            {:ok, Duration.t()} | {:error, atom()}
+    def duration_of_daylight(location, date) do
+      case daylight_seconds(location, date) do
+        {:ok, seconds} ->
+          {:ok,
+           Duration.new!(
+             hour: div(seconds, 3600),
+             minute: div(rem(seconds, 3600), 60),
+             second: rem(seconds, 60)
+           )}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 

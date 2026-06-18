@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 2.3.0
+
+This is the changelog for Astro version 2.3.0.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Enhancements
+
+* Add `duration_of_daylight/2`, returning the duration of daylight for a location and date as a `Duration.t()`. Unlike `hours_of_daylight/2` (which returns a `Time.t()` capped at `~T[23:59:59]`), it represents a full 24 hours of daylight in the polar summer as `%Duration{hour: 24}`. It is defined only on Elixir 1.17 and later, where the `Duration` module is available.
+
 ## Astro version 2.2.3
 
 This is the changelog for Astro version 2.2.3 released on June 15th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

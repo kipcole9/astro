@@ -62,4 +62,51 @@ defmodule Astro.HoursOfDaylightTest do
       assert {:error, :time_zone_not_found} = Astro.hours_of_daylight({0.0, 0.0}, ~D[2026-06-13])
     end
   end
+
+  # `duration_of_daylight/2` is only defined on Elixir 1.17+, so the tests are
+  # compiled only when the `Duration` module is available.
+  if Code.ensure_loaded?(Duration) do
+    describe "duration_of_daylight/2" do
+      test "returns the same value as hours_of_daylight/2 for an ordinary day" do
+        assert {:ok, %Duration{hour: 14, minute: 19, second: 29}} =
+                 Astro.duration_of_daylight(@sydney, ~D[2019-12-08])
+      end
+
+      test "handles the sub-polar reversed-event case (issue #11)" do
+        assert {:ok, %Duration{hour: 21, minute: 34, second: 55}} =
+                 Astro.duration_of_daylight(@fairbanks, ~D[2026-06-13])
+      end
+
+      test "reports a full, uncapped 24 hours for polar day" do
+        assert {:ok, %Duration{hour: 24} = duration} =
+                 Astro.duration_of_daylight(@alert, ~D[2019-06-07])
+
+        # Unlike hours_of_daylight/2 which caps at ~T[23:59:59].
+        assert Duration.to_string(duration) == "24h"
+      end
+
+      test "reports zero for polar night" do
+        assert {:ok, %Duration{} = duration} =
+                 Astro.duration_of_daylight(@alert, ~D[2019-12-07])
+
+        assert Duration.to_string(duration) == "0s"
+      end
+
+      test "agrees with hours_of_daylight/2 across the solstice window" do
+        for date <- Date.range(~D[2026-05-31], ~D[2026-07-15]) do
+          {:ok, %Time{} = time} = Astro.hours_of_daylight(@fairbanks, date)
+          {:ok, %Duration{} = duration} = Astro.duration_of_daylight(@fairbanks, date)
+
+          assert {duration.hour, duration.minute, duration.second} ==
+                   {time.hour, time.minute, time.second},
+                 "mismatch for #{date}"
+        end
+      end
+
+      test "propagates :time_zone_not_found when the location has no resolvable zone" do
+        assert {:error, :time_zone_not_found} =
+                 Astro.duration_of_daylight({0.0, 0.0}, ~D[2026-06-13])
+      end
+    end
+  end
 end

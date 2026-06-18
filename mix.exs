@@ -1,7 +1,7 @@
 defmodule Astro.MixProject do
   use Mix.Project
 
-  @version "2.2.3"
+  @version "2.3.0"
 
   def project do
     [
