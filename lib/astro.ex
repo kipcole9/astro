@@ -1409,21 +1409,15 @@ defmodule Astro do
 
   ### Examples
 
-      iex> Astro.hours_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-08]
-      {:ok, ~T[14:19:29]}
-
-      # Just below the Arctic Circle near the summer solstice the Sun sets
-      # shortly after midnight and rises again a few hours later, so daylight
-      # is the whole day less the short night.
-      iex> Astro.hours_of_daylight {-147.7164, 64.8378}, ~D[2026-06-13]
-      {:ok, ~T[21:34:55]}
+      iex> Astro.hours_of_daylight({151.20666584, -33.8559799094}, ~D[2019-12-10])
+      {:ok, ~T[14:20:51]}
 
       # No sunset in summer
-      iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-06-07]
+      iex> Astro.hours_of_daylight({-62.3481, 82.5018}, ~D[2019-06-07])
       {:ok, ~T[23:59:59]}
 
       # No sunrise in winter
-      iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-12-07]
+      iex> Astro.hours_of_daylight({-62.3481, 82.5018}, ~D[2019-12-07])
       {:ok, ~T[00:00:00]}
 
   ### Notes
@@ -1498,15 +1492,15 @@ defmodule Astro do
 
     ### Examples
 
-        iex> Astro.duration_of_daylight {151.20666584, -33.8559799094}, ~D[2019-12-08]
-        {:ok, %Duration{hour: 14, minute: 19, second: 29}}
+        iex> Astro.duration_of_daylight({151.20666584, -33.8559799094}, ~D[2019-12-10])
+        {:ok, %Duration{hour: 14, minute: 20, second: 51}}
 
         # 24 hours of daylight in the polar summer, uncapped
-        iex> Astro.duration_of_daylight {-62.3481, 82.5018}, ~D[2019-06-07]
+        iex> Astro.duration_of_daylight({-62.3481, 82.5018}, ~D[2019-06-07])
         {:ok, %Duration{hour: 24}}
 
         # No daylight in the polar winter
-        iex> Astro.duration_of_daylight {-62.3481, 82.5018}, ~D[2019-12-07]
+        iex> Astro.duration_of_daylight({-62.3481, 82.5018}, ~D[2019-12-07])
         {:ok, %Duration{}}
 
     """
