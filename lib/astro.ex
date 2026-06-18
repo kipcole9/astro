@@ -81,15 +81,8 @@ defmodule Astro do
     only: [
       sin: 1,
       cos: 1,
-      atan_r: 2,
-      tan: 1,
       mod: 2,
       to_degrees: 1
-    ]
-
-  import Astro.Solar,
-    only: [
-      obliquity_correction: 1
     ]
 
   @type longitude :: float()
@@ -1581,32 +1574,6 @@ defmodule Astro do
 
   defp seconds_since_midnight(%DateTime{hour: hour, minute: minute, second: second}) do
     hour * 3600 + minute * 60 + second
-  end
-
-  @doc false
-  # beta and lambda in degrees
-  @spec declination(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
-  def declination(t, beta, lambda) do
-    julian_centuries = Time.julian_centuries_from_moment(t)
-    epsilon = obliquity_correction(julian_centuries)
-
-    :math.asin(sin(beta) * cos(epsilon) + cos(beta) * sin(epsilon) * sin(lambda))
-    |> Math.to_degrees()
-    |> :math.fmod(360.0)
-  end
-
-  @doc false
-  # beta and lambda in degrees
-  @spec right_ascension(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
-  def right_ascension(t, beta, lambda) do
-    julian_centuries = Time.julian_centuries_from_moment(t)
-    epsilon = obliquity_correction(julian_centuries)
-
-    # omega = (125.04 - (1_934.136 * julian_centuries))
-    # adjusted_epsilon = (epsilon + 0.00256 * cos(omega))
-
-    atan_r(sin(lambda) * cos(epsilon) - tan(beta) * sin(epsilon), cos(lambda))
-    |> Math.to_degrees()
   end
 
   @doc false

@@ -53,7 +53,7 @@ defmodule Astro.Solar do
   to convert between the two.
   """
 
-  alias Astro.{Math, Time, Earth}
+  alias Astro.{Math, Time, Earth, Coordinates}
 
   import Time,
     only: [
@@ -207,7 +207,7 @@ defmodule Astro.Solar do
     apparent_longitude = sun_apparent_longitude(julian_centuries)
     declination = solar_declination(julian_centuries)
     distance = solar_distance(julian_centuries)
-    right_ascension = Astro.right_ascension(t, 0.0, apparent_longitude)
+    right_ascension = Coordinates.right_ascension(t, 0.0, apparent_longitude)
 
     {right_ascension, declination, distance}
   end

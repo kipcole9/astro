@@ -58,7 +58,7 @@ defmodule Astro.Lunar do
 
   """
 
-  alias Astro.{Math, Time, Solar, Earth}
+  alias Astro.{Math, Time, Solar, Earth, Coordinates}
 
   import Astro.Math,
     only: [
@@ -547,7 +547,8 @@ defmodule Astro.Lunar do
     beta = lunar_latitude(t)
     distance = lunar_distance(t)
 
-    {Astro.right_ascension(t, beta, lambda), Astro.declination(t, beta, lambda), distance}
+    {Coordinates.right_ascension(t, beta, lambda), Coordinates.declination(t, beta, lambda),
+     distance}
   end
 
   @doc """
@@ -783,8 +784,8 @@ defmodule Astro.Lunar do
   def lunar_altitude(t, %Geo.PointZ{coordinates: {psi, phi, _alt}}) do
     lambda = lunar_ecliptic_longitude(t)
     beta = lunar_latitude(t)
-    alpha = Astro.right_ascension(t, beta, lambda)
-    delta = Astro.declination(t, beta, lambda)
+    alpha = Coordinates.right_ascension(t, beta, lambda)
+    delta = Coordinates.declination(t, beta, lambda)
     theta = Time.mean_sidereal_from_moment(t)
     h = mod(theta + psi - alpha, 360.0)
     altitude = asin(sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h))

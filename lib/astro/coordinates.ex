@@ -31,6 +31,8 @@ defmodule Astro.Coordinates do
 
   alias Astro.{Earth, Time}
 
+  import Astro.Math, only: [sin: 1, cos: 1, tan: 1, atan_r: 2, to_degrees: 1]
+
   @jd_j2000 Time.jd_j2000()
   @seconds_per_day Time.seconds_per_day()
   @arcsec_per_deg Earth.arcsec_per_deg()
@@ -219,6 +221,35 @@ defmodule Astro.Coordinates do
     gast = gmst + eq_eq
     gast = :math.fmod(gast, 360.0)
     if gast < 0.0, do: gast + 360.0, else: gast
+  end
+
+  # ── Ecliptic to equatorial ───────────────────────────────────────────────────
+
+  @doc false
+  # Equatorial declination in degrees from ecliptic latitude `beta` and
+  # longitude `lambda` (both in degrees) at moment `t`, using the
+  # time-varying obliquity of the ecliptic.
+  @spec declination(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
+  def declination(t, beta, lambda) do
+    julian_centuries = Time.julian_centuries_from_moment(t)
+    epsilon = Astro.Solar.obliquity_correction(julian_centuries)
+
+    :math.asin(sin(beta) * cos(epsilon) + cos(beta) * sin(epsilon) * sin(lambda))
+    |> to_degrees()
+    |> :math.fmod(360.0)
+  end
+
+  @doc false
+  # Equatorial right ascension in degrees from ecliptic latitude `beta` and
+  # longitude `lambda` (both in degrees) at moment `t`, using the
+  # time-varying obliquity of the ecliptic.
+  @spec right_ascension(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
+  def right_ascension(t, beta, lambda) do
+    julian_centuries = Time.julian_centuries_from_moment(t)
+    epsilon = Astro.Solar.obliquity_correction(julian_centuries)
+
+    atan_r(sin(lambda) * cos(epsilon) - tan(beta) * sin(epsilon), cos(lambda))
+    |> to_degrees()
   end
 
   # ── Rotation helpers ─────────────────────────────────────────────────────────
