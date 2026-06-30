@@ -1078,8 +1078,25 @@ defmodule Astro.Time do
   @spec date_time_from_date_and_minutes(minutes(), Calendar.date()) :: {:ok, Calendar.datetime()}
   def date_time_from_date_and_minutes(minutes, date) do
     {:ok, naive_datetime} = NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0)
-    {:ok, datetime} = date_time_in_utc(naive_datetime)
-    {:ok, DateTime.add(datetime, trunc(minutes * @seconds_per_minute), :second)}
+
+    # `datetime` is always in `Etc/UTC` (built by `date_time_in_utc/1`), so the
+    # arithmetic below is purely on the UTC timeline. Match the zone explicitly so
+    # any future change that lets a non-UTC datetime reach here fails loudly rather
+    # than silently consulting the configured time zone database.
+    #
+    # We pass `Calendar.UTCOnlyTimeZoneDatabase` rather than the configured database:
+    # `DateTime.add/4` resolves the result zone even for `Etc/UTC`, and a configured
+    # database (e.g. Tzdata) can return `:time_zone_not_found` for dates outside its
+    # range — for instance ancient era boundaries computed at compile time.
+    {:ok, %DateTime{time_zone: @utc_zone} = datetime} = date_time_in_utc(naive_datetime)
+
+    {:ok,
+     DateTime.add(
+       datetime,
+       trunc(minutes * @seconds_per_minute),
+       :second,
+       Calendar.UTCOnlyTimeZoneDatabase
+     )}
   end
 
   @doc """
