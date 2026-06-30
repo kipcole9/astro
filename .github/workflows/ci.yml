@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
+      # A transient failure in one matrix entry (e.g. a network timeout
+      # downloading the JPL ephemeris) should not cancel the other entries.
+      fail-fast: false
       # Specify the OTP and Elixir versions to use when building
       # and running the workflow steps.
       matrix:
@@ -94,8 +97,32 @@ jobs:
     - name: Install time zone data
       run: mix tz_world.update
 
-    - name: Install emphemeris
-      run: mix astro.download_ephemeris
+    # Step: Cache the JPL DE440s ephemeris (~32 MB, static file). NAIF's
+    # server is slow and occasionally times out, so cache it across runs and
+    # only hit the network on a cache miss. The key is constant because the
+    # file never changes; bump it if the ephemeris is ever replaced. The path
+    # matches the runtime resolver's `:filename.basedir(:user_cache, "astro")`
+    # location, so the tests find it without extra configuration.
+    - name: Cache JPL ephemeris
+      id: cache-ephemeris
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/astro
+        key: astro-ephemeris-de440s
+
+    - name: Install ephemeris
+      if: steps.cache-ephemeris.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p ~/.cache/astro
+        for i in 1 2 3; do
+          if mix astro.download_ephemeris --dest ~/.cache/astro/de440s.bsp; then
+            exit 0
+          fi
+          echo "Ephemeris download attempt $i failed; retrying in 15s..."
+          sleep 15
+        done
+        echo "Ephemeris download failed after 3 attempts" >&2
+        exit 1
 
     # Step: Check that the checked in code has already been formatted.
     # This step fails if something was found unformatted.
