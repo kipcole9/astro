@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 2.3.1
+
+This is the changelog for Astro version 2.3.1 released on June 30th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* Fix compilation failure in downstream libraries (such as Calendrical) that compute ancient dates while a non-UTC time zone database like `Tzdata.TimeZoneDatabase` is configured. `Astro.Time.date_time_from_date_and_minutes/2` performed UTC-only arithmetic via the configured time zone database, which can return `:time_zone_not_found` for dates outside its range; it now uses `Calendar.UTCOnlyTimeZoneDatabase` for that arithmetic. Thanks to @probably-not for the report.
+
 ## Astro version 2.3.0
 
 This is the changelog for Astro version 2.3.0 released on June 19th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
