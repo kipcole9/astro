@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 2.3.2
+
+This is the changelog for Astro version 2.3.2 released on July 4th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* `Astro.sunrise/3` and `Astro.sunset/3` now return `{:error, :not_found}` for a date outside the ephemeris range instead of raising a `MatchError`. The sun-event scan confirms its search window is covered by the ephemeris before computing altitudes, so a far-future or far-past date — such as one reached through an astronomical calendar like Persian — fails cleanly.
+
 ## Astro version 2.3.1
 
 This is the changelog for Astro version 2.3.1 released on June 30th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

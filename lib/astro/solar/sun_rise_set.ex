@@ -325,6 +325,19 @@ defmodule Astro.Solar.SunRiseSet do
     dt_start = dt_midnight - @scan_pre_window_s
     dt_end = dt_start + @scan_window_s
 
+    # `altitude_f/4` reads the Sun's position from the ephemeris, which covers
+    # a bounded span of years. Confirm the scan window lies inside that span up
+    # front, so a date beyond the ephemeris returns a clean `{:error, reason}`
+    # rather than crashing on an unmatched `{:error, :not_found}` deep inside
+    # the scan or the bisection (every intermediate time is bracketed by these
+    # two endpoints, so covering them covers the whole search).
+    with :ok <- ephemeris_available(dt_start),
+         :ok <- ephemeris_available(dt_end) do
+      find_sun_event(dt_start, dt_end, event, date, location, lat, lng, h0, options)
+    end
+  end
+
+  defp find_sun_event(dt_start, dt_end, event, date, location, lat, lng, h0, options) do
     scan_pairs =
       Stream.iterate(dt_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= dt_end))
@@ -363,6 +376,15 @@ defmodule Astro.Solar.SunRiseSet do
       end)
 
     result || {:error, :no_time}
+  end
+
+  # The ephemeris covers a bounded span of years; report an out-of-range time
+  # as a clean error rather than letting the unmatched result crash the caller.
+  defp ephemeris_available(dynamical_time) do
+    case Ephemeris.sun_position_dt(dynamical_time) do
+      {:ok, _position} -> :ok
+      {:error, _reason} = error -> error
+    end
   end
 
   # Convert the :solar_elevation option to an altitude threshold in degrees.
