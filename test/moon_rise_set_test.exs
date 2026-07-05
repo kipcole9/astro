@@ -469,4 +469,25 @@ defmodule Astro.MoonRiseSetTest do
       assert_moonset(~D[2026-03-31], @tokyo_lat, @tokyo_lon, 4, 23)
     end
   end
+
+  describe "dates outside the ephemeris range" do
+    # The DE440s ephemeris covers a bounded span of years. Dates beyond it —
+    # reachable through astronomical calendars such as the observational
+    # Islamic calendar — must return a clean error, not crash on an unmatched
+    # `{:error, :not_found}` inside the event scan.
+    test "moonrise returns {:error, :not_found} for a date before the ephemeris" do
+      location = %Geo.PointZ{coordinates: {@tokyo_lon, @tokyo_lat, 0}}
+      assert {:error, :not_found} = Astro.moonrise(location, ~D[0500-06-01], time_zone: :utc)
+    end
+
+    test "moonset returns {:error, :not_found} for a date before the ephemeris" do
+      location = %Geo.PointZ{coordinates: {@tokyo_lon, @tokyo_lat, 0}}
+      assert {:error, :not_found} = Astro.moonset(location, ~D[0500-06-01], time_zone: :utc)
+    end
+
+    test "sunrise returns {:error, :not_found} for a date before the ephemeris" do
+      location = %Geo.PointZ{coordinates: {@tokyo_lon, @tokyo_lat, 0}}
+      assert {:error, :not_found} = Astro.sunrise(location, ~D[0500-06-01], time_zone: :utc)
+    end
+  end
 end

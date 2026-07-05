@@ -142,6 +142,11 @@ defmodule Astro.Lunar.MoonRiseSet do
   # for the Umm al-Qura calendar where moonset-sunset gaps can be < 10 s.
   @bisect_tol_s 0.01
 
+  # Lagrange interpolation interval (seconds).
+  # Using 2-hour intervals for the three-point quadratic gives much tighter
+  # approximation than the classical Meeus Ch.15 daily tabulation.
+  @lagrange_interval_s 7_200
+
   # Maximum bisection iterations (safety cap; 60 iterations spans 10^18 s).
   @bisect_max 60
 
@@ -344,6 +349,37 @@ defmodule Astro.Lunar.MoonRiseSet do
     dt_start = dt_midnight - @scan_pre_window_s
     dt_end = dt_start + @scan_window_s
 
+    # `topocentric_f/6` reads the Moon's position from the ephemeris, which
+    # covers a bounded span of years. Confirm the search span lies inside that
+    # coverage up front, so a date beyond the ephemeris returns a clean
+    # `{:error, reason}` rather than crashing on an unmatched
+    # `{:error, :not_found}` deep inside the scan or the bisection. The span is
+    # padded by one Lagrange interval because `build_lagrange_interpolator/1`
+    # samples up to @lagrange_interval_s beyond a bracket midpoint; covering
+    # both padded endpoints covers every intermediate read.
+    with :ok <- ephemeris_available(dt_start - @lagrange_interval_s),
+         :ok <- ephemeris_available(dt_end + @lagrange_interval_s) do
+      find_moon_event(dt_start, dt_end, direct_fn, event, interpolation, limb, date, %{
+        lat: lat,
+        lng: lng,
+        rho_sin_phi: rho_sin_phi,
+        rho_cos_phi: rho_cos_phi,
+        location: location,
+        options: options
+      })
+    end
+  end
+
+  defp find_moon_event(dt_start, dt_end, direct_fn, event, interpolation, limb, date, context) do
+    %{
+      lat: lat,
+      lng: lng,
+      rho_sin_phi: rho_sin_phi,
+      rho_cos_phi: rho_cos_phi,
+      location: location,
+      options: options
+    } = context
+
     # Evaluate f at each scan point.
     scan_pairs =
       Stream.iterate(dt_start, &(&1 + @scan_step_s))
@@ -422,6 +458,15 @@ defmodule Astro.Lunar.MoonRiseSet do
   #
   # Positive f: Moon is above the horizon.
   # Negative f: Moon is below the horizon.
+  # The ephemeris covers a bounded span of years; report an out-of-range time
+  # as a clean error rather than letting the unmatched result crash the caller.
+  defp ephemeris_available(dynamical_time) do
+    case Ephemeris.moon_position_dt(dynamical_time) do
+      {:ok, _position} -> :ok
+      {:error, _reason} = error -> error
+    end
+  end
+
   defp topocentric_f(dynamical_time, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
     {:ok, {ra_geo, dec_geo, dist_km}} = Ephemeris.moon_position_dt(dynamical_time)
 
@@ -467,11 +512,6 @@ defmodule Astro.Lunar.MoonRiseSet do
   end
 
   # ── Lagrange interpolation ───────────────────────────────────────────────────
-
-  # Lagrange interpolation interval (seconds).
-  # Using 2-hour intervals for the three-point quadratic gives much tighter
-  # approximation than the classical Meeus Ch.15 daily tabulation.
-  @lagrange_interval_s 7_200
 
   # Build a Lagrange interpolator from 3 tabular positions.
   # The tabular points are spaced by @lagrange_interval_s seconds, centred
