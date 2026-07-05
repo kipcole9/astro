@@ -1095,6 +1095,9 @@ defmodule Astro do
   * `{:error, :no_sunset}` if no sunset occurs on the given date at
     the given location (e.g. polar day).
 
+  * `{:error, :not_found}` if the date is outside the range covered
+    by the installed ephemeris.
+
   ### Method comparison
 
   | Aspect | Yallop (1997) | Odeh (2006) | Schaefer (1988/2000) |
@@ -1120,7 +1123,7 @@ defmodule Astro do
   @type method :: :odeh | :yallop | :schaefer
 
   @spec new_visible_crescent(location(), date(), method()) ::
-          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset}
+          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset | :not_found}
 
   def new_visible_crescent(location, date, method \\ :odeh)
 
@@ -1162,7 +1165,7 @@ defmodule Astro do
   """
   @doc since: "2.1.0"
   @spec new_visible_crescent(location(), date(), :schaefer, keyword()) ::
-          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset}
+          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset | :not_found}
 
   def new_visible_crescent(location, date, :schaefer, options) when is_list(options) do
     moment = Time.date_time_to_moment(date)
@@ -1187,6 +1190,9 @@ defmodule Astro do
   * `{:ok, datetime}` representing the UTC datetime of
     the equinox.
 
+  * `{:error, :year_out_of_range}` if `year` is outside the
+    supported range of 1000 CE to 3000 CE.
+
   ### Examples
 
       iex> {:ok, dt} = Astro.equinox 2019, :march
@@ -1195,6 +1201,8 @@ defmodule Astro do
       iex> {:ok, dt} = Astro.equinox 2019, :september
       iex> DateTime.truncate(dt, :second)
       ~U[2019-09-23 07:49:52Z]
+      iex> Astro.equinox 900, :march
+      {:error, :year_out_of_range}
 
   ### Notes
 
@@ -1210,9 +1218,17 @@ defmodule Astro do
   center of the visible sun is directly above the equator.
 
   """
-  @spec equinox(Calendar.year(), :march | :september) :: {:ok, DateTime.t()}
+  @spec equinox(Calendar.year(), :march | :september) ::
+          {:ok, DateTime.t()} | {:error, :year_out_of_range}
   def equinox(year, event) when event in [:march, :september] and year in 1000..3000 do
     Solar.equinox_and_solstice(year, event)
+  end
+
+  # The calculation is accurate to within 2 minutes only for 1000 CE to
+  # 3000 CE; outside that span return an error rather than raising a
+  # FunctionClauseError at the caller.
+  def equinox(year, event) when event in [:march, :september] and is_integer(year) do
+    {:error, :year_out_of_range}
   end
 
   @doc """
@@ -1232,6 +1248,9 @@ defmodule Astro do
   * `{:ok, datetime}` representing the UTC datetime of
     the solstice.
 
+  * `{:error, :year_out_of_range}` if `year` is outside the
+    supported range of 1000 CE to 3000 CE.
+
   ### Examples
 
       iex> {:ok, dt} = Astro.solstice 2019, :december
@@ -1240,6 +1259,8 @@ defmodule Astro do
       iex> {:ok, dt} = Astro.solstice 2019, :june
       iex> DateTime.truncate(dt, :second)
       ~U[2019-06-21 15:54:07Z]
+      iex> Astro.solstice 3500, :june
+      {:error, :year_out_of_range}
 
   ### Notes
 
@@ -1266,9 +1287,17 @@ defmodule Astro do
   which they take place every year.
 
   """
-  @spec solstice(Calendar.year(), :june | :december) :: {:ok, DateTime.t()}
+  @spec solstice(Calendar.year(), :june | :december) ::
+          {:ok, DateTime.t()} | {:error, :year_out_of_range}
   def solstice(year, event) when event in [:june, :december] and year in 1000..3000 do
     Solar.equinox_and_solstice(year, event)
+  end
+
+  # The calculation is accurate to within 2 minutes only for 1000 CE to
+  # 3000 CE; outside that span return an error rather than raising a
+  # FunctionClauseError at the caller.
+  def solstice(year, event) when event in [:june, :december] and is_integer(year) do
+    {:error, :year_out_of_range}
   end
 
   @doc """

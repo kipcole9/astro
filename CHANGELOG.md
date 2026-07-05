@@ -1,5 +1,17 @@
 # Changelog
 
+## Astro version 2.3.3
+
+This is the changelog for Astro version 2.3.3 released on July 5th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Bug Fixes
+
+* `Astro.moonrise/3` and `Astro.moonset/3` now return `{:error, :not_found}` for a date outside the ephemeris range instead of raising a `MatchError`, completing the treatment applied to the sun events in 2.3.2. The moon-event scan confirms its search span — padded by one Lagrange interpolation interval — is covered by the ephemeris before computing altitudes.
+
+* `Astro.equinox/2` and `Astro.solstice/2` now return `{:error, :year_out_of_range}` for years outside 1000 CE to 3000 CE (the documented accuracy domain) instead of raising a `FunctionClauseError`. A far-past or far-future date reached through an astronomical calendar such as Persian now fails cleanly.
+
+* `Astro.new_visible_crescent/3,4` now return `{:error, :not_found}` when the date is outside the ephemeris range, distinct from `{:error, :no_sunset}` which is reserved for a genuine polar no-sunset day. Callers can now tell missing data apart from a real astronomical condition.
+
 ## Astro version 2.3.2
 
 This is the changelog for Astro version 2.3.2 released on July 4th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

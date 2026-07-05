@@ -151,7 +151,11 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   * `{:ok, visibility}` where `visibility` is one of `:A`, `:B`, `:C`, `:D`, or `:E`.
 
-  * `{:error, :no_sunset}` if sunset cannot be computed.
+  * `{:error, :no_sunset}` if no sunset occurs on the given date at
+    the given location.
+
+  * `{:error, :not_found}` if the date is outside the range covered
+    by the installed ephemeris.
 
   """
   @spec yallop_new_visible_crescent(Geo.PointZ.t(), Time.moment()) ::
@@ -195,7 +199,11 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   * `{:ok, visibility}` where `visibility` is one of `:A`, `:B`, `:C`, `:D`, or `:E`.
 
-  * `{:error, :no_sunset}` if sunset cannot be computed.
+  * `{:error, :no_sunset}` if no sunset occurs on the given date at
+    the given location.
+
+  * `{:error, :not_found}` if the date is outside the range covered
+    by the installed ephemeris.
 
   """
   @spec odeh_new_visible_crescent(Geo.PointZ.t(), Time.moment()) ::
@@ -253,7 +261,11 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   * `{:ok, visibility}` where `visibility` is one of `:A`, `:B`, `:C`, `:D`, or `:E`.
 
-  * `{:error, :no_sunset}` if sunset cannot be computed.
+  * `{:error, :no_sunset}` if no sunset occurs on the given date at
+    the given location.
+
+  * `{:error, :not_found}` if the date is outside the range covered
+    by the installed ephemeris.
 
   """
   @spec schaefer_new_visible_crescent(Geo.PointZ.t(), Time.moment(), keyword()) ::
@@ -282,6 +294,12 @@ defmodule Astro.Lunar.CrescentVisibility do
         end_moment = sunset_moment + 90.0 / 1440.0
         rs = scan_best_rs(sunset_moment, end_moment, location, k)
         {:ok, classify_schaefer(rs)}
+
+      # Distinguish "the ephemeris does not cover this date" from a
+      # genuine polar no-sunset day so callers can tell missing data
+      # apart from a real astronomical condition.
+      {{:error, :not_found}, _} ->
+        {:error, :not_found}
 
       {{:error, _}, _} ->
         {:error, :no_sunset}
@@ -439,6 +457,12 @@ defmodule Astro.Lunar.CrescentVisibility do
         sunset_moment = Time.date_time_to_moment(sunset_dt)
         best_time = sunset_moment + 40.0 / 1440.0
         fun.(best_time)
+
+      # Distinguish "the ephemeris does not cover this date" from a
+      # genuine polar no-sunset day so callers can tell missing data
+      # apart from a real astronomical condition.
+      {{:error, :not_found}, _} ->
+        {:error, :not_found}
 
       {{:error, _}, _} ->
         {:error, :no_sunset}
