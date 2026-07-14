@@ -99,13 +99,15 @@ defmodule Astro.MixProject do
       # If using tz_world to resolve geo location to time zone
       {:tz_world, "~> 1.0", optional: true},
 
-      # If using tzdata
+      # Optional time zone databases. The dependency edges keep compile
+      # ordering correct when a consumer picks one; neither is forced on
+      # consumers. `tz` is preferred when both are loaded and is the
+      # database used for astro's own dev and test.
       {:tzdata, "~> 1.1", optional: true},
 
       # For Um Al-Qura tests
       {:table_rex, "~> 4.0", only: [:dev, :test]},
 
-      # If usuing tz
       {:tz, "~> 0.26", optional: true},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false, optional: true},

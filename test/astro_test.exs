@@ -22,7 +22,7 @@ defmodule AstroTest do
       DateTime.from_naive(
         ~N[1945-11-12 16:39:06],
         "America/Chicago",
-        Tzdata.TimeZoneDatabase
+        Tz.TimeZoneDatabase
       )
 
     assert {:ok, actual} = Astro.sunset({-88.2073, 40.1106}, date)
@@ -36,7 +36,7 @@ defmodule AstroTest do
       DateTime.from_naive(
         ~N[1945-11-12 14:24:07-05:00],
         "America/Iqaluit",
-        Tzdata.TimeZoneDatabase
+        Tz.TimeZoneDatabase
       )
 
     assert {:ok, actual} = Astro.sunset({-83.1076, 70.2998}, date)

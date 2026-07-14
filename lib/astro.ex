@@ -104,15 +104,17 @@ defmodule Astro do
   @seconds_per_day 86_400
 
   # Selects the preferred time zone database at compile time based on which
-  # optional dependency (`:tzdata` or `:tz`) is available. The `:elixir`
-  # `:time_zone_database` application config still takes precedence at
-  # runtime — see `default_options/0`.
+  # optional dependency (`:tz` or `:tzdata`) is available — `:tz` is
+  # preferred when both are loaded (it is also what astro's own dev and
+  # test environments use). The `:elixir` `:time_zone_database`
+  # application config still takes precedence at runtime — see
+  # `default_options/0`.
   @compile_time_time_zone_db (cond do
-                                Code.ensure_loaded?(Tzdata.TimeZoneDatabase) ->
-                                  Tzdata.TimeZoneDatabase
-
                                 Code.ensure_loaded?(Tz.TimeZoneDatabase) ->
                                   Tz.TimeZoneDatabase
+
+                                Code.ensure_loaded?(Tzdata.TimeZoneDatabase) ->
+                                  Tzdata.TimeZoneDatabase
 
                                 true ->
                                   nil
@@ -758,7 +760,7 @@ defmodule Astro do
   * `:time_zone_database` represents the module that
     implements the `Calendar.TimeZoneDatabase` behaviour.
     The default is the configured Elixir time zone database or
-    one of Tzdata.TimeZoneDatabase or Tz.TimeZoneDatabase
+    any `Calendar.TimeZoneDatabase` implementation (for example Tz.TimeZoneDatabase or Tzdata.TimeZoneDatabase)
     depending upon which dependency is configured.
 
   * `:time_zone_resolver` is a 1-arity function that resolves the
@@ -869,7 +871,7 @@ defmodule Astro do
   * `:time_zone_database` represents the module that
     implements the `Calendar.TimeZoneDatabase` behaviour.
     The default is the configured Elixir time zone database or
-    one of Tzdata.TimeZoneDatabase or Tz.TimeZoneDatabase
+    any `Calendar.TimeZoneDatabase` implementation (for example Tz.TimeZoneDatabase or Tzdata.TimeZoneDatabase)
     depending upon which dependency is configured.
 
   * `:time_zone_resolver` is a 1-arity function that resolves the
@@ -948,7 +950,7 @@ defmodule Astro do
   * `:time_zone_database` represents the module that
     implements the `Calendar.TimeZoneDatabase` behaviour.
     The default is the configured Elixir time zone database or
-    one of Tzdata.TimeZoneDatabase or Tz.TimeZoneDatabase
+    any `Calendar.TimeZoneDatabase` implementation (for example Tz.TimeZoneDatabase or Tzdata.TimeZoneDatabase)
     depending upon which dependency is configured.
 
   * `:time_zone_resolver` is a 1-arity function that resolves the
@@ -1003,7 +1005,7 @@ defmodule Astro do
   * `:time_zone_database` represents the module that
     implements the `Calendar.TimeZoneDatabase` behaviour.
     The default is the configured Elixir time zone database or
-    one of Tzdata.TimeZoneDatabase or Tz.TimeZoneDatabase
+    any `Calendar.TimeZoneDatabase` implementation (for example Tz.TimeZoneDatabase or Tzdata.TimeZoneDatabase)
     depending upon which dependency is configured.
 
   * `:time_zone_resolver` is a 1-arity function that resolves the

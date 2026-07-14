@@ -4,7 +4,6 @@ config :logger,
   level: :debug,
   truncate: 4096
 
-# config :elixir,
-#   :time_zone_database, Tzdata.TimeZoneDatabase
-
+# Astro is time zone database agnostic (any `Calendar.TimeZoneDatabase`
+# implementation works); `tz` is used for local development and test.
 config :elixir, :time_zone_database, Tz.TimeZoneDatabase
