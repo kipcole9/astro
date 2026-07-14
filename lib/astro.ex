@@ -103,10 +103,11 @@ defmodule Astro do
 
   @seconds_per_day 86_400
 
-  # Selects the preferred time zone database at compile time based on which
-  # optional dependency (`:tz` or `:tzdata`) is available — `:tz` is
-  # preferred when both are loaded (it is also what astro's own dev and
-  # test environments use). The `:elixir` `:time_zone_database`
+  # Selects the preferred time zone database at compile time based on
+  # which implementation (`:tz` or `:tzdata`) is loaded — `:tz` is
+  # preferred when both are (it is also what astro's own dev and test
+  # environments use; `:tzdata` is not a dependency but is detected
+  # when a consumer loads it). The `:elixir` `:time_zone_database`
   # application config still takes precedence at runtime — see
   # `default_options/0`.
   @compile_time_time_zone_db (cond do

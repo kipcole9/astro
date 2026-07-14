@@ -101,7 +101,6 @@ defmodule Astro.MixProject do
 
       # For Um Al-Qura tests
       {:table_rex, "~> 4.0", only: [:dev, :test]},
-
       {:tz, "~> 0.26", optional: true},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false, optional: true},
