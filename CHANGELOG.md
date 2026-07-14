@@ -1,11 +1,12 @@
 # Changelog
 
-## Unreleased
+## Astro version 2.4.0
+
+This is the changelog for Astro version 2.4.0 released on July 15th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Enhancements
 
 * Prefer `Tz.TimeZoneDatabase` over `Tzdata.TimeZoneDatabase` in the compile-time default when both optional dependencies are loaded, and use `tz` for astro's own development and test environments. Astro remains time zone database agnostic: the `:elixir` `:time_zone_database` runtime configuration takes precedence, any `Calendar.TimeZoneDatabase` implementation works, and neither database is forced on consumers.
-
 
 ## Astro version 2.3.3
 
