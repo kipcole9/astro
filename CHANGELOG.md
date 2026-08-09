@@ -12,7 +12,7 @@ This is the changelog for Astro version 2.5.0, released on August 9th, 2026. For
 
 ### Bug Fixes
 
-* Ephemeris downloads now pin TLS 1.2. Erlang offers TLS 1.3 by default on OTP 26 and later, but NASA NAIF's server fails that handshake, which surfaced as `{:failed_connect, ..., :closed}` while `curl` appeared to work; this fix was described in the 2.2.2 release notes but the code change was not included until now. Thanks to @allenwyma for the report. Closes #10.
+* Ephemeris downloads now pin TLS 1.2. Erlang offers TLS 1.3 by default on OTP 26 and later, but NASA NAIF's server fails that handshake, which surfaced as `{:failed_connect, ..., :closed}` while `curl` appeared to work; this fix was described in the 2.2.2 release notes but the code change was not included until now. Thanks to @allenwyma for the report. Closes #10. This was incorrectly reported as fixed in version 2.2.2.
 
 ## Astro version 2.4.0
 
@@ -69,6 +69,10 @@ This is the changelog for Astro version 2.2.3 released on June 15th, 2026.  For 
 ## Astro version 2.2.2
 
 This is the changelog for Astro version 2.2.2 released on June 9th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Addedum
+
+* The fix for #10 did not land in this release. It landed in 2.5.0 on August 9th, 2026.
 
 ### Bug Fixes
 
