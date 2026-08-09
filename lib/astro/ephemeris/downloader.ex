@@ -2,9 +2,15 @@ defmodule Astro.Ephemeris.Downloader do
   @moduledoc """
   Downloads JPL DE-series SPK binary ephemeris files from NASA NAIF.
 
-  The default ephemeris file (`de440s.bsp`, ~32 MB) is not bundled with
-  the hex package. It is downloaded automatically at application start
-  the first time `Astro` is run, and cached on disk for subsequent runs.
+  A compact ephemeris covering 1900–2100 is bundled with the library
+  (see `Astro.Ephemeris.Subset`), so no download is required for dates
+  in that range.
+
+  Downloading is needed only to obtain the full `de440s.bsp` kernel
+  (~32 MB), which extends coverage to 1849–2150. When present it takes
+  precedence over the bundled ephemeris. It can be fetched with
+  `mix astro.download_ephemeris`, and is otherwise downloaded on demand
+  at application start and cached on disk for subsequent runs.
 
   ### Cache location
 
@@ -41,6 +47,10 @@ defmodule Astro.Ephemeris.Downloader do
   @default_url "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp"
   @default_file "de440s.bsp"
 
+  # The compact ephemeris shipped with the library. Built by
+  # `mix astro.build_ephemeris`; see `Astro.Ephemeris.Subset`.
+  @bundled_file "de440s-astro.bsp"
+
   @doc """
   Returns the resolved ephemeris file path.
 
@@ -48,8 +58,13 @@ defmodule Astro.Ephemeris.Downloader do
 
   * The `:ephemeris` application environment key, if set.
 
-  * `priv/de440s.bsp` if it exists (used during library development
-    and when running from a checkout).
+  * `priv/de440s.bsp` — the full JPL kernel, if it has been downloaded
+    (used during library development and when running from a checkout,
+    and by anyone wanting coverage beyond the bundled span).
+
+  * `priv/de440s-astro.bsp` — the compact ephemeris bundled with the
+    library, covering 1900–2100. Present in every hex install, so no
+    download is required for dates in that span.
 
   * The user cache directory as resolved by
     `:filename.basedir(:user_cache, "astro")`.
@@ -66,12 +81,14 @@ defmodule Astro.Ephemeris.Downloader do
   def ephemeris_path do
     case Application.get_env(:astro, :ephemeris) do
       nil ->
-        priv_path = Path.join(:code.priv_dir(:astro), @default_file)
+        priv_dir = :code.priv_dir(:astro)
+        full_path = Path.join(priv_dir, @default_file)
+        bundled_path = Path.join(priv_dir, @bundled_file)
 
-        if File.exists?(priv_path) do
-          priv_path
-        else
-          Path.join(cache_dir(), @default_file)
+        cond do
+          File.exists?(full_path) -> full_path
+          File.exists?(bundled_path) -> bundled_path
+          true -> Path.join(cache_dir(), @default_file)
         end
 
       path when is_binary(path) ->

@@ -1,5 +1,19 @@
 # Changelog
 
+## Astro version 2.5.0
+
+This is the changelog for Astro version 2.5.0, not yet released. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Enhancements
+
+* A compact ephemeris covering 1900 to 2100 now ships with the package, so Astro works immediately after installation with no download step. It is extracted from JPL's DE440s kernel and yields identical results; `mix astro.download_ephemeris` remains available for the full 1849 to 2150 range and takes precedence when present.
+
+* `mix astro.build_ephemeris` builds a compact ephemeris from a JPL DE-series kernel, keeping only the Sun, Moon and Earth segments over a chosen span of years at roughly 42 KB per year. Options include `--from`, `--to`, `--source` and `--keep-earth`.
+
+### Bug Fixes
+
+* Ephemeris downloads now pin TLS 1.2. NASA's NAIF server advertises TLS 1.3 but fails the handshake, which surfaced as `{:failed_connect, ..., :closed}` on OTP 26 and later while `curl` appeared to work.
+
 ## Astro version 2.4.0
 
 This is the changelog for Astro version 2.4.0 released on July 15th, 2026.  For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

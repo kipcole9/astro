@@ -17,6 +17,10 @@ defmodule Astro.Ephemeris do
 
   Moon relative to Earth = Moon/EMB − Earth/EMB.
 
+  The compact ephemeris bundled with the library omits body 399, which
+  `Astro.Ephemeris.Kernel` reconstructs from body 301 — the two are exact
+  scalar multiples of one another. Chaining is unaffected.
+
   ## Setup
 
   Load the kernel once at application startup and pass it to all calls:

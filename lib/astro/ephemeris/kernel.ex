@@ -53,6 +53,14 @@ defmodule Astro.Ephemeris.Kernel do
   @summary_bytes 40
   @ephemeris_key {Astro, :ephemeris}
 
+  @moon_id 301
+  @earth_id 399
+  @emb_id 3
+
+  # Earth/Moon mass ratio for DE440. Used only to reconstruct the Earth→EMB
+  # segment when it is absent; see `find_segment/3`.
+  @emrat 81.3005682214972154
+
   defstruct [:path, :endian, :data, :segments]
 
   @type t :: %__MODULE__{
@@ -146,17 +154,35 @@ defmodule Astro.Ephemeris.Kernel do
   def find_segment(target, centre, dynamical_time \\ nil) do
     %__MODULE__{segments: segs} = ephemeris()
 
-    match =
-      Enum.find(segs, fn seg ->
-        seg.target == target and seg.centre == centre and
-          (is_nil(dynamical_time) or
-             (dynamical_time >= seg.start_dt and dynamical_time <= seg.end_dt))
-      end)
-
-    case match do
-      nil -> {:error, :not_found}
+    case match_segment(segs, target, centre, dynamical_time) do
+      nil -> derive_segment(segs, target, centre, dynamical_time)
       seg -> {:ok, seg}
     end
+  end
+
+  defp match_segment(segments, target, centre, dynamical_time) do
+    Enum.find(segments, fn seg ->
+      seg.target == target and seg.centre == centre and
+        (is_nil(dynamical_time) or
+           (dynamical_time >= seg.start_dt and dynamical_time <= seg.end_dt))
+    end)
+  end
+
+  # The Earth→EMB segment is an exact scalar multiple of Moon→EMB: by the
+  # definition of the barycenter, Earth→EMB = -(1 / EMRAT) x Moon→EMB. It is
+  # also one of the two largest segments in a DE file, so the ephemeris shipped
+  # with Astro omits it and reconstructs it here. A file that does carry the
+  # segment — a full de440s.bsp, say — matches above and never reaches this
+  # clause, so user-supplied kernels are used exactly as they are.
+  defp derive_segment(segments, @earth_id, @emb_id, dynamical_time) do
+    case match_segment(segments, @moon_id, @emb_id, dynamical_time) do
+      nil -> {:error, :not_found}
+      moon -> {:ok, %{moon | target: @earth_id} |> Map.put(:scale, -1.0 / @emrat)}
+    end
+  end
+
+  defp derive_segment(_segments, _target, _centre, _dynamical_time) do
+    {:error, :not_found}
   end
 
   @doc """
@@ -213,8 +239,11 @@ defmodule Astro.Ephemeris.Kernel do
     cy = read_doubles_range(rec_bin, 2 + n, n, endian)
     cz = read_doubles_range(rec_bin, 2 + 2 * n, n, endian)
 
-    {Math.evaluate_chebyshev(cx, s), Math.evaluate_chebyshev(cy, s),
-     Math.evaluate_chebyshev(cz, s)}
+    # Reconstructed segments carry a scale factor; real segments do not.
+    scale = Map.get(segment, :scale, 1.0)
+
+    {scale * Math.evaluate_chebyshev(cx, s), scale * Math.evaluate_chebyshev(cy, s),
+     scale * Math.evaluate_chebyshev(cz, s)}
   end
 
   # ── Binary parsing ───────────────────────────────────────────────────────────

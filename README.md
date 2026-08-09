@@ -13,7 +13,7 @@ The public API functions in the `Astro` module retain the same signatures in Ast
 
 When upgrading to Astro 2.x the following should be applied:
 
-* **Download the JPL ephemeris.** Astro 2.x uses the JPL DE440s ephemeris for its calculations. See [Download the JPL Ephemeris](#download-the-jpl-ephemeris) for instructions.
+* **Astro 2.x uses a JPL ephemeris.** A compact ephemeris covering 1900–2100 ships with the package, so no download is needed. For dates outside that range see [The JPL Ephemeris](#the-jpl-ephemeris).
 
 * **Numerical results may differ slightly.** The move from NOAA/Meeus polynomial approximations to the JPL DE440s ephemeris, combined with an improved ΔT computation, means that computed times for events such as equinoxes, solstices and new moons may shift by up to ~22 seconds.
 
@@ -138,25 +138,40 @@ def deps do
 end
 ```
 
-### Download the JPL Ephemeris
+### The JPL Ephemeris
 
-Astro requires the JPL DE440s ephemeris file (`de440s.bsp`, ~32 MB) for its rise/set calculations. After fetching dependencies, download it with the included mix task:
+Astro computes rise and set times directly from a JPL Development Ephemeris. A compact ephemeris covering **1900 to 2100** is bundled with the package, so no download is required and Astro works as soon as it is installed.
+
+The bundled file is extracted from JPL's DE440s kernel and contains only the Sun, Moon and Earth segments Astro uses. The Chebyshev coefficients are copied verbatim, so results are identical to those computed from the full JPL file for any date it covers.
+
+#### Dates outside 1900–2100
+
+For dates beyond the bundled range, download the full DE440s kernel, which covers **1849 to 2150**:
 
 ```
-mix deps.get
 mix astro.download_ephemeris
 ```
 
-The file is placed in Astro's `priv` directory and loaded into memory at application start.
-
-To use an alternative file path or a diffferent but compatible ephemeris (such as `de440.bsp`), configure the `:ephemeris` option in your `runtime.exs`:
+The file is placed in Astro's `priv` directory and takes precedence over the bundled ephemeris automatically. To place it elsewhere, pass `--dest` and configure the path:
 
 ```elixir
 config :astro,
-  ephemeris: "/path/to/de440.bsp"
+  ephemeris: "/path/to/de440s.bsp"
 ```
 
-The default path is `priv/de440s.bsp` relative to the Astro application directory.
+Dates outside the range of the loaded ephemeris return `{:error, :not_found}`.
+
+#### Using a different ephemeris
+
+The `:ephemeris` option accepts any compatible DAF/SPK kernel, such as `de440.bsp` or `de441.bsp` for a much wider date range.
+
+To build your own compact ephemeris over a different span of years — trading file size for coverage at roughly 42 KB per year — use:
+
+```
+mix astro.build_ephemeris --from 2000 --to 2050
+```
+
+Coverage cannot exceed that of the source kernel, which is 1849 to 2150 for the default DE440s. Pass `--source` to subset a wider kernel such as `de441.bsp`.
 
 ### Install a time zone database
 

@@ -30,12 +30,28 @@ defmodule Astro.Ephemeris.DownloaderTest do
       assert Downloader.ephemeris_path() == "/custom/de440s.bsp"
     end
 
-    test "returns the priv path when :ephemeris is unset and the file exists in priv" do
+    test "returns a priv path when :ephemeris is unset and an ephemeris exists in priv" do
       Application.delete_env(:astro, :ephemeris)
       path = Downloader.ephemeris_path()
 
-      assert String.ends_with?(path, "de440s.bsp")
-      assert File.exists?(path), "expected priv/de440s.bsp to be present in the test environment"
+      # Either the full JPL kernel (present in a development checkout) or the
+      # compact ephemeris bundled with the library.
+      assert Path.basename(path) in ["de440s.bsp", "de440s-astro.bsp"]
+
+      assert File.exists?(path),
+             "expected an ephemeris file to be present in priv in the test environment"
+    end
+
+    test "prefers the full kernel over the bundled ephemeris when both are present" do
+      Application.delete_env(:astro, :ephemeris)
+      priv_dir = to_string(:code.priv_dir(:astro))
+      full_path = Path.join(priv_dir, "de440s.bsp")
+
+      if File.exists?(full_path) do
+        assert Downloader.ephemeris_path() == full_path
+      else
+        assert Path.basename(Downloader.ephemeris_path()) == "de440s-astro.bsp"
+      end
     end
   end
 

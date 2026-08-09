@@ -9,6 +9,14 @@ defmodule Mix.Tasks.Astro.DownloadEphemeris do
   segments for the Sun, Moon, Earth and Earth-Moon Barycenter used
   by the scan-and-bisect rise/set algorithms.
 
+  This download is optional. A compact ephemeris covering 1900–2100
+  ships with the library, so it is needed only for dates outside that
+  range — the full kernel covers 1849–2150. Once downloaded it takes
+  precedence over the bundled ephemeris automatically.
+
+  To build a compact ephemeris over some other span of years instead,
+  see `mix astro.build_ephemeris`.
+
   ## Usage
 
       $ mix astro.download_ephemeris

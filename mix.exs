@@ -1,7 +1,7 @@
 defmodule Astro.MixProject do
   use Mix.Project
 
-  @version "2.4.0"
+  @version "2.5.0"
 
   def project do
     [
@@ -78,7 +78,8 @@ defmodule Astro.MixProject do
         "mix.exs",
         "README*",
         "CHANGELOG*",
-        "LICENSE*"
+        "LICENSE*",
+        "priv/de440s-astro.bsp"
       ]
     ]
   end
@@ -101,7 +102,6 @@ defmodule Astro.MixProject do
 
       # For Um Al-Qura tests
       {:table_rex, "~> 4.0", only: [:dev, :test]},
-
       {:tz, "~> 0.26", optional: true},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false, optional: true},
