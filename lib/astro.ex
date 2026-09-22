@@ -1610,8 +1610,15 @@ defmodule Astro do
   # When sunset precedes sunrise on the same calendar day the Sun was already
   # up at local midnight, set briefly, then rose again — daylight is the whole
   # day less the night between the two events (`DateTime.diff` is negative).
+  # The difference is taken in microseconds and divided down rather than
+  # asking for `:second` directly. `DateTime.diff/2` at second precision
+  # handles the microsecond components differently across Elixir releases
+  # -- 1.18 and earlier effectively drop them before subtracting, which
+  # inflates the result by up to a second -- so the same location and date
+  # returned 14:18:45 there and 14:18:44 on 1.19 and later. Dividing an
+  # exact microsecond difference truncates identically on every release.
   defp daylight_between(sunrise, sunset) do
-    case DateTime.diff(sunset, sunrise) do
+    case div(DateTime.diff(sunset, sunrise, :microsecond), 1_000_000) do
       seconds when seconds >= 0 -> seconds
       night -> @seconds_per_day + night
     end

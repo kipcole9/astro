@@ -13,6 +13,10 @@ on:
 # Sets the ENV `MIX_ENV` to `test` for running tests
 env:
   MIX_ENV: test
+  # tz_world's data directory, read by config/config.exs. Kept outside
+  # _build so it survives a toolchain-keyed build cache and can be cached
+  # once for every matrix entry.
+  TZ_WORLD_DATA_DIR: ${{ github.workspace }}/tz_world_data
 
 permissions:
   contents: read
@@ -111,14 +115,21 @@ jobs:
     - name: Compiles without warnings
       run: mix compile --warnings-as-errors
 
-    # Step: Install the tz_world timezone geo data. `--force` is required on
-    # a clean checkout: from tz_world 2.0 a missing `:data_dir` is a hard
-    # error rather than being created silently, and nothing has created
-    # _build/$MIX_ENV/lib/tz_world/priv at this point. It also forces a
-    # re-download when data is already current, which costs nothing here
-    # because this step is not cached -- drop `--force` in favour of
-    # creating the directory if a cache step is ever added.
+    # Step: Cache the tz_world timezone geo data (~95 MB). It is a static
+    # upstream release, so fetch it once rather than once per matrix entry.
+    # The key is constant; bump the suffix to pick up a newer release.
+    - name: Cache tz_world geo data
+      id: cache-tz-world
+      uses: actions/cache@v5
+      with:
+        path: tz_world_data
+        key: tz-world-geodata-2026d
+
+    # Step: Install the tz_world timezone geo data on a cache miss only.
+    # `--force` creates the data directory, which tz_world's package does
+    # not ship; without it a first install is a hard error.
     - name: Install time zone data
+      if: steps.cache-tz-world.outputs.cache-hit != 'true'
       run: mix tz_world.update --force
 
     # Step: Cache the JPL DE440s ephemeris (~32 MB, static file). NAIF's

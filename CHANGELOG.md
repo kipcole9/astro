@@ -16,6 +16,8 @@ This is the changelog for Astro version 2.6.0, released on September 22nd, 2026.
 
 ### Bug Fixes
 
+* `Astro.hours_of_daylight/2` and `Astro.duration_of_daylight/2` now return the same result on every Elixir release. They derived the day length from `DateTime.diff/2` at second precision, whose treatment of the microsecond components changed in Elixir 1.19, so one location and date returned 14:18:45 on Elixir 1.18 and earlier but 14:18:44 from 1.19 onwards.
+
 * Time zone resolution returns `{:error, :tz_world_data_not_installed}` when `tz_world` is a dependency but its time zone data has never been downloaded, instead of leaking the bare POSIX `{:error, :enoent}`. Running `mix tz_world.update` installs the data.
 
 ## Astro version 2.5.0

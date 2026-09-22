@@ -95,15 +95,16 @@ defmodule Astro.HoursOfDaylightTest do
         assert {:ok, %Duration{hour: 24} = duration} =
                  Astro.duration_of_daylight(@alert, ~D[2019-06-07])
 
-        # Unlike hours_of_daylight/2 which caps at ~T[23:59:59].
-        assert Duration.to_string(duration) == "24h"
+        # Unlike hours_of_daylight/2 which caps at ~T[23:59:59]. Compared as a
+        # struct rather than via Duration.to_string/1, which is Elixir 1.18+.
+        assert duration == %Duration{hour: 24}
       end
 
       test "reports zero for polar night" do
         assert {:ok, %Duration{} = duration} =
                  Astro.duration_of_daylight(@alert, ~D[2019-12-07])
 
-        assert Duration.to_string(duration) == "0s"
+        assert duration == %Duration{}
       end
 
       test "agrees with hours_of_daylight/2 across the solstice window" do

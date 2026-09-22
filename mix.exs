@@ -140,7 +140,23 @@ defmodule Astro.MixProject do
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false, optional: true},
       {:stream_data, "~> 1.0", only: [:test]}
-    ]
+    ] ++ maybe_json_polyfill()
+  end
+
+  # json_polyfill (the EEP 68 :json module for OTP 26) is provided for
+  # THIS project's own dev/test/CI only -- `only:` dependencies never
+  # enter the hex package requirements. It is needed because `tz_world`
+  # calls `:json`, which is built in only from OTP 27. It is deliberately
+  # NOT a package dependency: OTP 26 consumers using tz_world add
+  # {:json_polyfill, "~> 0.2 or ~> 1.0"} to their own deps. The
+  # conditional avoids fetching it on OTP >= 27, where `:json` is built
+  # in and the polyfill's own build fails.
+  defp maybe_json_polyfill do
+    if Code.ensure_loaded?(:json) do
+      []
+    else
+      [{:json_polyfill, "~> 0.2 or ~> 1.0", only: [:dev, :test]}]
+    end
   end
 
   defp elixirc_paths(:test), do: ["lib", "test", "test/support"]
