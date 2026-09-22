@@ -45,4 +45,33 @@ defmodule Astro.Test.Time do
       assert Date.diff(DateTime.to_date(e1583), DateTime.to_date(e1582)) in 364..366
     end
   end
+
+  describe "tz_world error mapping" do
+    test "the bare POSIX :enoent becomes :tz_world_data_not_installed" do
+      assert Astro.Time.map_tz_world_result({:error, :enoent}) ==
+               {:error, :tz_world_data_not_installed}
+    end
+
+    test ":time_zone_not_found is a real result and is not reported as missing data" do
+      assert Astro.Time.map_tz_world_result({:error, :time_zone_not_found}) ==
+               {:error, :time_zone_not_found}
+    end
+
+    test "a resolved time zone passes through unchanged" do
+      assert Astro.Time.map_tz_world_result({:ok, "Australia/Sydney"}) ==
+               {:ok, "Australia/Sydney"}
+    end
+
+    test "other tz_world errors pass through unchanged" do
+      for reason <- [:timeout, :empty_file, :corrupt_header, :connection_timeout] do
+        assert Astro.Time.map_tz_world_result({:error, reason}) == {:error, reason}
+      end
+    end
+
+    @tag :tz_world
+    test "a real location resolves through the mapped path" do
+      sydney = %Geo.Point{coordinates: {151.20666584, -33.8559799094}}
+      assert {:ok, "Australia/Sydney"} = Astro.Time.tz_world_timezone_at(sydney)
+    end
+  end
 end

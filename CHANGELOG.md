@@ -1,5 +1,17 @@
 # Changelog
 
+## Astro version 2.6.0
+
+This is the changelog for Astro version 2.6.0, released on September 22nd, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Enhancements
+
+* Supports `tz_world: "~> 2.3"` only to allow use of the `TzWorld.Backend.SpatialIndex` backend.
+
+### Bug Fixes
+
+* Time zone resolution returns `{:error, :tz_world_data_not_installed}` when `tz_world` is a dependency but its time zone data has never been downloaded, instead of leaking the bare POSIX `{:error, :enoent}`. Running `mix tz_world.update` installs the data.
+
 ## Astro version 2.5.0
 
 This is the changelog for Astro version 2.5.0, released on August 9th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

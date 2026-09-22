@@ -14,9 +14,14 @@ defmodule Astro.Supervisor do
   The backend process is started under a
   supervisor called Astro.Supervisor.
 
+  `TzWorld.Backend.SpatialIndex` is used. It is tz_world's
+  recommended and default backend, resolving a coordinate against an
+  R-tree held in `:persistent_term` without passing through a
+  GenServer mailbox.
+
   """
-  if Code.ensure_loaded?(TzWorld.Backend.DetsWithIndexCache) do
-    @tz_world_backend [TzWorld.Backend.DetsWithIndexCache]
+  if Code.ensure_loaded?(TzWorld.Backend.SpatialIndex) do
+    @tz_world_backend [TzWorld.Backend.SpatialIndex]
   else
     @tz_world_backend []
   end

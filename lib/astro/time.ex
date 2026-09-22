@@ -1250,21 +1250,41 @@ defmodule Astro.Time do
   end
 
   @doc false
-  if Code.ensure_loaded?(TzWorld) do
-    def timezone_at(%Geo.PointZ{} = location, nil) do
-      location = %Geo.Point{coordinates: Tuple.delete_at(location.coordinates, 2)}
-      TzWorld.timezone_at(location)
-    end
-  else
-    def timezone_at(%Geo.PointZ{} = _location, nil) do
-      {:error, :time_zone_not_resolved}
-    end
+  def timezone_at(%Geo.PointZ{} = location, nil) do
+    location = %Geo.Point{coordinates: Tuple.delete_at(location.coordinates, 2)}
+    tz_world_timezone_at(location)
   end
 
   def timezone_at(%Geo.PointZ{} = location, time_zone_resolver) do
     location = %Geo.Point{coordinates: Tuple.delete_at(location.coordinates, 2)}
     time_zone_resolver.(location)
   end
+
+  # Resolves a time zone name for a point via `TzWorld`, translating
+  # tz_world's internal errors into Astro's error vocabulary.
+  @doc false
+  if Code.ensure_loaded?(TzWorld) do
+    def tz_world_timezone_at(%Geo.Point{} = point) do
+      point
+      |> TzWorld.timezone_at()
+      |> map_tz_world_result()
+    end
+  else
+    def tz_world_timezone_at(%Geo.Point{} = _point) do
+      {:error, :time_zone_not_resolved}
+    end
+  end
+
+  # tz_world returns the bare POSIX `:enoent` when it is installed but its
+  # time zone data has never been downloaded. It is reported as a distinct
+  # error so that it is not mistaken for a missing ephemeris; running
+  # `mix tz_world.update` installs the data. Every other result passes
+  # through untouched, including `:time_zone_not_found`, which legitimately
+  # means the point lies outside any time zone rather than that data is
+  # missing.
+  @doc false
+  def map_tz_world_result({:error, :enoent}), do: {:error, :tz_world_data_not_installed}
+  def map_tz_world_result(result), do: result
 
   # ── Unified ΔT computation ────────────────────────────────────────────────
 

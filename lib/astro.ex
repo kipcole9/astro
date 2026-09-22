@@ -784,6 +784,10 @@ defmodule Astro do
     if `:tz_world` is not configured as a dependency and no
     `:time_zone_resolver` option is specified.
 
+  * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
+    dependency but its time zone data has not been downloaded. Run
+    `mix tz_world.update` to install it.
+
   * `{:error, :no_time}` if for the requested date
     and location there is no sunrise. This can occur at
     very high and very low latitudes during summer and winter.
@@ -807,7 +811,11 @@ defmodule Astro do
   """
   @spec sunrise(location, date, options) ::
           {:ok, DateTime.t()}
-          | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
+          | {:error,
+             :time_zone_not_found
+             | :time_zone_not_resolved
+             | :tz_world_data_not_installed
+             | :no_time}
 
   def sunrise(location, date, options \\ []) when is_list(options) do
     Solar.SunRiseSet.sunrise(location, date_to_moment(date), options)
@@ -895,6 +903,10 @@ defmodule Astro do
     if `:tz_world` is not configured as a dependency and no
     `:time_zone_resolver` option is specified.
 
+  * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
+    dependency but its time zone data has not been downloaded. Run
+    `mix tz_world.update` to install it.
+
   * `{:error, :no_time}` if for the requested date
     and location there is no sunset. This can occur at
     very high and very low latitudes during summer and winter.
@@ -918,7 +930,11 @@ defmodule Astro do
   """
   @spec sunset(location, date, options) ::
           {:ok, DateTime.t()}
-          | {:error, :time_zone_not_found | :time_zone_not_resolved | :no_time}
+          | {:error,
+             :time_zone_not_found
+             | :time_zone_not_resolved
+             | :tz_world_data_not_installed
+             | :no_time}
 
   def sunset(location, date, options \\ []) when is_list(options) do
     Solar.SunRiseSet.sunset(location, date_to_moment(date), options)

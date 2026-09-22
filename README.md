@@ -222,7 +222,7 @@ defmodule MyApp.Application do
       # See the documentation for tz_world for the
       # various available backends. This is the recommended
       # backend.
-      TzWorld.Backend.DetsWithIndexCache
+      TzWorld.Backend.SpatialIndex
     ]
 
     opts = [strategy: :one_for_one, name: Astro.Supervisor]

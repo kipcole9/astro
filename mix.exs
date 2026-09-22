@@ -1,7 +1,7 @@
 defmodule Astro.MixProject do
   use Mix.Project
 
-  @version "2.5.0"
+  @version "2.6.0"
 
   def project do
     [
@@ -98,7 +98,7 @@ defmodule Astro.MixProject do
       {:geo, "~> 3.0"},
 
       # If using tz_world to resolve geo location to time zone
-      {:tz_world, "~> 1.0", optional: true},
+      {:tz_world, "~> 2.3", optional: true},
 
       # For Um Al-Qura tests
       {:table_rex, "~> 4.0", only: [:dev, :test]},

@@ -220,6 +220,10 @@ defmodule Astro.Lunar.MoonRiseSet do
   * `{:error, :time_zone_not_resolved}` if the time zone cannot be
     resolved from the location.
 
+  * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
+    dependency but its time zone data has not been downloaded. Run
+    `mix tz_world.update` to install it.
+
   ### Examples
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2026-03-01])
@@ -303,6 +307,10 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   * `{:error, :time_zone_not_resolved}` if the time zone cannot be
     resolved from the location.
+
+  * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
+    dependency but its time zone data has not been downloaded. Run
+    `mix tz_world.update` to install it.
 
   ### Examples
 
@@ -675,11 +683,7 @@ defmodule Astro.Lunar.MoonRiseSet do
     resolver.(%Geo.Point{coordinates: {lng, lat}})
   end
 
-  if Code.ensure_loaded?(TzWorld) do
-    defp default_resolver(point), do: TzWorld.timezone_at(point)
-  else
-    defp default_resolver(_point), do: {:error, :time_zone_not_resolved}
-  end
+  defp default_resolver(point), do: Time.tz_world_timezone_at(point)
 
   defp shift_zone(utc_dt, tz, :configured), do: DateTime.shift_zone(utc_dt, tz)
   defp shift_zone(utc_dt, tz, tz_db), do: DateTime.shift_zone(utc_dt, tz, tz_db)
