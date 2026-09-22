@@ -4,9 +4,15 @@
 
 This is the changelog for Astro version 2.6.0, released on September 22nd, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
+### Breaking Changes
+
+* The minimum supported Elixir version is now 1.17, raised from 1.11. `Astro.duration_of_daylight/2` is therefore always defined, rather than only on releases where `Duration` is available.
+
 ### Enhancements
 
-* Supports `tz_world: "~> 2.3"` only to allow use of the `TzWorld.Backend.SpatialIndex` backend.
+* Supports `tz_world: "~> 2.4"` only to allow use of the `TzWorld.Backend.SpatialIndex` backend.
+
+* Added guides for getting started, solar events and lunar events. Their examples are doctested, so they cannot drift from the library.
 
 ### Bug Fixes
 

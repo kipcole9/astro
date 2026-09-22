@@ -8,7 +8,7 @@ defmodule Astro.MixProject do
       app: :astro,
       name: "Astro",
       version: @version,
-      elixir: "~> 1.11",
+      elixir: "~> 1.17",
       source_url: "https://github.com/kipcole9/astro",
       docs: docs(),
       description: description(),
@@ -41,9 +41,42 @@ defmodule Astro.MixProject do
       formatters: ["html", "markdown"],
       extras: [
         "README.md",
+        "guides/getting_started.md",
+        "guides/solar.md",
+        "guides/lunar.md",
         "LICENSE.md",
         "CHANGELOG.md",
         "rise_and_set_comparisons.md"
+      ],
+      groups_for_extras: [
+        Guides: ~r"^guides/"
+      ],
+      groups_for_modules: [
+        Solar: [
+          Astro.Solar,
+          Astro.Solar.SunRiseSet
+        ],
+        Lunar: [
+          Astro.Lunar,
+          Astro.Lunar.MoonRiseSet,
+          Astro.Lunar.CrescentVisibility
+        ],
+        Ephemeris: [
+          Astro.Ephemeris,
+          Astro.Ephemeris.Kernel,
+          Astro.Ephemeris.Downloader,
+          Astro.Ephemeris.Subset
+        ],
+        "Mix tasks": [
+          Mix.Tasks.Astro.DownloadEphemeris,
+          Mix.Tasks.Astro.BuildEphemeris
+        ],
+        Internals: [
+          Astro.Coordinates,
+          Astro.Earth,
+          Astro.Time,
+          Astro.Supervisor
+        ]
       ],
       skip_undefined_reference_warnings_on: ["changelog", "CHANGELOG.md"]
     ]
@@ -79,6 +112,7 @@ defmodule Astro.MixProject do
         "README*",
         "CHANGELOG*",
         "LICENSE*",
+        "guides",
         "priv/de440s-astro.bsp"
       ]
     ]
@@ -98,7 +132,7 @@ defmodule Astro.MixProject do
       {:geo, "~> 3.0"},
 
       # If using tz_world to resolve geo location to time zone
-      {:tz_world, "~> 2.3", optional: true},
+      {:tz_world, "~> 2.4", optional: true},
 
       # For Um Al-Qura tests
       {:table_rex, "~> 4.0", only: [:dev, :test]},

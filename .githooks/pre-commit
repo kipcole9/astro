@@ -1,0 +1,12 @@
+#!/bin/sh
+# Formats staged Elixir files and re-stages them, so CI's
+# `mix format --check-formatted` has nothing to flag.
+#
+# Enable once per clone with:  git config core.hooksPath .githooks
+set -e
+
+files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ex|exs|heex)$' || true)
+[ -z "$files" ] && exit 0
+
+echo "$files" | xargs mix format
+echo "$files" | xargs git add

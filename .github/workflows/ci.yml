@@ -28,21 +28,38 @@ jobs:
       # Specify the OTP and Elixir versions to use when building
       # and running the workflow steps.
       matrix:
+        # Elixir and OTP are given as minor/major only so setup-beam
+        # resolves the latest patch of each on every run, rather than
+        # pinning patches that silently go stale. Elixir 1.17 is the
+        # floor declared in mix.exs.
         include:
-          # minimum required versions
-          - otp: "27.2.4"
-            elixir: "1.18.4-otp-27"
-          - otp: "28.3.1"
-            elixir: "1.18.4-otp-28"
-          - otp: "27.2.4"
-            elixir: "1.19.5-otp-27"
-          - otp: "28.3.1"
-            elixir: "1.19.5-otp-28"
-          - otp: "28.3.1"
-            elixir: "1.20.1-otp-28"
-            lint: true
-          - otp: "29.0.1"
-            elixir: "1.20.1-otp-29"
+          # Elixir 1.17 - supports OTP 26-27
+          - elixir: "1.17-otp-26"
+            otp: "26"
+          - elixir: "1.17-otp-27"
+            otp: "27"
+
+          # Elixir 1.18 - supports OTP 26-27
+          - elixir: "1.18-otp-26"
+            otp: "26"
+          - elixir: "1.18-otp-27"
+            otp: "27"
+
+          # Elixir 1.19 - supports OTP 26-28
+          - elixir: "1.19-otp-26"
+            otp: "26"
+          - elixir: "1.19-otp-27"
+            otp: "27"
+          - elixir: "1.19-otp-28"
+            otp: "28"
+
+          # Elixir 1.20 - supports OTP 27-29
+          - elixir: "1.20-otp-27"
+            otp: "27"
+          - elixir: "1.20-otp-28"
+            otp: "28"
+          - elixir: "1.20-otp-29"
+            otp: "29"
             lint: true
     steps:
     # Step: Setup Elixir + Erlang image as the base.
@@ -132,15 +149,27 @@ jobs:
         exit 1
 
     # Step: Check that the checked in code has already been formatted.
-    # This step fails if something was found unformatted.
-    # Customize this step as desired.
-    # - name: Check Formatting
-    #   run: mix format --check-formatted
+    - name: Check formatting
+      if: matrix.lint
+      run: mix format --check-formatted
 
     # Step: Execute the tests.
     - name: Run tests
       run: mix test
 
-    # Step: Execute dialyzer.
+    # Step: Execute dialyzer on the lint entry only. The PLT is keyed by
+    # both Elixir and OTP because BEAM files are version tagged.
+    - name: Restore PLT cache
+      if: matrix.lint
+      uses: actions/cache@v5
+      with:
+        path: _build/dev/dialyxir_*
+        key: plt-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
+        restore-keys: |
+          plt-${{ matrix.elixir }}-${{ matrix.otp }}-
+
     - name: Run dialyzer
+      if: matrix.lint
+      env:
+        MIX_ENV: dev
       run: mix dialyzer
