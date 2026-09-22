@@ -94,8 +94,15 @@ jobs:
     - name: Compiles without warnings
       run: mix compile --warnings-as-errors
 
+    # Step: Install the tz_world timezone geo data. `--force` is required on
+    # a clean checkout: from tz_world 2.0 a missing `:data_dir` is a hard
+    # error rather than being created silently, and nothing has created
+    # _build/$MIX_ENV/lib/tz_world/priv at this point. It also forces a
+    # re-download when data is already current, which costs nothing here
+    # because this step is not cached -- drop `--force` in favour of
+    # creating the directory if a cache step is ever added.
     - name: Install time zone data
-      run: mix tz_world.update
+      run: mix tz_world.update --force
 
     # Step: Cache the JPL DE440s ephemeris (~32 MB, static file). NAIF's
     # server is slow and occasionally times out, so cache it across runs and
