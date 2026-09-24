@@ -1582,7 +1582,19 @@ defmodule Astro do
   #   * neither present      → polar day (24h) or polar night (0h).
   #
   defp daylight_seconds(location, date) do
-    case {sunrise(location, date), sunset(location, date)} do
+    sunrise_result = sunrise(location, date)
+
+    # A successful sunrise carries the zone it resolved for this location, so
+    # sunset reuses it rather than repeating the tz_world lookup. Otherwise
+    # sunset resolves exactly as before, which keeps a location with no sunrise
+    # -- a polar point in open ocean, say -- behaving as it always has.
+    sunset_options =
+      case sunrise_result do
+        {:ok, %DateTime{time_zone: time_zone}} -> [time_zone: time_zone]
+        _other -> []
+      end
+
+    case {sunrise_result, sunset(location, date, sunset_options)} do
       {{:ok, sunrise}, {:ok, sunset}} ->
         {:ok, daylight_between(sunrise, sunset)}
 

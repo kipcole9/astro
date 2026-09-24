@@ -405,6 +405,12 @@ defmodule Astro.Lunar.MoonRiseSet do
         end
       end)
 
+    # The zone for a fixed location is the same for every candidate bracket, so
+    # it is resolved once rather than per bracket: a tz_world lookup can cost
+    # more than the astronomy. It is skipped when there is no bracket, exactly
+    # as before, so a location with no event still reports {:error, :no_time}.
+    time_zone = if brackets != [], do: requested_time_zone(location, options)
+
     result =
       Enum.find_value(brackets, fn [{dt_lo, _f_lo}, {dt_hi, _f_hi}] ->
         # For Lagrange mode, build an interpolator centred on the bracket
@@ -437,20 +443,21 @@ defmodule Astro.Lunar.MoonRiseSet do
 
         dt_event = bisect_with_fn(dt_lo, f_lo_b, dt_hi, f_hi_b, alt_fn, @bisect_max)
 
-        {:ok, utc_dt} = Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event))
-
-        case apply_time_zone(utc_dt, location, options) do
-          {:ok, local_dt}
-          when local_dt.year == date.year and
-                 local_dt.month == date.month and
-                 local_dt.day == date.day ->
+        with {:ok, utc_dt} <-
+               Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event)) do
+          case to_requested_zone(utc_dt, time_zone, options) do
             {:ok, local_dt}
+            when local_dt.year == date.year and
+                   local_dt.month == date.month and
+                   local_dt.day == date.day ->
+              {:ok, local_dt}
 
-          {:ok, _} ->
-            nil
+            {:ok, _} ->
+              nil
 
-          error ->
-            error
+            error ->
+              error
+          end
         end
       end)
 
@@ -660,22 +667,18 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   # ── Time zone helpers ────────────────────────────────────────────────────────
 
-  defp apply_time_zone(utc_dt, location, options) do
-    tz_name = Keyword.get(options, :time_zone, :default)
-    tz_db = Keyword.get(options, :time_zone_database, :configured)
-
-    tz_result =
-      case tz_name do
-        :utc -> {:ok, "Etc/UTC"}
-        :default -> resolve_time_zone(location, options)
-        tz -> {:ok, tz}
-      end
-
-    case tz_result do
-      {:ok, tz} -> shift_zone(utc_dt, tz, tz_db)
-      error -> error
+  defp requested_time_zone(location, options) do
+    case Keyword.get(options, :time_zone, :default) do
+      :utc -> {:ok, "Etc/UTC"}
+      :default -> resolve_time_zone(location, options)
+      tz -> {:ok, tz}
     end
   end
+
+  defp to_requested_zone(utc_dt, {:ok, tz}, options),
+    do: shift_zone(utc_dt, tz, Keyword.get(options, :time_zone_database, :configured))
+
+  defp to_requested_zone(_utc_dt, error, _options), do: error
 
   defp resolve_time_zone(location, options) do
     resolver = Keyword.get(options, :time_zone_resolver, &default_resolver/1)

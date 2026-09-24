@@ -8,6 +8,10 @@ This is the changelog for Astro version 2.6.1, released on September 24th, 2026.
 
 * The periodic-term series behind lunar phases, new moons, `Astro.moon_position_at/1` and crescent visibility are zipped into tuples at compile time and summed in a single pass, roughly halving their cost. Results are unchanged, bit for bit.
 
+* Sunrise, sunset, moonrise, moonset and crescent visibility are 1.6 to 1.75 times faster: the ephemeris is decoded in one pass per axis and evaluated without per-coefficient closures or list reversals, and its segments are indexed when it loads. Results are unchanged, bit for bit.
+
+* Rise and set functions resolve the location's time zone once per call rather than once per candidate event, which had doubled the lookup for many locations, and `Astro.hours_of_daylight/2` and `Astro.duration_of_daylight/2` reuse sunrise's zone for sunset. A time zone lookup can cost more than the astronomy itself, so calls using the default `:time_zone` gain the most.
+
 ## Astro version 2.6.0
 
 This is the changelog for Astro version 2.6.0, released on September 22nd, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

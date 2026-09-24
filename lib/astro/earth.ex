@@ -185,6 +185,30 @@ defmodule Astro.Earth do
     @obliquity
   end
 
+  # Top 17 terms of the IAU 1980 nutation series.
+  # Format: {D, M, M', F, Om, dpsi_s (0.0001"), deps_c (0.0001")}
+  @nutation_terms [
+    {0, 0, 0, 0, 1, -171_996.0, 92_025.0},
+    {-2, 0, 0, 2, 2, -13_187.0, 5_736.0},
+    {0, 0, 0, 2, 2, -2_274.0, 977.0},
+    {0, 0, 0, 0, 2, 2_062.0, -895.0},
+    {0, 1, 0, 0, 0, 1_426.0, 54.0},
+    {0, 0, 1, 0, 0, 712.0, -7.0},
+    {-2, 1, 0, 2, 2, -517.0, 224.0},
+    {0, 0, 0, 2, 1, -386.0, 200.0},
+    {0, 0, 1, 2, 2, -301.0, 129.0},
+    {-2, -1, 0, 2, 2, 217.0, -95.0},
+    {-2, 0, 1, 0, 0, -158.0, 0.0},
+    {-2, 0, 0, 2, 1, 129.0, -70.0},
+    {0, 0, -1, 2, 2, 123.0, -53.0},
+    {2, 0, 0, 0, 0, 63.0, 0.0},
+    {0, 0, 1, 0, 1, 63.0, -33.0},
+    {2, 0, -1, 2, 2, -59.0, 26.0},
+    {0, 0, -1, 0, 1, -58.0, 32.0}
+  ]
+
+  @deg_to_rad :math.pi() / 180.0
+
   @doc """
   Computes IAU 1980 [nutation](https://en.wikipedia.org/wiki/Astronomical_nutation#:~:text=Earth's%20nutation,-Learn%20more&text=Nutation%20(N)%20of%20the%20Earth,spherical%20figure%20of%20the%20Earth.))
   in longitude and obliquity, and the mean obliquity.
@@ -209,34 +233,7 @@ defmodule Astro.Earth do
     f = 93.27191 + 483_202.017538 * c - 0.0036825 * c * c + c * c * c / 327_270.0
     om = 125.04452 - 1_934.136261 * c + 0.0020708 * c * c + c * c * c / 450_000.0
 
-    # Top 17 terms of the IAU 1980 nutation series.
-    # Format: {D, M, M', F, Om, dpsi_s (0.0001"), deps_c (0.0001")}
-    terms = [
-      {0, 0, 0, 0, 1, -171_996.0, 92_025.0},
-      {-2, 0, 0, 2, 2, -13_187.0, 5_736.0},
-      {0, 0, 0, 2, 2, -2_274.0, 977.0},
-      {0, 0, 0, 0, 2, 2_062.0, -895.0},
-      {0, 1, 0, 0, 0, 1_426.0, 54.0},
-      {0, 0, 1, 0, 0, 712.0, -7.0},
-      {-2, 1, 0, 2, 2, -517.0, 224.0},
-      {0, 0, 0, 2, 1, -386.0, 200.0},
-      {0, 0, 1, 2, 2, -301.0, 129.0},
-      {-2, -1, 0, 2, 2, 217.0, -95.0},
-      {-2, 0, 1, 0, 0, -158.0, 0.0},
-      {-2, 0, 0, 2, 1, 129.0, -70.0},
-      {0, 0, -1, 2, 2, 123.0, -53.0},
-      {2, 0, 0, 0, 0, 63.0, 0.0},
-      {0, 0, 1, 0, 1, 63.0, -33.0},
-      {2, 0, -1, 2, 2, -59.0, 26.0},
-      {0, 0, -1, 0, 1, -58.0, 32.0}
-    ]
-
-    {dpsi_units, deps_units} =
-      Enum.reduce(terms, {0.0, 0.0}, fn {td, tm, tmp, tf, tom, ds, dc}, {acc_psi, acc_eps} ->
-        arg_deg = td * d + tm * m + tmp * mp + tf * f + tom * om
-        arg_rad = :math.pi() / 180.0 * arg_deg
-        {acc_psi + ds * :math.sin(arg_rad), acc_eps + dc * :math.cos(arg_rad)}
-      end)
+    {dpsi_units, deps_units} = nutation_sum(@nutation_terms, d, m, mp, f, om, 0.0, 0.0)
 
     # Convert from 0.0001 arcseconds to radians
     dpsi = dpsi_units * 0.0001 / @arcsec_per_deg * :math.pi() / 180.0
@@ -247,6 +244,28 @@ defmodule Astro.Earth do
     eps0 = eps0_arcsec / @arcsec_per_deg * :math.pi() / 180.0
 
     {dpsi, deps, eps0}
+  end
+
+  # Sums the nutation series left to right, as the reduce it replaces did, so
+  # the result is unchanged. Direct recursion avoids a closure call and an
+  # accumulator tuple per term, and `@deg_to_rad` is the same `pi / 180.0`
+  # the loop previously recomputed on every term.
+  defp nutation_sum([], _d, _m, _mp, _f, _om, acc_psi, acc_eps), do: {acc_psi, acc_eps}
+
+  defp nutation_sum([{td, tm, tmp, tf, tom, ds, dc} | rest], d, m, mp, f, om, acc_psi, acc_eps) do
+    arg_deg = td * d + tm * m + tmp * mp + tf * f + tom * om
+    arg_rad = @deg_to_rad * arg_deg
+
+    nutation_sum(
+      rest,
+      d,
+      m,
+      mp,
+      f,
+      om,
+      acc_psi + ds * :math.sin(arg_rad),
+      acc_eps + dc * :math.cos(arg_rad)
+    )
   end
 
   @doc """

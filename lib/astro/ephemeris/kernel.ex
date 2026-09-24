@@ -61,13 +61,14 @@ defmodule Astro.Ephemeris.Kernel do
   # segment when it is absent; see `find_segment/3`.
   @emrat 81.3005682214972154
 
-  defstruct [:path, :endian, :data, :segments]
+  defstruct [:path, :endian, :data, :segments, :index]
 
   @type t :: %__MODULE__{
           path: String.t(),
           endian: :little | :big,
           data: binary(),
-          segments: [map()]
+          segments: [map()],
+          index: %{{integer(), integer()} => [map()]}
         }
 
   # ── Public API ──────────────────────────────────────────────────────────────
@@ -99,7 +100,15 @@ defmodule Astro.Ephemeris.Kernel do
          {:ok, endian} <- detect_endian(data),
          {:ok, fward} <- read_fward(data, endian) do
       segments = read_all_segments(data, fward, endian)
-      {:ok, %__MODULE__{path: path, endian: endian, data: data, segments: segments}}
+
+      {:ok,
+       %__MODULE__{
+         path: path,
+         endian: endian,
+         data: data,
+         segments: segments,
+         index: index_segments(segments)
+       }}
     end
   end
 
@@ -152,37 +161,43 @@ defmodule Astro.Ephemeris.Kernel do
   @spec find_segment(integer(), integer(), float() | nil) ::
           {:ok, map()} | {:error, :not_found}
   def find_segment(target, centre, dynamical_time \\ nil) do
-    %__MODULE__{segments: segs} = ephemeris()
+    %__MODULE__{index: index} = ephemeris()
 
-    case match_segment(segs, target, centre, dynamical_time) do
-      nil -> derive_segment(segs, target, centre, dynamical_time)
-      seg -> {:ok, seg}
+    case first_covering(Map.get(index, {target, centre}, []), dynamical_time) do
+      nil -> {:error, :not_found}
+      segment -> {:ok, segment}
     end
   end
 
-  defp match_segment(segments, target, centre, dynamical_time) do
-    Enum.find(segments, fn seg ->
-      seg.target == target and seg.centre == centre and
-        (is_nil(dynamical_time) or
-           (dynamical_time >= seg.start_dt and dynamical_time <= seg.end_dt))
-    end)
+  defp first_covering([], _dynamical_time), do: nil
+  defp first_covering([segment | _rest], nil), do: segment
+
+  defp first_covering([segment | rest], dynamical_time) do
+    if dynamical_time >= segment.start_dt and dynamical_time <= segment.end_dt do
+      segment
+    else
+      first_covering(rest, dynamical_time)
+    end
   end
 
+  # Groups the segments by {target, centre}, keeping file order, so a lookup
+  # is a map fetch rather than a scan of every segment on every call.
+  #
   # The Earth→EMB segment is an exact scalar multiple of Moon→EMB: by the
   # definition of the barycenter, Earth→EMB = -(1 / EMRAT) x Moon→EMB. It is
   # also one of the two largest segments in a DE file, so the ephemeris shipped
-  # with Astro omits it and reconstructs it here. A file that does carry the
-  # segment — a full de440s.bsp, say — matches above and never reaches this
-  # clause, so user-supplied kernels are used exactly as they are.
-  defp derive_segment(segments, @earth_id, @emb_id, dynamical_time) do
-    case match_segment(segments, @moon_id, @emb_id, dynamical_time) do
-      nil -> {:error, :not_found}
-      moon -> {:ok, %{moon | target: @earth_id} |> Map.put(:scale, -1.0 / @emrat)}
-    end
+  # with Astro omits it and reconstructs it from Moon→EMB. The reconstructed
+  # segments are built once here rather than on every lookup, and follow any
+  # real Earth→EMB segments in the list, so a real segment covering the time
+  # is still preferred and user-supplied kernels are used exactly as they are.
+  defp index_segments(segments) do
+    real = Enum.group_by(segments, &{&1.target, &1.centre})
+    derived = for moon <- Map.get(real, {@moon_id, @emb_id}, []), do: derive_earth(moon)
+    Map.update(real, {@earth_id, @emb_id}, derived, &(&1 ++ derived))
   end
 
-  defp derive_segment(_segments, _target, _centre, _dynamical_time) do
-    {:error, :not_found}
+  defp derive_earth(moon) do
+    %{moon | target: @earth_id} |> Map.put(:scale, -1.0 / @emrat)
   end
 
   @doc """
@@ -227,23 +242,29 @@ defmodule Astro.Ephemeris.Kernel do
     rec_size = rsize * @double_size
     rec_bin = binary_part(data, rec_byte, rec_size)
 
-    # Parse record: t_mid, t_half, then (degree+1) coefficients per axis.
-    t_mid = read_double(rec_bin, 0, endian)
-    t_half = read_double(rec_bin, 1, endian)
+    # Parse record: t_mid, t_half, then (degree+1) coefficients per axis. The
+    # axes are sliced out as sub-binaries (no copying) and each is decoded in a
+    # single pass, rather than matching the record once per coefficient.
+    {t_mid, t_half, coefficients} = record_header(rec_bin, endian)
 
     # Normalise time to [-1, +1].
     s = (dynamical_time - t_mid) / t_half
 
-    n = degree + 1
-    cx = read_doubles_range(rec_bin, 2, n, endian)
-    cy = read_doubles_range(rec_bin, 2 + n, n, endian)
-    cz = read_doubles_range(rec_bin, 2 + 2 * n, n, endian)
+    axis_bytes = (degree + 1) * @double_size
+
+    <<x_bin::binary-size(^axis_bytes), y_bin::binary-size(^axis_bytes),
+      z_bin::binary-size(^axis_bytes), _::binary>> = coefficients
+
+    cx = read_reversed(x_bin, endian)
+    cy = read_reversed(y_bin, endian)
+    cz = read_reversed(z_bin, endian)
 
     # Reconstructed segments carry a scale factor; real segments do not.
     scale = Map.get(segment, :scale, 1.0)
 
-    {scale * Math.evaluate_chebyshev(cx, s), scale * Math.evaluate_chebyshev(cy, s),
-     scale * Math.evaluate_chebyshev(cz, s)}
+    {scale * Math.evaluate_chebyshev_reversed(cx, s),
+     scale * Math.evaluate_chebyshev_reversed(cy, s),
+     scale * Math.evaluate_chebyshev_reversed(cz, s)}
   end
 
   # ── Binary parsing ───────────────────────────────────────────────────────────
@@ -377,12 +398,29 @@ defmodule Astro.Ephemeris.Kernel do
     end
   end
 
-  # Read `count` consecutive doubles starting at word index `start_n` (0-based).
-  defp read_doubles_range(bin, start_n, count, endian) do
-    for i <- start_n..(start_n + count - 1) do
-      read_double(bin, i, endian)
-    end
-  end
+  # A Type 2 record begins with its midpoint and half-width; the rest is the
+  # three axes' coefficients back to back.
+  defp record_header(<<t_mid::little-float-64, t_half::little-float-64, rest::binary>>, :little),
+    do: {t_mid, t_half, rest}
+
+  defp record_header(<<t_mid::big-float-64, t_half::big-float-64, rest::binary>>, :big),
+    do: {t_mid, t_half, rest}
+
+  # Decodes one axis's coefficients highest order first, [c_n, ..., c_0], by
+  # prepending as it reads. That is the order Clenshaw consumes them in, so
+  # neither the reader nor the evaluator has to reverse a list.
+  defp read_reversed(bin, :little), do: read_reversed_little(bin, [])
+  defp read_reversed(bin, :big), do: read_reversed_big(bin, [])
+
+  defp read_reversed_little(<<v::little-float-64, rest::binary>>, acc),
+    do: read_reversed_little(rest, [v | acc])
+
+  defp read_reversed_little(<<>>, acc), do: acc
+
+  defp read_reversed_big(<<v::big-float-64, rest::binary>>, acc),
+    do: read_reversed_big(rest, [v | acc])
+
+  defp read_reversed_big(<<>>, acc), do: acc
 
   # Read a signed 32-bit integer at `byte_offset` from a binary.
   defp read_int32(bin, byte_offset, endian) do

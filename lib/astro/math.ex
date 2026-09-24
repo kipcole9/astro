@@ -220,28 +220,32 @@ defmodule Astro.Math do
   `s`      — normalised argument in `[-1, +1]`.
   """
   @spec evaluate_chebyshev([float()], float()) :: float()
-  def evaluate_chebyshev([], _s), do: 0.0
-  def evaluate_chebyshev([c0], _s), do: c0
+  def evaluate_chebyshev(coeffs, s), do: evaluate_chebyshev_reversed(:lists.reverse(coeffs), s)
 
-  def evaluate_chebyshev(coeffs, s) do
+  @doc false
+  # The same evaluation with the coefficients highest order first,
+  # `[c_n, ..., c_1, c_0]` -- the order the Clenshaw recurrence consumes them
+  # in. A caller that can produce them in that order, as the ephemeris reader
+  # does straight from the file, avoids reversing a list.
+  @spec evaluate_chebyshev_reversed([float()], float()) :: float()
+  def evaluate_chebyshev_reversed([], _s), do: 0.0
+  def evaluate_chebyshev_reversed([c0], _s), do: c0
+
+  def evaluate_chebyshev_reversed(reversed, s) do
     # Clenshaw backward recurrence:
     #   b_k = c_k + 2s·b_{k+1} - b_{k+2},  k = n-1 .. 1,  b_{n+1} = b_{n+2} = 0
     #   result = c_0 + s·b_1 - b_2
-    #
-    # Iteration order [c_n, c_{n-1}, ..., c_1]:
-    #   drop c_0 (head), reverse the remaining tail.
-    two_s = 2.0 * s
-    [c0 | tail] = coeffs
-
-    {b1, b2} =
-      tail
-      |> Enum.reverse()
-      |> Enum.reduce({0.0, 0.0}, fn c, {b_next, b_after} ->
-        {c + two_s * b_next - b_after, b_next}
-      end)
-
-    c0 + s * b1 - b2
+    clenshaw(reversed, 2.0 * s, s, 0.0, 0.0)
   end
+
+  # One Clenshaw step per coefficient from c_n down to c_1; c_0, last in the
+  # list, closes the sum. Direct recursion rather than a reduce, so no closure
+  # is called and no accumulator tuple is allocated per step. The arithmetic,
+  # and its order, is unchanged.
+  defp clenshaw([c0], _two_s, s, b1, b2), do: c0 + s * b1 - b2
+
+  defp clenshaw([c | rest], two_s, s, b_next, b_after),
+    do: clenshaw(rest, two_s, s, c + two_s * b_next - b_after, b_next)
 
   @doc """
   Calculates the modulo of a number (integer, float).
