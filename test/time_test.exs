@@ -74,4 +74,60 @@ defmodule Astro.Test.Time do
       assert {:ok, "Australia/Sydney"} = Astro.Time.tz_world_timezone_at(sydney)
     end
   end
+
+  describe "ΔT conversions" do
+    property "apply ΔT for the decimal year of the moment's calendar date" do
+      first = Date.to_gregorian_days(~D[-9999-01-01])
+      last = Date.to_gregorian_days(~D[9999-12-31])
+
+      check all(
+              day <- StreamData.integer(first..last),
+              fraction <- StreamData.float(min: 0.0, max: 0.999),
+              max_runs: 5_000
+            ) do
+        assert_delta_t_from_calendar(day + fraction)
+      end
+    end
+
+    test "apply ΔT for the decimal year at year, mid-year and leap-day boundaries" do
+      years = [
+        -9999,
+        -401,
+        -400,
+        -101,
+        -100,
+        -5,
+        -4,
+        -1,
+        0,
+        1,
+        4,
+        100,
+        400,
+        1582,
+        1900,
+        2000,
+        2100,
+        9999
+      ]
+
+      for year <- years, {month, day} <- [{1, 1}, {2, 28}, {3, 1}, {6, 30}, {7, 1}, {12, 31}] do
+        {:ok, date} = Date.new(year, month, day)
+        assert_delta_t_from_calendar(Date.to_gregorian_days(date))
+      end
+    end
+  end
+
+  # ΔT is looked up by decimal year: the year of the moment's calendar date,
+  # offset from its 1 July. Built here from `Date`s as the independent oracle
+  # for the day arithmetic in `Astro.Time`.
+  defp assert_delta_t_from_calendar(t) do
+    %{year: year} = Date.from_gregorian_days(floor(t))
+    {:ok, july_first} = Date.new(year, 7, 1)
+    decimal_year = year + (0.5 - (Date.to_gregorian_days(july_first) - floor(t)) / 365.25)
+    delta = Astro.Time.delta_t(decimal_year) / Astro.Time.seconds_per_day()
+
+    assert Astro.Time.dynamical_from_universal(t) === t + delta
+    assert Astro.Time.universal_from_dynamical(t) === t - delta
+  end
 end

@@ -331,10 +331,7 @@ defmodule Astro.Time do
   """
   @spec dynamical_from_universal(time()) :: time()
   def dynamical_from_universal(t) do
-    %{year: year} = Date.from_gregorian_days(floor(t))
-    frac = (Date.new!(year, 7, 1) |> Date.to_gregorian_days()) - floor(t)
-    decimal_year = year + (0.5 - frac / 365.25)
-    t + delta_t(decimal_year) / @seconds_per_day
+    t + delta_t(delta_t_year(t)) / @seconds_per_day
   end
 
   @doc """
@@ -362,10 +359,46 @@ defmodule Astro.Time do
   """
   @spec universal_from_dynamical(time()) :: time()
   def universal_from_dynamical(t) do
-    %{year: year} = Date.from_gregorian_days(floor(t))
-    frac = (Date.new!(year, 7, 1) |> Date.to_gregorian_days()) - floor(t)
-    decimal_year = year + (0.5 - frac / 365.25)
-    t - delta_t(decimal_year) / @seconds_per_day
+    t - delta_t(delta_t_year(t)) / @seconds_per_day
+  end
+
+  # The decimal year ΔT is looked up by: the Gregorian year of the moment's
+  # day, offset from the middle of that year (1 July). Both come from integer
+  # day arithmetic on the day number (days since 0000-01-01), so every call
+  # stays in integers until the final division.
+  defp delta_t_year(t) do
+    day = floor(t)
+    year = gregorian_year(day)
+    year + (0.5 - (july_first(year) - day) / 365.25)
+  end
+
+  # The Gregorian year containing a day number: Calendrical Calculations'
+  # gregorian-year-from-fixed, counting from 0001-01-01 (day 366).
+  defp gregorian_year(day) do
+    d0 = day - 366
+    n400 = Integer.floor_div(d0, 146_097)
+    d1 = Integer.mod(d0, 146_097)
+    n100 = div(d1, 36_524)
+    d2 = rem(d1, 36_524)
+    n4 = div(d2, 1_461)
+    n1 = div(rem(d2, 1_461), 365)
+    year = 400 * n400 + 100 * n100 + 4 * n4 + n1
+
+    if n100 == 4 or n1 == 4, do: year, else: year + 1
+  end
+
+  # The day number of 1 July in a Gregorian year: 1 January follows 365 days
+  # for each earlier year plus their leap days (year 0 is a leap year), and
+  # 1 July is 181 days after it, or 182 in a leap year.
+  defp july_first(year) do
+    prior = year - 1
+
+    january_first =
+      365 * year + Integer.floor_div(prior, 4) - Integer.floor_div(prior, 100) +
+        Integer.floor_div(prior, 400) + 1
+
+    leap_day = if Calendar.ISO.leap_year?(year), do: 1, else: 0
+    january_first + 181 + leap_day
   end
 
   @doc """

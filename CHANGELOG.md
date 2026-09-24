@@ -1,5 +1,15 @@
 # Changelog
 
+## Astro version 2.6.2
+
+This is the changelog for Astro version 2.6.2, not yet released. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Enhancements
+
+* `Astro.Lunar.date_time_new_moon_before/1` and `date_time_new_moon_at_or_after/1` evaluate only the two lunations either side of the moment, about five times faster. Results are unchanged, bit for bit.
+
+* `Astro.Time.dynamical_from_universal/1` and `universal_from_dynamical/1` find the ΔT decimal year with integer day arithmetic, about 1.6 times faster. Results are unchanged on every day of years −9999 to 9999.
+
 ## Astro version 2.6.1
 
 This is the changelog for Astro version 2.6.1, released on September 24th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

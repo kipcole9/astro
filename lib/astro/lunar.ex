@@ -84,6 +84,11 @@ defmodule Astro.Lunar do
     ]
 
   @months_epoch_to_j2000 24_724
+
+  # The moment of lunation 0, `nth_new_moon(0)` (11 January 1 CE), from which
+  # the lunation nearest a moment is estimated in mean synodic months.
+  @new_moon_zero 376.46287205875086
+
   @average_distance_earth_to_moon 385_000_560.0
 
   # IAU 2015 lunar radius in km
@@ -558,10 +563,8 @@ defmodule Astro.Lunar do
   @spec date_time_new_moon_before(t :: Time.moment()) :: Time.moment()
 
   def date_time_new_moon_before(t) when is_number(t) do
-    t0 = nth_new_moon(0)
-    phi = lunar_phase_at(t)
-    n = round((t - t0) / mean_synodic_month() - phi / deg(360)) |> trunc()
-    nth_new_moon(Math.final(n - 1, &(nth_new_moon(&1) < t)))
+    {before, _at_or_after} = new_moons_around(t)
+    before
   end
 
   @doc """
@@ -588,10 +591,37 @@ defmodule Astro.Lunar do
   @spec date_time_new_moon_at_or_after(t :: Time.moment()) :: Time.moment()
 
   def date_time_new_moon_at_or_after(t) when is_number(t) do
-    t0 = nth_new_moon(0)
-    phi = lunar_phase_at(t)
-    n = round((t - t0) / mean_synodic_month() - phi / deg(360.0))
-    nth_new_moon(Math.next(n, &(nth_new_moon(&1) >= t)))
+    {_before, at_or_after} = new_moons_around(t)
+    at_or_after
+  end
+
+  # The new moons either side of `t`: the last one before it and the first one
+  # at or after it. New moons strictly increase with their lunation number, so
+  # the pair is found by starting from the lunation nearest `t` in mean months
+  # and walking to its neighbour on the other side of `t`. That estimate is
+  # within a couple of days of the true new moon, so the walk ends after those
+  # two evaluations.
+  defp new_moons_around(t) do
+    n = round((t - @new_moon_zero) / mean_synodic_month())
+    moment = nth_new_moon(n)
+
+    if moment < t do
+      walk_forward(n + 1, moment, t)
+    else
+      walk_back(n - 1, moment, t)
+    end
+  end
+
+  # Lunation `n - 1`, at `previous`, is before `t`.
+  defp walk_forward(n, previous, t) do
+    moment = nth_new_moon(n)
+    if moment < t, do: walk_forward(n + 1, moment, t), else: {previous, moment}
+  end
+
+  # Lunation `n + 1`, at `following`, is at or after `t`.
+  defp walk_back(n, following, t) do
+    moment = nth_new_moon(n)
+    if moment < t, do: {moment, following}, else: walk_back(n - 1, moment, t)
   end
 
   @doc """
@@ -657,8 +687,7 @@ defmodule Astro.Lunar do
 
   def lunar_phase_at(t) when is_number(t) do
     phi = mod(lunar_ecliptic_longitude(t) - solar_ecliptic_longitude(t), 360)
-    t0 = nth_new_moon(0)
-    n = round((t - t0) / mean_synodic_month())
+    n = round((t - @new_moon_zero) / mean_synodic_month())
     phi_prime = deg(360) * mod((t - nth_new_moon(n)) / mean_synodic_month(), 1)
 
     if abs(phi - phi_prime) > deg(180.0) do
