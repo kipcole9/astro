@@ -1,5 +1,13 @@
 # Changelog
 
+## Astro version 2.6.1
+
+This is the changelog for Astro version 2.6.1, released on September 24th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Enhancements
+
+* The periodic-term series behind lunar phases, new moons, `Astro.moon_position_at/1` and crescent visibility are zipped into tuples at compile time and summed in a single pass, roughly halving their cost. Results are unchanged, bit for bit.
+
 ## Astro version 2.6.0
 
 This is the changelog for Astro version 2.6.0, released on September 22nd, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
