@@ -142,9 +142,10 @@ defmodule Astro.Solar do
                 |> List.to_tuple()
               end)
 
-  @sal_coefficients Enum.map(@sal_parsed, &elem(&1, 0))
-  @sal_addends Enum.map(@sal_parsed, &elem(&1, 1))
-  @sal_multipliers Enum.map(@sal_parsed, &elem(&1, 2))
+  # The parsed rows are already the {coefficient, addend, multiplier} terms
+  # sigma/2 sums over. Matching each one here fails the build on a malformed
+  # row rather than at the first call.
+  @sal_terms Enum.map(@sal_parsed, fn {_coefficient, _addend, _multiplier} = term -> term end)
 
   # Equinox/solstice periodic terms from Meeus Table 27.C (24 terms).
   # Each row: amplitude, addend (degrees), multiplier (degrees per Julian century).
@@ -431,10 +432,7 @@ defmodule Astro.Solar do
     lambda =
       deg(282.7771834) + deg(36000.76953744) * julian_centuries +
         deg(0.000005729577951308232) *
-          sigma(
-            [@sal_coefficients, @sal_addends, @sal_multipliers],
-            fn [x, y, z] -> x * sin(y + z * julian_centuries) end
-          )
+          sigma(@sal_terms, fn {x, y, z} -> x * sin(y + z * julian_centuries) end)
 
     {nutation, _, _} = Earth.nutation(julian_centuries)
     mod(lambda + aberration(julian_centuries) + nutation, 360.0)

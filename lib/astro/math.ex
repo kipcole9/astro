@@ -174,18 +174,31 @@ defmodule Astro.Math do
   def signum(x) when x < 0, do: -1
   def signum(_), do: 0
 
-  @spec sigma([[number(), ...]], function()) :: number()
-  def sigma(list_of_lists, fun) do
-    if Enum.all?(list_of_lists, &(&1 == [])) do
-      0
-    else
-      # [hd(l) || l <- list_of_lists]
-      current = Enum.map(list_of_lists, &hd/1)
-      # [tl(l) || l <- list_of_lists]
-      next = Enum.map(list_of_lists, &tl/1)
-      fun.(current) + sigma(next, fun)
+  # Sums `fun.(term)` over coefficient terms already zipped into tuples at
+  # compile time by `zip_terms/1`, so each call is one pass with no per-term
+  # allocation. The fold runs right to left -- `f(t1) + (f(t2) + ... + 0.0)`
+  # -- because that is the order the terms have always been summed in, and
+  # floating-point addition is not associative: summing left to right would
+  # change results in the last bit.
+  @spec sigma([tuple()], (tuple() -> number())) :: float()
+  def sigma(terms, fun) do
+    List.foldr(terms, 0.0, fn term, sum -> fun.(term) + sum end)
+  end
+
+  # Zips parallel coefficient tables into the term tuples `sigma/2` consumes.
+  # Meant for module attributes, so it runs at compile time. Tables of unequal
+  # length raise rather than truncate: `Enum.zip/1` would silently drop the
+  # surplus terms and hide a transcription error in the table. This checks
+  # static library data at build time and never sees user input.
+  @spec zip_terms([[number()]]) :: [tuple()]
+  def zip_terms(tables) do
+    case tables |> Enum.map(&length/1) |> Enum.uniq() do
+      [_length] ->
+        Enum.zip(tables)
+
+      lengths ->
+        raise ArgumentError, "coefficient tables differ in length: #{inspect(lengths)}"
     end
-    |> Kernel.*(1.0)
   end
 
   @doc """

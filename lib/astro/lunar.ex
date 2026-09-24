@@ -68,6 +68,7 @@ defmodule Astro.Lunar do
       mt: 1,
       asin: 1,
       sigma: 2,
+      zip_terms: 1,
       mod: 2,
       degrees: 1,
       poly: 2,
@@ -160,6 +161,14 @@ defmodule Astro.Lunar do
                       """
                       |> Enum.map(&String.to_integer/1)
 
+  @ecliptic_lng_terms zip_terms([
+                        @ecliptic_lng_coeff,
+                        @ecliptic_lng_d,
+                        @ecliptic_lng_m,
+                        @ecliptic_lng_m_prime,
+                        @ecliptic_lng_f
+                      ])
+
   # -- Latitude (Meeus Table 47.B) ------------------------------------
 
   @latitude_d ~w"""
@@ -218,6 +227,14 @@ defmodule Astro.Lunar do
                   """
                   |> Enum.map(&String.to_integer/1)
 
+  @latitude_terms zip_terms([
+                    @latitude_coeff,
+                    @latitude_d,
+                    @latitude_m,
+                    @latitude_m_prime,
+                    @latitude_f
+                  ])
+
   # -- Distance (Meeus Table 47.A cosine terms) -----------------------
 
   @distance_d ~w"""
@@ -275,6 +292,213 @@ defmodule Astro.Lunar do
                             0     1165        0        0     8752
                   """
                   |> Enum.map(&String.to_integer/1)
+
+  @distance_terms zip_terms([
+                    @distance_coeff,
+                    @distance_d,
+                    @distance_m,
+                    @distance_m_prime,
+                    @distance_f
+                  ])
+
+  # -- New moon (periodic and additional correction terms) ----------
+
+  @new_moon_sine_coeff [
+    -0.40720,
+    0.17241,
+    0.01608,
+    0.01039,
+    0.00739,
+    -0.00514,
+    0.00208,
+    -0.00111,
+    -0.00057,
+    0.00056,
+    -0.00042,
+    0.00042,
+    0.00038,
+    -0.00024,
+    -0.00007,
+    0.00004,
+    0.00004,
+    0.00003,
+    0.00003,
+    -0.00003,
+    0.00003,
+    -0.00002,
+    -0.00002,
+    0.00002
+  ]
+
+  @new_moon_e_factor [
+    0,
+    1,
+    0,
+    0,
+    1,
+    1,
+    2,
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ]
+
+  @new_moon_solar_coeff [
+    0,
+    1,
+    0,
+    0,
+    -1,
+    1,
+    2,
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    -1,
+    2,
+    0,
+    3,
+    1,
+    0,
+    1,
+    -1,
+    -1,
+    1,
+    0
+  ]
+
+  @new_moon_lunar_coeff [
+    1,
+    0,
+    2,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    2,
+    3,
+    0,
+    0,
+    2,
+    1,
+    2,
+    0,
+    1,
+    2,
+    1,
+    1,
+    1,
+    3,
+    4
+  ]
+
+  @new_moon_moon_coeff [
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    -2,
+    2,
+    0,
+    0,
+    2,
+    -2,
+    0,
+    0,
+    -2,
+    0,
+    -2,
+    2,
+    2,
+    2,
+    -2,
+    0,
+    0
+  ]
+
+  @new_moon_terms zip_terms([
+                    @new_moon_sine_coeff,
+                    @new_moon_e_factor,
+                    @new_moon_solar_coeff,
+                    @new_moon_lunar_coeff,
+                    @new_moon_moon_coeff
+                  ])
+
+  @new_moon_add_const [
+    251.88,
+    251.83,
+    349.42,
+    84.66,
+    141.74,
+    207.14,
+    154.84,
+    34.52,
+    207.19,
+    291.34,
+    161.72,
+    239.56,
+    331.55
+  ]
+
+  @new_moon_add_coeff [
+    0.016321,
+    26.651886,
+    36.412478,
+    18.206239,
+    53.303771,
+    2.453732,
+    7.306860,
+    27.261239,
+    0.121824,
+    1.844379,
+    24.198154,
+    25.513099,
+    3.592518
+  ]
+
+  @new_moon_add_factor [
+    0.000165,
+    0.000164,
+    0.000126,
+    0.000110,
+    0.000062,
+    0.000060,
+    0.000056,
+    0.000047,
+    0.000042,
+    0.000040,
+    0.000037,
+    0.000035,
+    0.000023
+  ]
+
+  @new_moon_additional_terms zip_terms([
+                               @new_moon_add_const,
+                               @new_moon_add_coeff,
+                               @new_moon_add_factor
+                             ])
 
   @doc """
   Returns the lunar radius in kilometers.
@@ -679,14 +903,8 @@ defmodule Astro.Lunar do
     correction =
       deg(1 / 1_000_000) *
         sigma(
-          [
-            @ecliptic_lng_coeff,
-            @ecliptic_lng_d,
-            @ecliptic_lng_m,
-            @ecliptic_lng_m_prime,
-            @ecliptic_lng_f
-          ],
-          fn [v, w, x, y, z] ->
+          @ecliptic_lng_terms,
+          fn {v, w, x, y, z} ->
             v * :math.pow(e, abs(x)) * sin(w * d + x * m + y * m_prime + z * f)
           end
         )
@@ -740,8 +958,8 @@ defmodule Astro.Lunar do
     beta =
       deg(1.0 / 1_000_000.0) *
         sigma(
-          [@latitude_coeff, @latitude_d, @latitude_m, @latitude_m_prime, @latitude_f],
-          fn [v, w, x, y, z] ->
+          @latitude_terms,
+          fn {v, w, x, y, z} ->
             v * :math.pow(e, abs(x)) * sin(w * d + x * m + y * m_prime + z * f)
           end
         )
@@ -832,8 +1050,8 @@ defmodule Astro.Lunar do
 
     correction =
       sigma(
-        [@distance_coeff, @distance_d, @distance_m, @distance_m_prime, @distance_f],
-        fn [v, w, x, y, z] ->
+        @distance_terms,
+        fn {v, w, x, y, z} ->
           v * :math.pow(e, abs(x)) * cos(w * d + x * m + y * m_prime + z * f)
         end
       )
@@ -900,146 +1118,11 @@ defmodule Astro.Lunar do
         0.00000215
       ])
 
-    e_factor = [
-      0,
-      1,
-      0,
-      0,
-      1,
-      1,
-      2,
-      0,
-      0,
-      1,
-      0,
-      1,
-      1,
-      1,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ]
-
-    solar_coeff = [
-      0,
-      1,
-      0,
-      0,
-      -1,
-      1,
-      2,
-      0,
-      0,
-      1,
-      0,
-      1,
-      1,
-      -1,
-      2,
-      0,
-      3,
-      1,
-      0,
-      1,
-      -1,
-      -1,
-      1,
-      0
-    ]
-
-    lunar_coeff = [
-      1,
-      0,
-      2,
-      0,
-      1,
-      1,
-      0,
-      1,
-      1,
-      2,
-      3,
-      0,
-      0,
-      2,
-      1,
-      2,
-      0,
-      1,
-      2,
-      1,
-      1,
-      1,
-      3,
-      4
-    ]
-
-    moon_coeff = [
-      0,
-      0,
-      0,
-      2,
-      0,
-      0,
-      0,
-      -2,
-      2,
-      0,
-      0,
-      2,
-      -2,
-      0,
-      0,
-      -2,
-      0,
-      -2,
-      2,
-      2,
-      2,
-      -2,
-      0,
-      0
-    ]
-
-    sine_coeff = [
-      -0.40720,
-      0.17241,
-      0.01608,
-      0.01039,
-      0.00739,
-      -0.00514,
-      0.00208,
-      -0.00111,
-      -0.00057,
-      0.00056,
-      -0.00042,
-      0.00042,
-      0.00038,
-      -0.00024,
-      -0.00007,
-      0.00004,
-      0.00004,
-      0.00003,
-      0.00003,
-      -0.00003,
-      0.00003,
-      -0.00002,
-      -0.00002,
-      0.00002
-    ]
-
     correction =
       deg(-0.00017) * sin(omega) +
         sigma(
-          [sine_coeff, e_factor, solar_coeff, lunar_coeff, moon_coeff],
-          fn [v, w, x, y, z] ->
+          @new_moon_terms,
+          fn {v, w, x, y, z} ->
             v * :math.pow(e, w) *
               sin(x * solar_anomaly + y * lunar_anomaly + z * moon_argument)
           end
@@ -1049,55 +1132,7 @@ defmodule Astro.Lunar do
       deg(0.000325) *
         sin(poly(c, [299.77, 132.8475848, -0.009173]))
 
-    add_const = [
-      251.88,
-      251.83,
-      349.42,
-      84.66,
-      141.74,
-      207.14,
-      154.84,
-      34.52,
-      207.19,
-      291.34,
-      161.72,
-      239.56,
-      331.55
-    ]
-
-    add_coeff = [
-      0.016321,
-      26.651886,
-      36.412478,
-      18.206239,
-      53.303771,
-      2.453732,
-      7.306860,
-      27.261239,
-      0.121824,
-      1.844379,
-      24.198154,
-      25.513099,
-      3.592518
-    ]
-
-    add_factor = [
-      0.000165,
-      0.000164,
-      0.000126,
-      0.000110,
-      0.000062,
-      0.000060,
-      0.000056,
-      0.000047,
-      0.000042,
-      0.000040,
-      0.000037,
-      0.000035,
-      0.000023
-    ]
-
-    additional = sigma([add_const, add_coeff, add_factor], fn [i, j, l] -> l * sin(i + j * k) end)
+    additional = sigma(@new_moon_additional_terms, fn {i, j, l} -> l * sin(i + j * k) end)
 
     Time.universal_from_dynamical(approx + correction + extra + additional)
   end

@@ -35,3 +35,6 @@ mise.toml
 # Claude
 /.claude
 CLAUDE.md
+
+# Session context (per-developer, never committed)
+CLAUDE.local.md
