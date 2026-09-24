@@ -1175,8 +1175,8 @@ defmodule Astro do
   end
 
   @doc """
-  Returns the datetime in UTC for either the
-  March or September equinox.
+  Returns the datetime of either the March or September
+  equinox, in UTC or a requested time zone.
 
   ### Arguments
 
@@ -1186,13 +1186,37 @@ defmodule Astro do
   * `event` is either `:march` or `:september` indicating
     which of the two annual equinox datetimes is required.
 
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:time_zone` is `:utc` (the default) or a time zone
+    name such as `"Asia/Tokyo"`. The equinox is one instant
+    everywhere; the time zone decides the local date and
+    time it is given in, and so the civil day it falls on.
+
+  * `:time_zone_database` is the module implementing
+    `Calendar.TimeZoneDatabase` in which a named time zone
+    is looked up. The default is the configured database,
+    `Calendar.get_time_zone_database/0`. UTC needs none.
+
   ### Returns
 
-  * `{:ok, datetime}` representing the UTC datetime of
-    the equinox.
+  * `{:ok, datetime}`, the equinox in the requested time
+    zone, or
 
   * `{:error, :year_out_of_range}` if `year` is outside the
-    supported range of 1000 CE to 3000 CE.
+    supported range of 1000 CE to 3000 CE, or
+
+  * `{:error, :time_zone_not_found}` if the time zone is
+    not known to the time zone database, or
+
+  * `{:error, :utc_only_time_zone_database}` if a time zone
+    other than UTC is requested and no time zone database
+    is configured, or
+
+  * `{:error, :invalid_time_zone_database}` if
+    `:time_zone_database` is not a time zone database.
 
   ### Examples
 
@@ -1204,6 +1228,17 @@ defmodule Astro do
       ~U[2019-09-23 07:49:52Z]
       iex> Astro.equinox 900, :march
       {:error, :year_out_of_range}
+
+      # The March 2019 equinox is on the 20th in UTC but the 21st in Tokyo
+      iex> {:ok, dt} = Astro.equinox(2019, :march, time_zone: "Asia/Tokyo")
+      iex> DateTime.to_date(dt)
+      ~D[2019-03-21]
+
+      iex> Astro.equinox(2019, :march,
+      ...>   time_zone: "Asia/Tokyo",
+      ...>   time_zone_database: Calendar.UTCOnlyTimeZoneDatabase
+      ...> )
+      {:error, :utc_only_time_zone_database}
 
   ### Notes
 
@@ -1219,22 +1254,31 @@ defmodule Astro do
   center of the visible sun is directly above the equator.
 
   """
-  @spec equinox(Calendar.year(), :march | :september) ::
-          {:ok, DateTime.t()} | {:error, :year_out_of_range}
-  def equinox(year, event) when event in [:march, :september] and year in 1000..3000 do
-    Solar.equinox_and_solstice(year, event)
+  @spec equinox(Calendar.year(), :march | :september, options()) ::
+          {:ok, DateTime.t()}
+          | {:error,
+             :year_out_of_range
+             | :time_zone_not_found
+             | :utc_only_time_zone_database
+             | :invalid_time_zone_database}
+  def equinox(year, event, options \\ [])
+
+  def equinox(year, event, options) when event in [:march, :september] and year in 1000..3000 do
+    with {:ok, equinox} <- Solar.equinox_and_solstice(year, event) do
+      in_time_zone(equinox, options)
+    end
   end
 
   # The calculation is accurate to within 2 minutes only for 1000 CE to
   # 3000 CE; outside that span return an error rather than raising a
   # FunctionClauseError at the caller.
-  def equinox(year, event) when event in [:march, :september] and is_integer(year) do
+  def equinox(year, event, _options) when event in [:march, :september] and is_integer(year) do
     {:error, :year_out_of_range}
   end
 
   @doc """
-  Returns the datetime in UTC for either the
-  June or December solstice.
+  Returns the datetime of either the June or December
+  solstice, in UTC or a requested time zone.
 
   ### Arguments
 
@@ -1244,13 +1288,37 @@ defmodule Astro do
   * `event` is either `:june` or `:december` indicating
     which of the two annual solstice datetimes is required.
 
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:time_zone` is `:utc` (the default) or a time zone
+    name such as `"Asia/Tokyo"`. The solstice is one instant
+    everywhere; the time zone decides the local date and
+    time it is given in, and so the civil day it falls on.
+
+  * `:time_zone_database` is the module implementing
+    `Calendar.TimeZoneDatabase` in which a named time zone
+    is looked up. The default is the configured database,
+    `Calendar.get_time_zone_database/0`. UTC needs none.
+
   ### Returns
 
-  * `{:ok, datetime}` representing the UTC datetime of
-    the solstice.
+  * `{:ok, datetime}`, the solstice in the requested time
+    zone, or
 
   * `{:error, :year_out_of_range}` if `year` is outside the
-    supported range of 1000 CE to 3000 CE.
+    supported range of 1000 CE to 3000 CE, or
+
+  * `{:error, :time_zone_not_found}` if the time zone is
+    not known to the time zone database, or
+
+  * `{:error, :utc_only_time_zone_database}` if a time zone
+    other than UTC is requested and no time zone database
+    is configured, or
+
+  * `{:error, :invalid_time_zone_database}` if
+    `:time_zone_database` is not a time zone database.
 
   ### Examples
 
@@ -1262,6 +1330,11 @@ defmodule Astro do
       ~U[2019-06-21 15:54:07Z]
       iex> Astro.solstice 3500, :june
       {:error, :year_out_of_range}
+
+      # The June 2021 solstice is on the 21st in UTC but the 20th in Santiago
+      iex> {:ok, dt} = Astro.solstice(2021, :june, time_zone: "America/Santiago")
+      iex> DateTime.to_date(dt)
+      ~D[2021-06-20]
 
   ### Notes
 
@@ -1288,16 +1361,25 @@ defmodule Astro do
   which they take place every year.
 
   """
-  @spec solstice(Calendar.year(), :june | :december) ::
-          {:ok, DateTime.t()} | {:error, :year_out_of_range}
-  def solstice(year, event) when event in [:june, :december] and year in 1000..3000 do
-    Solar.equinox_and_solstice(year, event)
+  @spec solstice(Calendar.year(), :june | :december, options()) ::
+          {:ok, DateTime.t()}
+          | {:error,
+             :year_out_of_range
+             | :time_zone_not_found
+             | :utc_only_time_zone_database
+             | :invalid_time_zone_database}
+  def solstice(year, event, options \\ [])
+
+  def solstice(year, event, options) when event in [:june, :december] and year in 1000..3000 do
+    with {:ok, solstice} <- Solar.equinox_and_solstice(year, event) do
+      in_time_zone(solstice, options)
+    end
   end
 
   # The calculation is accurate to within 2 minutes only for 1000 CE to
   # 3000 CE; outside that span return an error rather than raising a
   # FunctionClauseError at the caller.
-  def solstice(year, event) when event in [:june, :december] and is_integer(year) do
+  def solstice(year, event, _options) when event in [:june, :december] and is_integer(year) do
     {:error, :year_out_of_range}
   end
 
@@ -1630,6 +1712,36 @@ defmodule Astro do
 
   defp seconds_since_midnight(%DateTime{hour: hour, minute: minute, second: second}) do
     hour * 3600 + minute * 60 + second
+  end
+
+  # An equinox or solstice in the requested time zone. UTC needs no time
+  # zone database; a named zone is looked up in `:time_zone_database`, the
+  # configured database by default, which knows only UTC when none is
+  # configured.
+  defp in_time_zone(utc_date_time, options) when is_list(options) do
+    case Keyword.get(options, :time_zone, :utc) do
+      :utc -> {:ok, utc_date_time}
+      time_zone when is_binary(time_zone) -> shift_to_time_zone(utc_date_time, time_zone, options)
+      _not_a_time_zone -> {:error, :time_zone_not_found}
+    end
+  end
+
+  defp in_time_zone(_utc_date_time, _options), do: {:error, :time_zone_not_found}
+
+  defp shift_to_time_zone(utc_date_time, time_zone, options) do
+    time_zone_database =
+      Keyword.get(options, :time_zone_database, Calendar.get_time_zone_database())
+
+    if time_zone_database?(time_zone_database) do
+      DateTime.shift_zone(utc_date_time, time_zone, time_zone_database)
+    else
+      {:error, :invalid_time_zone_database}
+    end
+  end
+
+  defp time_zone_database?(module) do
+    is_atom(module) and Code.ensure_loaded?(module) and
+      function_exported?(module, :time_zone_period_from_utc_iso_days, 2)
   end
 
   @doc false

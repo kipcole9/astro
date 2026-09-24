@@ -32,8 +32,8 @@ The primary functions are:
 
 * `Astro.sunrise/3`
 * `Astro.sunset/3`
-* `Astro.solstice/2`
-* `Astro.equinox/2`
+* `Astro.solstice/3`
+* `Astro.equinox/3`
 * `Astro.hours_of_daylight/2`
 * `Astro.sun_position_at/1`
 

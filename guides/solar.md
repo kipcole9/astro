@@ -117,7 +117,7 @@ Prefer `duration_of_daylight/2` for anywhere inside the polar circles, where the
 ## Equinoxes and solstices
 
 These are instants, not dates, and they are the same instant everywhere on Earth
-— so they are returned in UTC.
+— so they are returned in UTC unless you ask for a time zone.
 
 ```elixir
 iex> Astro.equinox(2019, :march)
@@ -127,10 +127,25 @@ iex> Astro.solstice(2019, :december)
 {:ok, ~U[2019-12-22 04:19:19.643304Z]}
 ```
 
-`:march` and `:september` are valid for `equinox/2`; `:june` and `:december` for
-`solstice/2`. Naming the month rather than "spring" or "summer" avoids the
+`:march` and `:september` are valid for `equinox/3`; `:june` and `:december` for
+`solstice/3`. Naming the month rather than "spring" or "summer" avoids the
 hemisphere ambiguity: the December solstice is midsummer in Sydney and midwinter
 in London.
+
+The civil date of the instant depends on where you are. Japan's Vernal Equinox
+Day is the date of the March equinox in Japan, which is a day later than the UTC
+date in about a third of years. The `:time_zone` option returns the instant in
+that zone:
+
+```elixir
+iex> {:ok, equinox} = Astro.equinox(2019, :march, time_zone: "Asia/Tokyo")
+iex> DateTime.to_date(equinox)
+~D[2019-03-21]
+```
+
+A named time zone is looked up in `:time_zone_database`, which defaults to the
+configured database (`Calendar.get_time_zone_database/0`). With none configured
+only UTC is known, and a named zone returns `{:error, :utc_only_time_zone_database}`.
 
 Both are documented for 1000 CE to 3000 CE and return
 `{:error, :year_out_of_range}` outside it.

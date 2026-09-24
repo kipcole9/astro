@@ -10,6 +10,8 @@ This is the changelog for Astro version 2.6.2, not yet released. For older chang
 
 * `Astro.Time.dynamical_from_universal/1` and `universal_from_dynamical/1` find the ΔT decimal year with integer day arithmetic, about 1.6 times faster. Results are unchanged on every day of years −9999 to 9999.
 
+* `Astro.equinox/3` and `Astro.solstice/3` take `:time_zone` (`:utc` by default, or a zone name) and `:time_zone_database` options and return the instant in that zone, whose civil date can differ from the UTC date — for Japan's equinox holidays, in about a third of years. A named zone with no time zone database configured returns `{:error, :utc_only_time_zone_database}`.
+
 ### Bug Fixes
 
 * The specs of `Astro.date_time_new_moon_before/1`, `date_time_new_moon_nearest/1`, `date_time_new_moon_at_or_after/1`, `date_time_lunar_phase_at_or_before/2` and `date_time_lunar_phase_at_or_after/2` were malformed, so their error return was silently dropped and dialyzer took them never to fail. With the fix below they cannot fail, so they declare `{:ok, DateTime.t()}` and their docs no longer describe an error shape they never returned.
