@@ -367,9 +367,8 @@ defmodule Astro do
 
   ### Returns
 
-  * `{:ok, date_time}` at which the new moon occurs or
-
-  * `{:error, {module, reason}}`
+  * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
+    moon occurs.
 
   ### Example
 
@@ -378,13 +377,9 @@ defmodule Astro do
 
   """
   @doc since: "0.5.0"
-  @spec(
-    date_time_new_moon_before(date()) ::
-      {:ok, Calendar.datetime()},
-    {:error, {module(), String.t()}}
-  )
+  @spec date_time_new_moon_before(date()) :: {:ok, DateTime.t()}
 
-  def date_time_new_moon_at_or_before(unquote(Guards.datetime()) = date_time) do
+  def date_time_new_moon_before(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time
@@ -402,6 +397,15 @@ defmodule Astro do
     |> Time.date_time_from_moment()
   end
 
+  # The date-time clause of `date_time_new_moon_before/1` was once defined
+  # under this name, which then carried that function's documentation.
+  @doc false
+  @deprecated "Use Astro.date_time_new_moon_before/1 instead"
+  @spec date_time_new_moon_at_or_before(date()) :: {:ok, DateTime.t()}
+  def date_time_new_moon_at_or_before(date_time) do
+    date_time_new_moon_before(date_time)
+  end
+
   @doc """
   Returns the date time of the new
   moon nearest to a given date or date time.
@@ -414,9 +418,8 @@ defmodule Astro do
 
   ### Returns
 
-  * `{:ok, date_time}` at which the new moon occurs or
-
-  * `{:error, {module, reason}}`
+  * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
+    moon occurs.
 
   ### Example
 
@@ -425,11 +428,7 @@ defmodule Astro do
 
   """
   @doc since: "2.0.0"
-  @spec(
-    date_time_new_moon_nearest(date()) ::
-      {:ok, Calendar.datetime()},
-    {:error, {module(), String.t()}}
-  )
+  @spec date_time_new_moon_nearest(date()) :: {:ok, DateTime.t()}
 
   def date_time_new_moon_nearest(unquote(Guards.datetime()) = date_time) do
     _ = calendar
@@ -462,9 +461,8 @@ defmodule Astro do
 
   ### Returns
 
-  * `{:ok, date_time}` at which the new moon occurs or
-
-  * `{:error, {module, reason}}`
+  * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
+    moon occurs.
 
   ### Example
 
@@ -473,11 +471,7 @@ defmodule Astro do
 
   """
   @doc since: "0.5.0"
-  @spec(
-    date_time_new_moon_at_or_after(date) ::
-      {:ok, Calendar.datetime()},
-    {:error, {module(), String.t()}}
-  )
+  @spec date_time_new_moon_at_or_after(date()) :: {:ok, DateTime.t()}
 
   def date_time_new_moon_at_or_after(unquote(Guards.datetime()) = datetime) do
     _ = calendar
@@ -587,13 +581,11 @@ defmodule Astro do
   @emoji_phase 360.0 / @emoji_phase_count
 
   @spec lunar_phase_emoji(phase()) :: String.t()
-  def lunar_phase_emoji(360) do
-    lunar_phase_emoji(0)
-  end
-
   def lunar_phase_emoji(phase) when is_lunar_phase(phase) do
-    offset = ceil(phase / @emoji_phase + 0.5)
-    :unicode.characters_to_binary([offset + @emoji_base])
+    # Each symbol covers 45 degrees centred on its phase, so the new moon's
+    # bin runs from 337.5 degrees round to 22.5.
+    bin = rem(ceil(phase / @emoji_phase + 0.5) - 1, @emoji_phase_count)
+    <<@emoji_base + 1 + bin::utf8>>
   end
 
   @doc """
@@ -613,9 +605,8 @@ defmodule Astro do
 
   ### Returns
 
-  * `{:ok, date_time}` at which the phase occurs or
-
-  * `{:error, {module, reason}}`
+  * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the phase
+    occurs.
 
   ### Example
 
@@ -625,11 +616,7 @@ defmodule Astro do
   """
 
   @doc since: "0.5.0"
-  @spec(
-    date_time_lunar_phase_at_or_before(date(), Astro.phase()) ::
-      {:ok, Calendar.datetime()},
-    {:error, {module(), String.t()}}
-  )
+  @spec date_time_lunar_phase_at_or_before(date(), Astro.phase()) :: {:ok, DateTime.t()}
 
   def date_time_lunar_phase_at_or_before(unquote(Guards.datetime()) = date_time, phase) do
     _ = calendar
@@ -666,9 +653,8 @@ defmodule Astro do
 
   ### Returns
 
-  * `{:ok, date_time}` at which the phase occurs or
-
-  * `{:error, {module, reason}}`
+  * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the phase
+    occurs.
 
   ### Example
 
@@ -678,11 +664,7 @@ defmodule Astro do
   """
 
   @doc since: "0.5.0"
-  @spec(
-    date_time_lunar_phase_at_or_after(date(), Astro.phase()) ::
-      {:ok, Calendar.datetime()},
-    {:error, {module(), String.t()}}
-  )
+  @spec date_time_lunar_phase_at_or_after(date(), Astro.phase()) :: {:ok, DateTime.t()}
 
   def date_time_lunar_phase_at_or_after(unquote(Guards.datetime()) = date_time, phase) do
     _ = calendar

@@ -981,7 +981,10 @@ defmodule Astro.Time do
 
   ### Returns
 
-  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC.
+  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC, or
+
+  * `{:error, reason}` if `date` is not a valid date or `time_of_day`
+    is 24 hours or more.
 
   ### Examples
 
@@ -990,7 +993,8 @@ defmodule Astro.Time do
       ~U[2024-06-21 12:00:00Z]
 
   """
-  @spec hours_and_date_to_date_time(hours(), Calendar.date()) :: {:ok, Calendar.datetime()}
+  @spec hours_and_date_to_date_time(hours(), Calendar.date()) ::
+          {:ok, DateTime.t()} | {:error, atom()}
   def hours_and_date_to_date_time(time_of_day, %{year: year, month: month, day: day}) do
     with {hours, minutes, seconds} <- hours_to_hms(time_of_day),
          {:ok, naive_datetime} <- NaiveDateTime.new(year, month, day, hours, minutes, seconds, 0) do
@@ -1607,12 +1611,16 @@ defmodule Astro.Time do
   ### Returns
 
   * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC with
-    microsecond precision.
+    microsecond precision, for any moment including those before
+    0000-01-01.
 
   ### Examples
 
       iex> Astro.Time.date_time_from_moment(740047.5)
       {:ok, ~U[2026-03-07 12:00:00.000000Z]}
+
+      iex> Astro.Time.date_time_from_moment(-0.25)
+      {:ok, ~U[-0001-12-31 18:00:00.000000Z]}
 
       iex> Astro.Time.date_time_from_moment(740047.0)
       {:ok, ~U[2026-03-07 00:00:00.000000Z]}
@@ -1624,7 +1632,10 @@ defmodule Astro.Time do
   @spec date_time_from_moment(moment()) :: {:ok, DateTime.t()}
 
   def date_time_from_moment(t) do
-    days = trunc(t)
+    # Floored, not truncated: the day of a negative moment is the one before,
+    # so the fraction of the day left over is never negative and the time of
+    # day below is always a valid one.
+    days = floor(t)
     frac_us = round((t - days) * @seconds_per_day * 1_000_000)
 
     # Handle rounding that pushes past midnight
@@ -1641,18 +1652,9 @@ defmodule Astro.Time do
 
     date = Elixir.Date.from_gregorian_days(days)
 
-    with {:ok, naive} <-
-           NaiveDateTime.new(
-             date.year,
-             date.month,
-             date.day,
-             hours,
-             minutes,
-             seconds,
-             {microseconds, 6}
-           ) do
-      date_time_in_utc(naive)
-    end
+    date.year
+    |> NaiveDateTime.new!(date.month, date.day, hours, minutes, seconds, {microseconds, 6})
+    |> date_time_in_utc()
   end
 
   @doc """
@@ -1713,16 +1715,10 @@ defmodule Astro.Time do
     end
   end
 
-  defp date_time_in_utc(
-         datetime,
-         time_zone \\ @utc_zone,
-         time_zone_database \\ Calendar.get_time_zone_database()
-       ) do
-    case DateTime.from_naive(datetime, time_zone, time_zone_database) do
-      {:ok, datetime} -> {:ok, datetime}
-      {:error, error} -> {:error, error}
-      {:ambiguous, _datetime1, datetime2} -> {:ok, datetime2}
-      {:gap, _datetime1, datetime2} -> {:ok, datetime2}
-    end
+  # UTC has no gaps or overlaps and `DateTime.from_naive!/2` builds an
+  # `Etc/UTC` date time without consulting a time zone database, so a naive
+  # date time always converts.
+  defp date_time_in_utc(naive_datetime) do
+    {:ok, DateTime.from_naive!(naive_datetime, @utc_zone)}
   end
 end

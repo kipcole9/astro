@@ -10,6 +10,16 @@ defmodule Astro.Moon.Phase.Test do
 
   @minute_variation 4
 
+  test "every phase is one of the eight lunar phase symbols, the new moon from 337.5 degrees" do
+    for tenths <- 0..3600 do
+      <<symbol::utf8>> = Astro.lunar_phase_emoji(tenths / 10)
+      assert symbol in 0x1F311..0x1F318
+    end
+
+    for phase <- [337.6, 359.9, 360.0, 360], do: assert(Astro.lunar_phase_emoji(phase) == "🌑")
+    assert Astro.lunar_phase_emoji(337.5) == "🌘"
+  end
+
   for [phase, date, time] <- Astro.Moon.TestData.moon_phase() do
     year = date.year
     month = date.month

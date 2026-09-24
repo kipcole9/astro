@@ -10,6 +10,18 @@ This is the changelog for Astro version 2.6.2, not yet released. For older chang
 
 * `Astro.Time.dynamical_from_universal/1` and `universal_from_dynamical/1` find the ΔT decimal year with integer day arithmetic, about 1.6 times faster. Results are unchanged on every day of years −9999 to 9999.
 
+### Bug Fixes
+
+* The specs of `Astro.date_time_new_moon_before/1`, `date_time_new_moon_nearest/1`, `date_time_new_moon_at_or_after/1`, `date_time_lunar_phase_at_or_before/2` and `date_time_lunar_phase_at_or_after/2` were malformed, so their error return was silently dropped and dialyzer took them never to fail. With the fix below they cannot fail, so they declare `{:ok, DateTime.t()}` and their docs no longer describe an error shape they never returned.
+
+* `Astro.Time.date_time_from_moment/1`, and so every date-time search above, converts instants before 0000-01-01 instead of returning `{:error, :invalid_time}` — the day of a negative moment was truncated rather than floored.
+
+* The date-time clause of `Astro.date_time_new_moon_before/1` was defined as `Astro.date_time_new_moon_at_or_before/1`, which carried its documentation. It is now a clause of `date_time_new_moon_before/1`, and `date_time_new_moon_at_or_before/1` is deprecated.
+
+* `Astro.lunar_phase_emoji/1` returns the new moon 🌑 for phases above 337.5°, where it returned the crescent moon 🌙, which is not a phase symbol.
+
+* `Astro.Time.hours_and_date_to_date_time/2` declares the `{:error, reason}` it returns for an invalid date or a time of day of 24 hours or more.
+
 ## Astro version 2.6.1
 
 This is the changelog for Astro version 2.6.1, released on September 24th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

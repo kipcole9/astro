@@ -2,6 +2,30 @@ defmodule Astro.Test.Time do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
+  describe "moments before 0000-01-01" do
+    property "convert to a date time that converts back to the moment" do
+      check all(t <- StreamData.float(min: -800_000.0, max: 0.0), max_runs: 2_000) do
+        assert {:ok, datetime} = Astro.Time.date_time_from_moment(t)
+        assert abs(Astro.Time.date_time_to_moment(datetime) - t) < 1.0e-9
+      end
+    end
+
+    test "keep the time of day of the day before 0000-01-01" do
+      assert Astro.Time.date_time_from_moment(-0.25) == {:ok, ~U[-0001-12-31 18:00:00.000000Z]}
+      assert Astro.Time.date_time_from_moment(-1.0) == {:ok, ~U[-0001-12-31 00:00:00.000000Z]}
+    end
+  end
+
+  describe "hours_and_date_to_date_time/2" do
+    test "an invalid date or a time of day of 24 hours or more is an error" do
+      assert {:error, :invalid_time} =
+               Astro.Time.hours_and_date_to_date_time(25.0, ~D[2024-06-21])
+
+      assert {:error, :invalid_date} =
+               Astro.Time.hours_and_date_to_date_time(12.0, %{year: 2024, month: 2, day: 30})
+    end
+  end
+
   describe "julian day / calendar date round-trip" do
     property "date_time_from_julian_days/1 inverts julian_day_from_date/1 for proleptic-Gregorian dates" do
       # Julian days roughly spanning years 1 CE through 9999 CE — the full
