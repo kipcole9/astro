@@ -16,6 +16,50 @@ defmodule Astro.Test.Time do
     end
   end
 
+  describe "date_time_from_date_and_minutes/2" do
+    test "adds minutes since UTC midnight, before it too" do
+      assert Astro.Time.date_time_from_date_and_minutes(720.0, ~D[2024-06-21]) ==
+               {:ok, ~U[2024-06-21 12:00:00Z]}
+
+      assert Astro.Time.date_time_from_date_and_minutes(-30.0, ~D[2024-06-21]) ==
+               {:ok, ~U[2024-06-20 23:30:00Z]}
+    end
+
+    test "a date that is not valid in its calendar is an error" do
+      invalid = %{calendar: Calendar.ISO, year: 2024, month: 2, day: 30}
+      assert Astro.Time.date_time_from_date_and_minutes(720.0, invalid) == {:error, :invalid_date}
+    end
+
+    test "anything but a date is an error, not an exception" do
+      for not_a_date <- [
+            nil,
+            "",
+            :"",
+            "2024-06-21",
+            String.duplicate("x", 10_000),
+            %{year: 2024, month: 6, day: 21},
+            %{calendar: String, year: 2024, month: 6, day: 21},
+            %{calendar: Calendar.ISO, year: "2024", month: 6, day: 21},
+            %{calendar: Calendar.ISO, year: 2024, month: nil, day: 21}
+          ] do
+        assert Astro.Time.date_time_from_date_and_minutes(720.0, not_a_date) ==
+                 {:error, :invalid_date}
+      end
+    end
+
+    test "minutes that are not a number are an error" do
+      for minutes <- [nil, "720", :"", ~D[2024-06-21]] do
+        assert Astro.Time.date_time_from_date_and_minutes(minutes, ~D[2024-06-21]) ==
+                 {:error, :invalid_time}
+      end
+    end
+
+    test "solar noon on a date that is not valid is an error" do
+      invalid = %{calendar: Calendar.ISO, year: 2019, month: 2, day: 29}
+      assert Astro.solar_noon({151.20666584, -33.8559799094}, invalid) == {:error, :invalid_date}
+    end
+  end
+
   describe "hours_and_date_to_date_time/2" do
     test "an invalid date or a time of day of 24 hours or more is an error" do
       assert {:error, :invalid_time} =

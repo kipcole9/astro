@@ -1318,13 +1318,19 @@ defmodule Astro do
     * a `Geo.Point.t` struct to represent a location without elevation.
     * a `Geo.PointZ.t` struct to represent a location and elevation.
 
-  * `date` is any `t:Date.t/0` in the Gregorian
-    calendar (for example, `Calendar.ISO`).
+  * `date` is any `t:Calendar.date/0`. A date in a calendar other
+    than `Calendar.ISO` is converted to its ISO date first.
 
   ### Returns
 
-  * a UTC datetime representing solar noon
-    at the given location for the given date.
+  * `{:ok, datetime}`, the UTC datetime of solar noon at the given
+    location on the given date, or
+
+  * `{:error, :invalid_date}` if `date` is not a valid date in its
+    calendar, or
+
+  * `{:error, :incompatible_calendars}` if its calendar cannot be
+    converted to `Calendar.ISO`.
 
   ### Example
 
@@ -1342,16 +1348,20 @@ defmodule Astro do
   local meridian.
 
   """
-  @spec solar_noon(Astro.location(), Calendar.date()) :: {:ok, DateTime.t()}
+  @spec solar_noon(Astro.location(), Calendar.date()) ::
+          {:ok, DateTime.t()} | {:error, :invalid_date | :incompatible_calendars | :invalid_time}
   def solar_noon(location, date) do
     %Geo.PointZ{coordinates: {longitude, _, _}} = Location.normalize_location(location)
 
-    julian_day = Time.julian_day_from_date(date)
-    julian_centuries = Time.julian_centuries_from_julian_day(julian_day)
-
-    julian_centuries
-    |> Solar.solar_noon_utc(-longitude)
-    |> Time.date_time_from_date_and_minutes(date)
+    # Both the Julian day and the date time are taken from the ISO date, so a
+    # date in another calendar gives the solar noon of that same day.
+    with {:ok, iso_date} <- Time.iso_date(date) do
+      iso_date
+      |> Time.julian_day_from_date()
+      |> Time.julian_centuries_from_julian_day()
+      |> Solar.solar_noon_utc(-longitude)
+      |> Time.date_time_from_date_and_minutes(iso_date)
+    end
   end
 
   @doc """

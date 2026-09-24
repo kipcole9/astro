@@ -20,7 +20,7 @@ defmodule Astro.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       dialyzer: [
         ignore_warnings: ".dialyzer_ignore_warnings",
-        plt_add_apps: ~w(inets jason geo mix)a
+        plt_add_apps: ~w(inets geo mix)a
       ],
       compilers: Mix.compilers()
     ]

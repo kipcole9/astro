@@ -1098,42 +1098,75 @@ defmodule Astro.Time do
 
   ### Arguments
 
-  * `minutes` is a float number of minutes since midnight.
+  * `minutes` is a float number of minutes since midnight (UTC).
 
-  * `date` is any `t:Calendar.date/0`.
+  * `date` is any `t:Calendar.date/0`. A date in a calendar other
+    than `Calendar.ISO` is converted to its ISO date first.
 
   ### Returns
 
-  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC.
+  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC, or
+
+  * `{:error, :invalid_date}` if `date` is not a valid date in its
+    calendar, or
+
+  * `{:error, :incompatible_calendars}` if its calendar cannot be
+    converted to `Calendar.ISO`, or
+
+  * `{:error, :invalid_time}` if `minutes` is not a number.
 
   ### Examples
 
       iex> Astro.Time.date_time_from_date_and_minutes(720.0, ~D[2024-06-21])
       {:ok, ~U[2024-06-21 12:00:00Z]}
 
+      iex> Astro.Time.date_time_from_date_and_minutes(720.0, %{calendar: Calendar.ISO, year: 2024, month: 2, day: 30})
+      {:error, :invalid_date}
+
   """
-  @spec date_time_from_date_and_minutes(minutes(), Calendar.date()) :: {:ok, Calendar.datetime()}
-  def date_time_from_date_and_minutes(minutes, date) do
-    {:ok, naive_datetime} = NaiveDateTime.new(date.year, date.month, date.day, 0, 0, 0)
+  @spec date_time_from_date_and_minutes(minutes(), Calendar.date()) ::
+          {:ok, DateTime.t()} | {:error, :invalid_date | :incompatible_calendars | :invalid_time}
+  def date_time_from_date_and_minutes(minutes, date) when is_number(minutes) do
+    with {:ok, iso_date} <- iso_date(date) do
+      # The arithmetic is on the UTC timeline, so `Calendar.UTCOnlyTimeZoneDatabase`
+      # is passed rather than the configured database: `DateTime.add/4` resolves
+      # the result zone even for `Etc/UTC`, and a configured database (e.g. Tzdata)
+      # can return `:time_zone_not_found` for dates outside its range — for
+      # instance ancient era boundaries computed at compile time. `DateTime.new!/3`
+      # builds an `Etc/UTC` date time without consulting any database.
+      {:ok,
+       iso_date
+       |> DateTime.new!(~T[00:00:00], @utc_zone)
+       |> DateTime.add(
+         trunc(minutes * @seconds_per_minute),
+         :second,
+         Calendar.UTCOnlyTimeZoneDatabase
+       )}
+    end
+  end
 
-    # `datetime` is always in `Etc/UTC` (built by `date_time_in_utc/1`), so the
-    # arithmetic below is purely on the UTC timeline. Match the zone explicitly so
-    # any future change that lets a non-UTC datetime reach here fails loudly rather
-    # than silently consulting the configured time zone database.
-    #
-    # We pass `Calendar.UTCOnlyTimeZoneDatabase` rather than the configured database:
-    # `DateTime.add/4` resolves the result zone even for `Etc/UTC`, and a configured
-    # database (e.g. Tzdata) can return `:time_zone_not_found` for dates outside its
-    # range — for instance ancient era boundaries computed at compile time.
-    {:ok, %DateTime{time_zone: @utc_zone} = datetime} = date_time_in_utc(naive_datetime)
+  def date_time_from_date_and_minutes(_minutes, _date) do
+    {:error, :invalid_time}
+  end
 
-    {:ok,
-     DateTime.add(
-       datetime,
-       trunc(minutes * @seconds_per_minute),
-       :second,
-       Calendar.UTCOnlyTimeZoneDatabase
-     )}
+  @doc false
+  # The ISO date of a date in any calendar, as `{:ok, date}`, or an error
+  # when its parts are not a date in its calendar or the calendar does not
+  # convert to ISO.
+  @spec iso_date(term()) :: {:ok, Date.t()} | {:error, :invalid_date | :incompatible_calendars}
+  def iso_date(%{year: year, month: month, day: day, calendar: calendar})
+      when is_integer(year) and is_integer(month) and is_integer(day) and is_atom(calendar) do
+    if Code.ensure_loaded?(calendar) and function_exported?(calendar, :valid_date?, 3) do
+      with {:ok, date} <- Elixir.Date.new(year, month, day, calendar) do
+        Elixir.Date.convert(date, Calendar.ISO)
+      end
+    else
+      {:error, :invalid_date}
+    end
+  end
+
+  def iso_date(_date) do
+    {:error, :invalid_date}
   end
 
   @doc """

@@ -22,6 +22,8 @@ This is the changelog for Astro version 2.6.2, not yet released. For older chang
 
 * `Astro.Time.hours_and_date_to_date_time/2` declares the `{:error, reason}` it returns for an invalid date or a time of day of 24 hours or more.
 
+* `Astro.Time.date_time_from_date_and_minutes/2` returns `{:error, :invalid_date}` for a date that is not valid in its calendar, where it raised `MatchError`, and converts a date in another calendar to its ISO date instead of reading its fields as ISO. `Astro.solar_noon/2` returns the same errors and gives a date in another calendar the solar noon of that same day.
+
 ## Astro version 2.6.1
 
 This is the changelog for Astro version 2.6.1, released on September 24th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
