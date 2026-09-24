@@ -17,14 +17,55 @@ env:
   # _build so it survives a toolchain-keyed build cache and can be cached
   # once for every matrix entry.
   TZ_WORLD_DATA_DIR: ${{ github.workspace }}/tz_world_data
+  # The upstream time zone data release the test suite runs against. Bump it
+  # to test against a newer release; the cache key follows it.
+  TZ_WORLD_DATA_RELEASE: "2026d"
 
 permissions:
   contents: read
 
 jobs:
+  # Installs the tz_world time zone data (~95 MB) once and caches it for every
+  # test job. `mix tz_world.update` looks up the latest release through the
+  # GitHub API, which rate limits by runner IP, so a cache miss in every matrix
+  # entry could make CI fail at random. This job downloads the pinned release
+  # from its asset URL instead, which is not rate limited, and only on a miss.
+  data:
+    runs-on: ubuntu-latest
+    name: Time zone data
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Look up cached time zone data
+      id: cache
+      uses: actions/cache@v6
+      with:
+        path: tz_world_data
+        key: tz-world-geodata-${{ env.TZ_WORLD_DATA_RELEASE }}
+        lookup-only: true
+
+    - name: Set up Elixir
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: "29"
+        elixir-version: "1.20-otp-29"
+
+    # The trailing `true` creates the data directory, which tz_world's
+    # package does not ship.
+    - name: Install time zone data
+      if: steps.cache.outputs.cache-hit != 'true'
+      env:
+        DATA_URL: https://github.com/evansiroky/timezone-boundary-builder/releases/download/${{ env.TZ_WORLD_DATA_RELEASE }}/timezones.geojson.zip
+      run: |
+        mix deps.get
+        mix run -e '{:ok, _} = TzWorld.Downloader.get_latest_release(System.fetch_env!("TZ_WORLD_DATA_RELEASE"), System.fetch_env!("DATA_URL"), false, true)'
+
   test:
     runs-on: ubuntu-latest
     name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    needs: data
     strategy:
       # A transient failure in one matrix entry (e.g. a network timeout
       # downloading the JPL ephemeris) should not cancel the other entries.
@@ -75,7 +116,7 @@ jobs:
 
     # Step: Check out the code.
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     # Step: Define how to cache deps. Restores existing cache if present.
     # Cache key includes OTP and Elixir versions so that matrix entries do not
@@ -83,7 +124,7 @@ jobs:
     # dependency like hackney with a stale/missing ebin).
     - name: Cache deps
       id: cache-deps
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       env:
         cache-name: cache-elixir-deps
       with:
@@ -97,7 +138,7 @@ jobs:
     # project's downloaded deps every run.
     - name: Cache compiled build
       id: cache-build
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       env:
         cache-name: cache-compiled-build
       with:
@@ -115,22 +156,13 @@ jobs:
     - name: Compiles without warnings
       run: mix compile --warnings-as-errors
 
-    # Step: Cache the tz_world timezone geo data (~95 MB). It is a static
-    # upstream release, so fetch it once rather than once per matrix entry.
-    # The key is constant; bump the suffix to pick up a newer release.
-    - name: Cache tz_world geo data
-      id: cache-tz-world
-      uses: actions/cache@v5
+    # Step: Restore the tz_world time zone data the data job cached.
+    - name: Restore time zone data
+      uses: actions/cache/restore@v6
       with:
         path: tz_world_data
-        key: tz-world-geodata-2026d
-
-    # Step: Install the tz_world timezone geo data on a cache miss only.
-    # `--force` creates the data directory, which tz_world's package does
-    # not ship; without it a first install is a hard error.
-    - name: Install time zone data
-      if: steps.cache-tz-world.outputs.cache-hit != 'true'
-      run: mix tz_world.update --force
+        key: tz-world-geodata-${{ env.TZ_WORLD_DATA_RELEASE }}
+        fail-on-cache-miss: true
 
     # Step: Cache the JPL DE440s ephemeris (~32 MB, static file). NAIF's
     # server is slow and occasionally times out, so cache it across runs and
@@ -140,7 +172,7 @@ jobs:
     # location, so the tests find it without extra configuration.
     - name: Cache JPL ephemeris
       id: cache-ephemeris
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.cache/astro
         key: astro-ephemeris-de440s
@@ -172,7 +204,7 @@ jobs:
     # both Elixir and OTP because BEAM files are version tagged.
     - name: Restore PLT cache
       if: matrix.lint
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: _build/dev/dialyxir_*
         key: plt-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
