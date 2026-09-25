@@ -1,8 +1,8 @@
 # Changelog
 
-## Astro version 2.6.2
+## Astro version 2.7.0
 
-This is the changelog for Astro version 2.6.2, not yet released. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 2.7.0, released on September 25th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Enhancements
 
