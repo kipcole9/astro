@@ -8,7 +8,7 @@ defmodule Astro.Location do
   end
 
   @doc """
-  Normalizes a location into a `t:Geo.PointZ` struct.
+  Normalizes a location into a `t:Geo.PointZ.t/0` struct.
 
   """
   def normalize_location({lng, lat, alt}) when is_lat(lat) and is_lng(lng) and is_alt(alt) do

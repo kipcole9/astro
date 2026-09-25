@@ -76,6 +76,12 @@ defmodule Astro.Ephemeris.Downloader do
 
   * A binary path string.
 
+  ### Examples
+
+      iex> path = Astro.Ephemeris.Downloader.ephemeris_path()
+      iex> Path.basename(path) in ["de440s.bsp", "de440s-astro.bsp"]
+      true
+
   """
   @spec ephemeris_path() :: String.t()
   def ephemeris_path do
@@ -109,6 +115,13 @@ defmodule Astro.Ephemeris.Downloader do
 
   * `{:error, reason}` if the file is missing and the download failed.
 
+  ### Examples
+
+      iex> path = Astro.Ephemeris.Downloader.ephemeris_path()
+      iex> {:ok, ^path} = Astro.Ephemeris.Downloader.ensure_ephemeris(path)
+      iex> File.exists?(path)
+      true
+
   """
   @spec ensure_ephemeris(String.t()) :: {:ok, String.t()} | {:error, term()}
   def ensure_ephemeris(path) do
@@ -139,6 +152,13 @@ defmodule Astro.Ephemeris.Downloader do
     describing the failure, e.g. `{:http_status, 404}`,
     `{:cache_dir_unwritable, dir, posix_reason}`, or an `:httpc`
     error term.
+
+  ### Examples
+
+  Downloading the full ephemeris takes a while, so this example is not run:
+
+      Astro.Ephemeris.Downloader.download("/tmp/astro/de440s.bsp")
+      #=> {:ok, "/tmp/astro/de440s.bsp"}
 
   """
   @spec download(String.t()) :: {:ok, String.t()} | {:error, term()}

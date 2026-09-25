@@ -547,9 +547,38 @@ defmodule Astro.Time do
     t - offset
   end
 
+  @doc """
+  Returns the mean sidereal time at Greenwich, in degrees, for a moment
+  in Universal Time.
+
+  This is Meeus's equation 12.4, as Calendrical Calculations'
+  `sidereal-from-moment` uses it.
+
+  ### Arguments
+
+  * `t` is a `t:moment/0` in Universal Time.
+
+  ### Returns
+
+  * The mean sidereal time as a float in degrees, from 0.0 to 360.0.
+
+  ### Examples
+
+  Meeus's example 12.b, 1987 April 10 at 19:21 UT, is 128.7378734°:
+
+      iex> ~U[1987-04-10 19:21:00Z]
+      ...> |> Astro.Time.date_time_to_moment()
+      ...> |> Astro.Time.mean_sidereal_from_moment()
+      ...> |> Float.round(7)
+      128.7378733
+
+  """
+  @spec mean_sidereal_from_moment(moment()) :: float()
   def mean_sidereal_from_moment(t) do
-    # c = (t - j2000()) / @julian_days_per_century
-    c = julian_centuries_from_moment(t)
+    # Sidereal time follows the Earth's rotation, so it is measured in
+    # Universal Time. Centuries of dynamical time, which add ΔT, put the
+    # result some 0.27° ahead.
+    c = (t - j2000()) / @julian_days_per_century
 
     terms =
       Enum.map(
@@ -560,14 +589,38 @@ defmodule Astro.Time do
     mod(Math.poly(c, terms), 360)
   end
 
+  @doc """
+  Returns the apparent sidereal time at Greenwich, in degrees, for a
+  moment in Universal Time.
+
+  The apparent sidereal time is the mean sidereal time corrected by the
+  equation of the equinoxes, the nutation in longitude projected onto the
+  equator. It is computed by `Astro.Coordinates.gast/1`.
+
+  ### Arguments
+
+  * `t` is a `t:moment/0` in Universal Time.
+
+  ### Returns
+
+  * The apparent sidereal time as a float in degrees, from 0.0 to 360.0.
+
+  ### Examples
+
+  Meeus's example 12.a, 1987 April 10 at 0h UT, is 197.6922296°:
+
+      iex> ~U[1987-04-10 00:00:00Z]
+      ...> |> Astro.Time.date_time_to_moment()
+      ...> |> Astro.Time.apparent_sidereal_from_moment()
+      ...> |> Float.round(7)
+      197.6922296
+
+  """
+  @spec apparent_sidereal_from_moment(moment()) :: float()
   def apparent_sidereal_from_moment(t) do
-    # c = (t - j2000()) / @julian_days_per_century
-    c = julian_centuries_from_moment(t)
-
-    terms =
-      Enum.map([100.4606184, 36_000.77004, 0.000387933, -1 / 38_710_000.0], &Math.deg/1)
-
-    mod(Math.poly(c, terms), 360)
+    t
+    |> dynamical_time_from_moment()
+    |> Astro.Coordinates.gast()
   end
 
   @doc """
@@ -590,19 +643,18 @@ defmodule Astro.Time do
 
       iex> gmst = Astro.Time.greenwich_mean_sidereal_time(~U[2000-01-01 12:00:00Z])
       iex> Float.round(gmst, 4)
-      280.7273
+      280.4606
 
   """
   @doc since: "0.11.0"
   @spec greenwich_mean_sidereal_time(Calendar.datetime()) :: moment()
 
+  # `date_time_to_moment/1` shifts to `Etc/UTC`, which every time zone database
+  # knows, and reads the date through its own calendar, so no conversion is
+  # needed first. Shifting to "UTC" instead raised under Elixir's default
+  # `Calendar.UTCOnlyTimeZoneDatabase`, which knows only `Etc/UTC`.
   def greenwich_mean_sidereal_time(date_time) do
-    date_time_utc =
-      date_time
-      |> DateTime.convert!(Calendar.ISO)
-      |> DateTime.shift_zone!("UTC")
-
-    date_time_utc
+    date_time
     |> date_time_to_moment()
     |> mean_sidereal_from_moment()
   end
@@ -629,7 +681,7 @@ defmodule Astro.Time do
 
       iex> lst = Astro.Time.local_sidereal_time({0.0, 51.5}, ~U[2000-01-01 12:00:00Z])
       iex> Float.round(lst, 4)
-      280.7273
+      280.4606
 
   """
   @doc since: "0.11.0"
@@ -714,6 +766,25 @@ defmodule Astro.Time do
     julian_day_from_date(iso_date)
   end
 
+  @doc """
+  Returns the astronomical Julian day for a date.
+
+  An alias for `julian_day_from_date/1`.
+
+  ### Arguments
+
+  * `date` is any `t:Calendar.date/0`.
+
+  ### Returns
+
+  * The Julian day at the start of `date`, as a float.
+
+  ### Examples
+
+      iex> Astro.Time.ajd(~D[2000-01-01])
+      2451544.5
+
+  """
   defdelegate ajd(date), to: __MODULE__, as: :julian_day_from_date
 
   @doc """
@@ -981,7 +1052,7 @@ defmodule Astro.Time do
 
   ### Returns
 
-  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC, or
+  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC.
 
   * `{:error, reason}` if `date` is not a valid date or `time_of_day`
     is 24 hours or more.
@@ -1105,13 +1176,13 @@ defmodule Astro.Time do
 
   ### Returns
 
-  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC, or
+  * `{:ok, datetime}` — a `t:DateTime.t/0` in UTC.
 
   * `{:error, :invalid_date}` if `date` is not a valid date in its
-    calendar, or
+    calendar.
 
   * `{:error, :incompatible_calendars}` if its calendar cannot be
-    converted to `Calendar.ISO`, or
+    converted to `Calendar.ISO`.
 
   * `{:error, :invalid_time}` if `minutes` is not a number.
 
@@ -1281,17 +1352,24 @@ defmodule Astro.Time do
   * `location` is a `Geo.PointZ` struct with `{longitude, latitude, altitude}`
     coordinates. Used only when `:time_zone` is `:default`.
 
-  * `options` is a map containing:
-    * `:time_zone` — `:utc`, `:default`, or a time zone name string.
-    * `:time_zone_database` — the time zone database module
-      (e.g. Tz.TimeZoneDatabase).
-    * `:time_zone_resolver` — (optional) a 1-arity function
-      `(%Geo.Point{}) → {:ok, String.t()}` for custom zone resolution.
+  * `options` is a map of options.
+
+  ### Options
+
+  * `:time_zone` is `:utc`, `:default`, or a time zone name.
+
+  * `:time_zone_database` is the time zone database module, such as
+    `Tz.TimeZoneDatabase`.
+
+  * `:time_zone_resolver` is an optional 1-arity function that receives a
+    `%Geo.Point{}` and returns `{:ok, time_zone_name}`, for custom time
+    zone resolution.
 
   ### Returns
 
-  * `{:ok, datetime}` — the `DateTime` in the requested time zone.
-  * `{:error, reason}` — if the time zone cannot be resolved or shifted.
+  * `{:ok, datetime}` where `datetime` is in the requested time zone.
+
+  * `{:error, reason}` if the time zone cannot be resolved or shifted.
 
   ### Examples
 
@@ -1420,13 +1498,16 @@ defmodule Astro.Time do
   Time (UTC). It varies over time as Earth's rotation rate changes.
 
   Uses the best available data for each era:
-  - **1972–2025**: IERS-observed annual values with linear interpolation
-  - **1620–1971**: Meeus biennial lookup table with interpolation
-  - **Pre-1620 and post-2025**: Polynomial approximations
+
+  * **1972–2025** — IERS-observed annual values with linear interpolation.
+
+  * **1620–1971** — the Meeus biennial lookup table with interpolation.
+
+  * **Before 1620 and after 2025** — polynomial approximations.
 
   ### Arguments
 
-  * `year` is a decimal year (e.g., 2024.5 for mid-2024)
+  * `year` is a decimal year, such as 2024.5 for mid-2024.
 
   ### Returns
 

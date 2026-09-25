@@ -553,7 +553,7 @@ defmodule Astro.Lunar do
   * A `t:Astro.Time.moment/0` float number of days
     since `0000-01-01`.
 
-  ### Example
+  ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_before 738390
       738375.5764772523
@@ -579,9 +579,9 @@ defmodule Astro.Lunar do
   ### Returns
 
   * a `t:Astro.Time.moment/0` which is a float number of days
-    since `0000-01-01`
+    since `0000-01-01`.
 
-  ### Example
+  ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_at_or_after(738390)
       738405.0359290199
@@ -636,9 +636,9 @@ defmodule Astro.Lunar do
   ### Returns
 
   * a `t:Astro.Time.moment/0` which is a float number of days
-    since `0000-01-01`
+    since `0000-01-01`.
 
-  ### Example
+  ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_nearest(738390)
       738375.5764755815
@@ -673,7 +673,7 @@ defmodule Astro.Lunar do
   * the lunar phase as a float number of
     degrees.
 
-  ### Example
+  ### Examples
 
       iex> Astro.Lunar.lunar_phase_at(738389.5007195644)
       179.9911519346108
@@ -709,14 +709,14 @@ defmodule Astro.Lunar do
 
   * `phase` is the required lunar phase expressed
     as a float number of degrees between `0.0` and
-    `360.0`
+    `360.0`.
 
   ### Returns
 
   * A `t:Astro.Time.moment/0` float number of days
     since `0000-01-01`.
 
-  ### Example
+  ### Examples
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_before(738368, Astro.Lunar.new_moon_phase())
       738346.053171558
@@ -745,14 +745,14 @@ defmodule Astro.Lunar do
 
   * `phase` is the required lunar phase expressed
     as a float number of degrees between `0` and
-    `360`
+    `360`.
 
   ### Returns
 
   * a `t:Astro.Time.moment/0` which is a float number of days
     since `0000-01-01`.
 
-  ### Example
+  ### Examples
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_after(738368, Astro.Lunar.full_moon_phase())
       738389.5014214877
@@ -844,7 +844,7 @@ defmodule Astro.Lunar do
 
   ### Returns
 
-  * `0.0`
+  * `0.0`.
 
   ### Examples
 
@@ -863,7 +863,7 @@ defmodule Astro.Lunar do
 
   ### Returns
 
-  * `180.0`
+  * `180.0`.
 
   ### Examples
 
@@ -882,7 +882,7 @@ defmodule Astro.Lunar do
 
   ### Returns
 
-  * `90.0`
+  * `90.0`.
 
   ### Examples
 
@@ -901,7 +901,7 @@ defmodule Astro.Lunar do
 
   ### Returns
 
-  * `270.0`
+  * `270.0`.
 
   ### Examples
 
@@ -1023,6 +1023,12 @@ defmodule Astro.Lunar do
   ### Returns
 
   * The geocentric altitude in degrees, ranging from -180.0 to 180.0.
+
+  ### Examples
+
+      iex> sydney = %Geo.PointZ{coordinates: {151.20666584, -33.8559799094, 0.0}}
+      iex> Astro.Lunar.lunar_altitude(Astro.Time.j2000(), sydney) |> Float.round(4)
+      -37.329
 
   """
   @doc since: "0.4.0"
@@ -1188,13 +1194,12 @@ defmodule Astro.Lunar do
 
       iex> Astro.Lunar.equatorial_horizontal_parallax(738390)
       ...> |> Float.round(4)
-      0.0167
+      0.9586
 
   """
   @spec equatorial_horizontal_parallax(t :: Time.moment()) :: Astro.angle()
   def equatorial_horizontal_parallax(t) do
     asin(Earth.earth_radius_m() / lunar_distance(t))
-    |> to_degrees()
   end
 
   @doc """
@@ -1219,6 +1224,12 @@ defmodule Astro.Lunar do
 
   * The topocentric parallax as a float in degrees.
 
+  ### Examples
+
+      iex> sydney = %Geo.PointZ{coordinates: {151.20666584, -33.8559799094, 0.0}}
+      iex> Astro.Lunar.topocentric_lunar_parallax(Astro.Time.j2000(), sydney) |> Float.round(4)
+      0.7221
+
   """
   @spec topocentric_lunar_parallax(t :: Time.moment(), location :: Geo.PointZ.t()) ::
           Astro.angle()
@@ -1240,6 +1251,11 @@ defmodule Astro.Lunar do
 
   * The mean ecliptic longitude as a float in degrees.
 
+  ### Examples
+
+      iex> Astro.Lunar.mean_lunar_ecliptic_longitude(0.0)
+      218.3164477
+
   """
   @spec mean_lunar_ecliptic_longitude(c :: Time.julian_centuries()) :: Astro.angle()
   def mean_lunar_ecliptic_longitude(c) do
@@ -1259,6 +1275,11 @@ defmodule Astro.Lunar do
   ### Returns
 
   * The mean elongation as a float in degrees.
+
+  ### Examples
+
+      iex> Astro.Lunar.lunar_elongation(0.0)
+      297.8501921
 
   """
   @spec lunar_elongation(c :: Time.julian_centuries()) :: Astro.angle()
@@ -1280,11 +1301,15 @@ defmodule Astro.Lunar do
 
   * The angular semi-diameter as a float in degrees.
 
+  ### Examples
+
+      iex> Astro.Lunar.angular_semi_diameter(Astro.Time.j2000()) |> Float.round(4)
+      0.2474
+
   """
   @spec angular_semi_diameter(t :: Time.moment()) :: Astro.angle()
   def angular_semi_diameter(t) do
     asin(@lunar_radius_m / lunar_distance(t))
-    |> to_degrees()
   end
 
   @doc """
@@ -1301,7 +1326,14 @@ defmodule Astro.Lunar do
 
   ### Returns
 
-  * The horizontal dip as a float in degrees (negative value).
+  * The horizontal dip as a float in degrees. For the Moon it is
+    usually slightly positive, because its parallax exceeds refraction
+    and its semi-diameter together.
+
+  ### Examples
+
+      iex> Astro.Lunar.horizontal_dip(Astro.Time.j2000()) |> Float.round(4)
+      0.0941
 
   """
   @spec horizontal_dip(t :: Time.moment()) :: Astro.angle()
@@ -1320,6 +1352,11 @@ defmodule Astro.Lunar do
   ### Returns
 
   * The mean solar anomaly as a float in degrees.
+
+  ### Examples
+
+      iex> Astro.Lunar.solar_anomaly(0.0)
+      357.5291092
 
   """
   @spec solar_anomaly(c :: Time.julian_centuries()) :: Astro.angle()
@@ -1341,6 +1378,11 @@ defmodule Astro.Lunar do
 
   * The mean lunar anomaly as a float in degrees.
 
+  ### Examples
+
+      iex> Astro.Lunar.lunar_anomaly(0.0)
+      134.9633964
+
   """
   @spec lunar_anomaly(c :: Time.julian_centuries()) :: Astro.angle()
   def lunar_anomaly(c) do
@@ -1355,7 +1397,11 @@ defmodule Astro.Lunar do
   end
 
   @doc """
-  Returns the Moon's ascending node longitude in degrees for a given moment.
+  Returns the angular distance of the Moon's node from the equinoctial
+  point in degrees for a given moment.
+
+  This is the Moon's argument of latitude, `moon_node/1`, reduced to the
+  range -90.0 to 90.0.
 
   ### Arguments
 
@@ -1364,22 +1410,30 @@ defmodule Astro.Lunar do
 
   ### Returns
 
-  * The ascending node longitude as a float in degrees,
-    ranging from -90.0 to 90.0.
+  * The angular distance as a float in degrees, from -90.0 to 90.0.
+
+  ### Examples
+
+      iex> Astro.Lunar.lunar_node(Astro.Time.j2000()) |> Float.round(6)
+      -86.718131
 
   """
   @spec lunar_node(t :: Time.moment()) :: Astro.angle()
   def lunar_node(t) do
     c = julian_centuries_from_moment(t)
 
-    moon_node(c + deg(90.0))
+    (moon_node(c) + deg(90.0))
     |> mod(180.0)
     |> Kernel.-(90.0)
   end
 
   @doc """
-  Returns the mean longitude of the Moon's ascending node in degrees
-  for a given number of Julian centuries from J2000.0.
+  Returns the Moon's mean argument of latitude, its mean angular
+  distance from its ascending node, in degrees for a given number of
+  Julian centuries from J2000.0.
+
+  This is Meeus's *F* (Astronomical Algorithms, eq. 47.5), named
+  `moon-node` in Calendrical Calculations.
 
   ### Arguments
 
@@ -1387,7 +1441,12 @@ defmodule Astro.Lunar do
 
   ### Returns
 
-  * The mean longitude of the ascending node as a float in degrees.
+  * The mean argument of latitude as a float in degrees.
+
+  ### Examples
+
+      iex> Astro.Lunar.moon_node(0.0)
+      93.272095
 
   """
   @spec moon_node(c :: Time.julian_centuries()) :: Astro.angle()

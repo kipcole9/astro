@@ -135,6 +135,28 @@ defmodule Astro.SunriseSunsetTest do
     end
   end
 
+  describe "an invalid :solar_elevation" do
+    for value <- [:bogus, "civil", nil, [], %{}] do
+      test "#{inspect(value)} is an error from sunrise/3 and sunset/3" do
+        assert Astro.sunrise(@sydney, ~D[2019-12-04],
+                 solar_elevation: unquote(Macro.escape(value))
+               ) ==
+                 {:error, :invalid_solar_elevation}
+
+        assert Astro.sunset(@sydney, ~D[2019-12-04],
+                 solar_elevation: unquote(Macro.escape(value))
+               ) ==
+                 {:error, :invalid_solar_elevation}
+      end
+    end
+
+    test "raises a clear error from sun_above_horizon?/3, which must return a boolean" do
+      assert_raise ArgumentError, "invalid :solar_elevation :bogus", fn ->
+        Astro.Solar.SunRiseSet.sun_above_horizon?(@sydney, 737_397.5, solar_elevation: :bogus)
+      end
+    end
+  end
+
   describe "Sunrise/sunet with a custom time zone resolver" do
     for [day, sunrise_hour, sunrise_minute, _, _] <- Astro.Sun.TestData.sunrise("sydney") do
       test "Sunrise on December #{day} 2019 for Sydney, Australia with custom time zone resolver" do

@@ -20,7 +20,7 @@ defmodule Astro.Ephemeris.Kernel do
   ### Design notes
 
   The full file binary is stored inside the kernel struct so that
-  `position/3` does not re-read the file on every call. For a 32 MB
+  `position/2` does not re-read the file on every call. For a 32 MB
   DE440s file this avoids ~thousands of disk reads per rise/set computation.
 
   ### DAF/SPK Type 2 format
@@ -30,9 +30,11 @@ defmodule Astro.Ephemeris.Kernel do
   followed by a doubly-linked list of summary/name record pairs.
 
   Each segment descriptor (summary) contains:
-    - ND=2 doubles: start_dt, end_dt (dynamical time — TDB seconds past J2000.0)
-    - NI=6 integers packed as raw int32 bytes: target, centre, frame,
-      data_type, start_addr, end_addr
+
+  * ND=2 doubles: start_dt, end_dt (dynamical time — TDB seconds past J2000.0).
+
+  * NI=6 integers packed as raw int32 bytes: target, centre, frame,
+    data_type, start_addr, end_addr.
 
   Addresses are 1-based word (8-byte double) indices into the whole file.
 
@@ -93,6 +95,13 @@ defmodule Astro.Ephemeris.Kernel do
   * `{:error, reason}` if the file cannot be read or is not a
     valid DAF/SPK file.
 
+  ### Examples
+
+      iex> path = Path.join(:code.priv_dir(:astro), "de440s-astro.bsp")
+      iex> {:ok, kernel} = Astro.Ephemeris.Kernel.load(path)
+      iex> is_struct(kernel, Astro.Ephemeris.Kernel)
+      true
+
   """
   @spec load(Path.t()) :: {:ok, t()} | {:error, term()}
   def load(path) do
@@ -121,6 +130,12 @@ defmodule Astro.Ephemeris.Kernel do
   ### Returns
 
   * An `Astro.Ephemeris.Kernel` struct.
+
+  ### Examples
+
+      iex> %Astro.Ephemeris.Kernel{} = kernel = Astro.Ephemeris.Kernel.ephemeris()
+      iex> is_struct(kernel, Astro.Ephemeris.Kernel)
+      true
 
   """
   def ephemeris do
@@ -156,6 +171,15 @@ defmodule Astro.Ephemeris.Kernel do
     matching Type 2 segment.
 
   * `{:error, :not_found}` if no matching segment exists.
+
+  ### Examples
+
+      iex> {:ok, segment} = Astro.Ephemeris.Kernel.find_segment(301, 3)
+      iex> {segment.target, segment.centre}
+      {301, 3}
+
+      iex> Astro.Ephemeris.Kernel.find_segment(999, 3)
+      {:error, :not_found}
 
   """
   @spec find_segment(integer(), integer(), float() | nil) ::
@@ -217,6 +241,13 @@ defmodule Astro.Ephemeris.Kernel do
 
   * `{x, y, z}` position in kilometers relative to the segment's
     centre body.
+
+  ### Examples
+
+      iex> {:ok, segment} = Astro.Ephemeris.Kernel.find_segment(301, 3, 0.0)
+      iex> {x, y, z} = Astro.Ephemeris.Kernel.position(segment, 0.0)
+      iex> round(:math.sqrt(x * x + y * y + z * z))
+      397559
 
   """
   @spec position(map(), float()) :: {float(), float(), float()}

@@ -52,6 +52,11 @@ defmodule Astro.Coordinates do
 
   * TDB seconds past J2000.0 as a float.
 
+  ### Examples
+
+      iex> Astro.Coordinates.dynamical_time_from_moment(Astro.Time.j2000()) |> Float.round(4)
+      63.83
+
   """
   defdelegate dynamical_time_from_moment(moment), to: Astro.Time
 
@@ -68,6 +73,11 @@ defmodule Astro.Coordinates do
 
   * A moment (fractional days since epoch) as a float.
 
+  ### Examples
+
+      iex> Astro.Coordinates.dynamical_time_to_moment(0.0) |> Float.round(6)
+      730485.499261
+
   """
   defdelegate dynamical_time_to_moment(dynamical_time), to: Astro.Time
 
@@ -83,6 +93,11 @@ defmodule Astro.Coordinates do
   ### Returns
 
   * Julian centuries from J2000.0 as a float.
+
+  ### Examples
+
+      iex> Astro.Coordinates.julian_centuries_from_dynamical_time(3_155_760_000.0)
+      1.0
 
   """
   defdelegate julian_centuries_from_dynamical_time(dynamical_time), to: Astro.Time
@@ -107,6 +122,12 @@ defmodule Astro.Coordinates do
 
   * `{x', y', z'}` in the true equator and equinox of date frame,
     in the same units as the input.
+
+  ### Examples
+
+      iex> {x, y, z} = Astro.Coordinates.icrf_to_true_equator({1.0, 0.0, 0.0}, 0.0)
+      iex> {Float.round(x, 6), Float.round(y, 6), Float.round(z, 6)}
+      {1.0, 6.2e-5, -2.7e-5}
 
   """
   @spec icrf_to_true_equator({float(), float(), float()}, float()) ::
@@ -154,6 +175,11 @@ defmodule Astro.Coordinates do
     in degrees in the range [0, 360), declination is in degrees
     in the range [-90, 90], and distance is in kilometers.
 
+  ### Examples
+
+      iex> Astro.Coordinates.cartesian_to_spherical({1.0, 1.0, 0.0})
+      {45.0, 0.0, 1.4142135623730951}
+
   """
   @spec cartesian_to_spherical({float(), float(), float()}) ::
           {float(), float(), float()}
@@ -185,6 +211,11 @@ defmodule Astro.Coordinates do
   ### Returns
 
   * GAST in degrees, normalized to the range [0, 360).
+
+  ### Examples
+
+      iex> Astro.Coordinates.gast(0.0) |> Float.round(4)
+      280.1904
 
   """
   @spec gast(float()) :: float()

@@ -78,7 +78,9 @@ defmodule Astro.MixProject do
           Astro.Supervisor
         ]
       ],
-      skip_undefined_reference_warnings_on: ["changelog", "CHANGELOG.md"]
+      skip_undefined_reference_warnings_on: ["changelog", "CHANGELOG.md"],
+      # Named in the docs as an example database; its package hides it.
+      skip_code_autolink_to: ["Tz.TimeZoneDatabase"]
     ]
   end
 

@@ -5,6 +5,14 @@ defmodule AstroTest do
   doctest Astro.Solar
   doctest Astro.Earth
   doctest Astro.Lunar
+  doctest Astro.Lunar.MoonRiseSet
+  doctest Astro.Coordinates
+  doctest Astro.Ephemeris
+  doctest Astro.Ephemeris.Kernel
+  doctest Astro.Solar.SunRiseSet
+  doctest Astro.Lunar.CrescentVisibility
+  doctest Astro.Ephemeris.Downloader
+  doctest Astro.Supervisor
 
   test "A time zone not found for a location returns an error" do
     assert Astro.sunrise({1.1, 3.5}, Date.utc_today()) == {:error, :time_zone_not_found}

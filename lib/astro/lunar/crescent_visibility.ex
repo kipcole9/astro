@@ -157,6 +157,14 @@ defmodule Astro.Lunar.CrescentVisibility do
   * `{:error, :not_found}` if the date is outside the range covered
     by the installed ephemeris.
 
+  ### Examples
+
+      iex> mecca = %Geo.PointZ{coordinates: {39.8579, 21.3891, 0.0}}
+      iex> Astro.Lunar.CrescentVisibility.yallop_new_visible_crescent(mecca, Astro.Time.date_time_to_moment(~D[2024-12-02]))
+      {:ok, :A}
+      iex> Astro.Lunar.CrescentVisibility.yallop_new_visible_crescent(mecca, Astro.Time.date_time_to_moment(~D[2024-11-01]))
+      {:ok, :E}
+
   """
   @spec yallop_new_visible_crescent(Geo.PointZ.t(), Time.moment()) ::
           {:ok, visibility()} | {:error, atom()}
@@ -205,6 +213,14 @@ defmodule Astro.Lunar.CrescentVisibility do
   * `{:error, :not_found}` if the date is outside the range covered
     by the installed ephemeris.
 
+  ### Examples
+
+      iex> mecca = %Geo.PointZ{coordinates: {39.8579, 21.3891, 0.0}}
+      iex> Astro.Lunar.CrescentVisibility.odeh_new_visible_crescent(mecca, Astro.Time.date_time_to_moment(~D[2024-12-02]))
+      {:ok, :A}
+      iex> Astro.Lunar.CrescentVisibility.odeh_new_visible_crescent(mecca, Astro.Time.date_time_to_moment(~D[2024-11-01]))
+      {:ok, :E}
+
   """
   @spec odeh_new_visible_crescent(Geo.PointZ.t(), Time.moment()) ::
           {:ok, visibility()} | {:error, atom()}
@@ -251,11 +267,14 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   * `moment` is a `t:Astro.Time.moment/0` representing the date.
 
-  * `options` is a keyword list of optional atmospheric parameters:
+  * `options` is a keyword list of options.
 
-    * `:extinction` — V-band zenith extinction coefficient. Default `0.172`
-      (clean sea-level site). Typical values: 0.12 (high mountain),
-      0.17 (sea level), 0.25 (hazy).
+  ### Options
+
+  * `:extinction` is the V-band zenith extinction coefficient. The
+    default is `0.172`, a clean sea-level site. Typical values are
+    `0.12` on a high mountain, `0.17` at sea level and `0.25` in hazy
+    conditions.
 
   ### Returns
 
@@ -266,6 +285,13 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   * `{:error, :not_found}` if the date is outside the range covered
     by the installed ephemeris.
+
+  ### Examples
+
+      iex> mecca = %Geo.PointZ{coordinates: {39.8579, 21.3891, 0.0}}
+      iex> moment = Astro.Time.date_time_to_moment(~D[2024-12-02])
+      iex> Astro.Lunar.CrescentVisibility.schaefer_new_visible_crescent(mecca, moment, extinction: 0.25)
+      {:ok, :A}
 
   """
   @spec schaefer_new_visible_crescent(Geo.PointZ.t(), Time.moment(), keyword()) ::
@@ -381,8 +407,11 @@ defmodule Astro.Lunar.CrescentVisibility do
     # Twilight component
     # The formula uses sun_alt directly (negative when below horizon).
     # 32.5 - sun_alt = 32.5 + depression, giving dimmer sky for deeper sun.
+    # It applies from the horizon down: at sunset the sun's centre is already
+    # about 0.8° below it, and leaving out the twilight there modelled the
+    # brightest sky of the evening as a dark one.
     b_twilight_nl =
-      if depression > 1.0 and depression < 20.0 do
+      if depression > 0.0 and depression < 20.0 do
         log_bt = -0.4 * (@ms_v - @m0_v + @twilight_zp - sun_alt - z_moon / (360.0 * k))
         bt = :math.pow(10, log_bt) / @nl_factor
         # Scale by atmospheric absorption along line of sight

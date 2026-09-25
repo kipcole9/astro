@@ -161,40 +161,48 @@ defmodule Astro.Solar.SunRiseSet do
 
   ### Options
 
-  * `:solar_elevation` — the type of sunrise to compute:
-    * `:geometric` (default) — standard sunrise where the upper limb of
-      the Sun appears to touch the horizon (zenith 90°50′, accounting for
-      34′ standard refraction + 16′ solar semi-diameter)
-    * `:civil` — centre of Sun 6° below the horizon (civil twilight
-      boundary)
-    * `:nautical` — centre of Sun 12° below the horizon (nautical
-      twilight boundary)
-    * `:astronomical` — centre of Sun 18° below the horizon
-      (astronomical twilight boundary)
-    * a number — custom zenith angle in degrees (90 = geometric
-      horizon with no refraction or semi-diameter correction)
+  * `:solar_elevation` is the threshold that defines the event.
 
-  * `:time_zone` — the time zone for the returned `DateTime`. The
-    default is `:default` which resolves the time zone from the
-    location. `:utc` returns UTC, or pass a time zone name string
-    (e.g. `"America/New_York"`).
+    * `:geometric`, the default, is the standard sunrise, when the upper
+      limb of the Sun appears to touch the horizon: a zenith angle of
+      90°50′, allowing 34′ for refraction and 16′ for the Sun's
+      semi-diameter.
 
-  * `:time_zone_database` — the module implementing the
-    `Calendar.TimeZoneDatabase` behaviour. The default is `:configured`
-    which uses the application's configured time zone database.
+    * `:civil` puts the centre of the Sun 6° below the horizon, the
+      boundary of civil twilight.
 
-  * `:time_zone_resolver` — a 1-arity function that receives a
+    * `:nautical` puts it 12° below the horizon, the boundary of nautical
+      twilight.
+
+    * `:astronomical` puts it 18° below the horizon, the boundary of
+      astronomical twilight.
+
+    * A number is a zenith angle in degrees, where 90 is the geometric
+      horizon with no correction for refraction or semi-diameter.
+
+  * `:time_zone` is the time zone of the returned date time: `:default`,
+    the time zone of the location, which is the default; `:utc`; or a
+    time zone name.
+
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default, `:configured`, is
+    the application's configured time zone database.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
     `%Geo.Point{}` and returns `{:ok, time_zone_name}` or
-    `{:error, reason}`. The default uses `TzWorld.timezone_at/1`
-    if `:tz_world` is configured.
+    `{:error, reason}`. The default is `TzWorld.timezone_at/1` when
+    `:tz_world` is a dependency.
 
   ### Returns
 
   * `{:ok, datetime}` where `datetime` is a `t:DateTime.t/0` in the
     requested time zone.
 
-  * `{:error, :no_time}` if there is no sunrise on the requested date
-    at the given location (e.g. polar night or midnight sun).
+  * `{:error, :no_time}` if there is no sunrise on the requested date at
+    the given location, as in polar night or midnight sun.
+
+  * `{:error, :invalid_solar_elevation}` if `:solar_elevation` is neither
+    a number nor one of the names above.
 
   * `{:error, :time_zone_not_found}` if the requested time zone is
     unknown.
@@ -205,6 +213,12 @@ defmodule Astro.Solar.SunRiseSet do
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
     dependency but its time zone data has not been downloaded. Run
     `mix tz_world.update` to install it.
+
+  * `{:error, :utc_only_time_zone_database}` if the sunrise is requested
+    in a time zone other than UTC and no time zone database is
+    configured.
+
+  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
 
   ### Examples
 
@@ -244,20 +258,48 @@ defmodule Astro.Solar.SunRiseSet do
 
   ### Options
 
-  Accepts the same options as `sunrise/3`:
+  * `:solar_elevation` is the threshold that defines the event.
 
-  * `:solar_elevation` — event threshold (default `:geometric`)
-  * `:time_zone` — time zone for the result (default `:default`)
-  * `:time_zone_database` — time zone database module (default `:configured`)
-  * `:time_zone_resolver` — custom location-to-timezone resolver function
+    * `:geometric`, the default, is the standard sunset, when the upper
+      limb of the Sun appears to touch the horizon: a zenith angle of
+      90°50′, allowing 34′ for refraction and 16′ for the Sun's
+      semi-diameter.
+
+    * `:civil` puts the centre of the Sun 6° below the horizon, the
+      boundary of civil twilight.
+
+    * `:nautical` puts it 12° below the horizon, the boundary of nautical
+      twilight.
+
+    * `:astronomical` puts it 18° below the horizon, the boundary of
+      astronomical twilight.
+
+    * A number is a zenith angle in degrees, where 90 is the geometric
+      horizon with no correction for refraction or semi-diameter.
+
+  * `:time_zone` is the time zone of the returned date time: `:default`,
+    the time zone of the location, which is the default; `:utc`; or a
+    time zone name.
+
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default, `:configured`, is
+    the application's configured time zone database.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{}` and returns `{:ok, time_zone_name}` or
+    `{:error, reason}`. The default is `TzWorld.timezone_at/1` when
+    `:tz_world` is a dependency.
 
   ### Returns
 
   * `{:ok, datetime}` where `datetime` is a `t:DateTime.t/0` in the
     requested time zone.
 
-  * `{:error, :no_time}` if there is no sunset on the requested date
-    at the given location (e.g. polar night or midnight sun).
+  * `{:error, :no_time}` if there is no sunset on the requested date at
+    the given location, as in polar night or midnight sun.
+
+  * `{:error, :invalid_solar_elevation}` if `:solar_elevation` is neither
+    a number nor one of the names above.
 
   * `{:error, :time_zone_not_found}` if the requested time zone is
     unknown.
@@ -268,6 +310,12 @@ defmodule Astro.Solar.SunRiseSet do
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
     dependency but its time zone data has not been downloaded. Run
     `mix tz_world.update` to install it.
+
+  * `{:error, :utc_only_time_zone_database}` if the sunset is requested
+    in a time zone other than UTC and no time zone database is
+    configured.
+
+  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
 
   ### Examples
 
@@ -297,17 +345,30 @@ defmodule Astro.Solar.SunRiseSet do
   ### Arguments
 
   * `location` is the location as a `{longitude, latitude}` tuple,
-    a `Geo.Point.t` or a `Geo.PointZ.t`.
+    a `t:Geo.Point.t/0` or a `t:Geo.PointZ.t/0`.
 
   * `moment` is a moment (float Gregorian days since 0000-01-01).
 
-  * `options` is a keyword list accepting the same `:solar_elevation`
-    option as `sunrise/3` and `sunset/3`.
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:solar_elevation` is the threshold, as for `sunrise/3` and
+    `sunset/3`. The default is `:geometric`. An unknown value raises
+    `ArgumentError`, since a predicate has no error to return.
 
   ### Returns
 
   * `true` if the Sun's upper limb is at or above the event threshold,
     otherwise `false`.
+
+  ### Examples
+
+      iex> sydney = {151.20666584, -33.8559799094}
+      iex> Astro.Solar.SunRiseSet.sun_above_horizon?(sydney, Astro.Time.date_time_to_moment(~U[2019-12-04 02:00:00Z]))
+      true
+      iex> Astro.Solar.SunRiseSet.sun_above_horizon?(sydney, Astro.Time.date_time_to_moment(~U[2019-12-04 14:00:00Z]))
+      false
 
   """
   @spec sun_above_horizon?(Astro.location(), number(), keyword()) :: boolean()
@@ -315,9 +376,16 @@ defmodule Astro.Solar.SunRiseSet do
     %Geo.PointZ{coordinates: {lng, lat, _elev_m}} =
       Astro.Location.normalize_location(location)
 
-    h0 = h0_from_options(options)
-    dynamical_time = Time.dynamical_time_from_moment(moment)
-    altitude_f(dynamical_time, lat, lng, h0) >= 0.0
+    # A predicate cannot return an error tuple without it reading as `true`.
+    case h0_from_options(options) do
+      {:ok, h0} ->
+        dynamical_time = Time.dynamical_time_from_moment(moment)
+        altitude_f(dynamical_time, lat, lng, h0) >= 0.0
+
+      {:error, :invalid_solar_elevation} ->
+        raise ArgumentError,
+              "invalid :solar_elevation #{inspect(Keyword.get(options, :solar_elevation))}"
+    end
   end
 
   # ── Core ─────────────────────────────────────────────────────────────────────
@@ -327,7 +395,6 @@ defmodule Astro.Solar.SunRiseSet do
       Astro.Location.normalize_location(location)
 
     date = Date.from_gregorian_days(trunc(moment))
-    h0 = h0_from_options(options)
 
     dt_midnight = Time.dynamical_time_from_moment(moment)
     dt_start = dt_midnight - @scan_pre_window_s
@@ -339,7 +406,8 @@ defmodule Astro.Solar.SunRiseSet do
     # rather than crashing on an unmatched `{:error, :not_found}` deep inside
     # the scan or the bisection (every intermediate time is bracketed by these
     # two endpoints, so covering them covers the whole search).
-    with :ok <- ephemeris_available(dt_start),
+    with {:ok, h0} <- h0_from_options(options),
+         :ok <- ephemeris_available(dt_start),
          :ok <- ephemeris_available(dt_end) do
       find_sun_event(dt_start, dt_end, event, date, location, lat, lng, h0, options)
     end
@@ -413,11 +481,12 @@ defmodule Astro.Solar.SunRiseSet do
   #   custom number N        → h0 = −(N − 90°)
   defp h0_from_options(options) do
     case Keyword.get(options, :solar_elevation, :geometric) do
-      :geometric -> @h0_deg
-      :civil -> -6.0
-      :nautical -> -12.0
-      :astronomical -> -18.0
-      n when is_number(n) -> -(n - 90.0)
+      :geometric -> {:ok, @h0_deg}
+      :civil -> {:ok, -6.0}
+      :nautical -> {:ok, -12.0}
+      :astronomical -> {:ok, -18.0}
+      n when is_number(n) -> {:ok, -(n - 90.0)}
+      _other -> {:error, :invalid_solar_elevation}
     end
   end
 

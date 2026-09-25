@@ -1,15 +1,10 @@
 # Sun & Moon Rise and Set Accuracy Comparisons
 
-Comparisons of of `Astro.sunrise/3`, `Astro.sunset/3`, `Astro.moonrise/3`,
-and `Astro.moonset/3` against Skyfield (JPL DE440s), USNO (DE430),
-and timeanddate.com were run to confirm accuracy.
+Comparisons of of `Astro.sunrise/3`, `Astro.sunset/3`, `Astro.moonrise/3`, and `Astro.moonset/3` against Skyfield (JPL DE440s), USNO (DE430), and timeanddate.com were run to confirm accuracy.
 
 ## Sunrise / Sunset
 
-Both Astro and Skyfield use JPL DE440s ephemerides, which explains their near-exact
-agreement. The timeanddate.com data (used in the CSV test files) agrees with both
-to within ±1 minute, with the 2 boundary cases at 61 seconds being a minute-rounding
-artefact.
+Both Astro and Skyfield use JPL DE440s ephemerides, which explains their near-exact agreement. The timeanddate.com data (used in the CSV test files) agrees with both to within ±1 minute, with the 2 boundary cases at 61 seconds being a minute-rounding artefact.
 
 The comparison uses test dates from December 2019 across 5 cities (Sydney, Moscow, NYC, São Paulo, Beijing) for a total of 310 comparisons.
 
@@ -33,9 +28,7 @@ The comparison uses test dates from December 2019 across 5 cities (Sydney, Mosco
 
 ## Moonrise / Moonset
 
-The ~16 s mean difference against USNO is explained by two factors: USNO uses DE430
-(vs the JPL DE440s that Astro uses), and USNO rounds to the nearest minute. Skyfield shows the same ~16 s offset against USNO, suggesting this is an ephemeris version difference rather than an
-algorithmic error.
+The ~16 s mean difference against USNO is explained by two factors: USNO uses DE430 (vs the JPL DE440s that Astro uses), and USNO rounds to the nearest minute. Skyfield shows the same ~16 s offset against USNO, suggesting this is an ephemeris version difference rather than an algorithmic error.
 
 The comparison uses test dates from March 2026 across 4 cities (NYC, London, Sydney, Tokyo) for a total of 70 comparisons.
 

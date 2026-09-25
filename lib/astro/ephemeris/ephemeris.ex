@@ -1,21 +1,23 @@
 defmodule Astro.Ephemeris do
   @moduledoc """
-  Computes the geocentric position of the Moon using a JPL DE440s (or
-  compatible) SPK binary ephemeris kernel.
+  Computes the apparent geocentric positions of the Moon and the Sun from a
+  JPL DE440s (or compatible) SPK binary ephemeris kernel.
 
   The SPK file provides positions in ICRF/J2000 Cartesian coordinates (km).
-  This module chains the available segments to produce the Moon's position
+  This module chains the available segments to produce each body's position
   relative to the Earth's centre, then applies IAU 1980 precession and
-  nutation to yield apparent geocentric RA, Dec, and distance in the true
-  equator and equinox of date.
+  nutation to yield apparent geocentric right ascension, declination and
+  distance in the true equator and equinox of date.
 
   ## Segment chaining (DE440s)
 
-  `de440s.bsp` supplies:
-    - Body 301 (Moon) relative to body 3 (Earth-Moon Barycenter, EMB)
-    - Body 399 (Earth) relative to body 3 (EMB)
+  `de440s.bsp` supplies, among others:
 
-  Moon relative to Earth = Moon/EMB − Earth/EMB.
+  * body 301, the Moon, relative to body 3, the Earth-Moon barycentre (EMB).
+
+  * body 399, the Earth, relative to body 3.
+
+  The Moon relative to the Earth is then Moon/EMB − Earth/EMB.
 
   The compact ephemeris bundled with the library omits body 399, which
   `Astro.Ephemeris.Kernel` reconstructs from body 301 — the two are exact
@@ -23,23 +25,28 @@ defmodule Astro.Ephemeris do
 
   ## Setup
 
-  Load the kernel once at application startup and pass it to all calls:
+  The kernel is loaded when the application starts, from the path that
+  `Astro.Ephemeris.Downloader.ephemeris_path/0` resolves, and the position
+  functions read it from there:
 
-      # This step is performed automatically at application start
-      {:ok, kernel} = Astro.Ephemeris.Kernel.load("priv/de440s.bsp")
-
-      {:ok, {ra, dec, dist}} = Astro.Ephemeris.moon_position(utc_dt)
+      {:ok, {right_ascension, declination, distance}} =
+        Astro.Ephemeris.moon_position(~U[2024-06-21 12:00:00Z])
 
   ## Accuracy
 
   Position accuracy is limited by the ephemeris itself: DE440 achieves
   sub-centimetre accuracy for the Moon relative to current-epoch laser
-  ranging data. The dominant remaining error sources for rise/set timing are:
-  - Atmospheric refraction model (~1 arcmin, ~2 s of time near horizon)
-  - Topocentric correction residuals at high solar-altitude latitudes
+  ranging data. The dominant remaining error sources for rise and set timing
+  are:
 
-  This represents a 10–100× improvement over the truncated Chapront series
-  used in Meeus that was the core of the Astro 1.x library.
+  * the atmospheric refraction model, about 1 arcminute or 2 seconds of time
+    near the horizon.
+
+  * topocentric correction residuals at high solar-altitude latitudes.
+
+  This is a 10–100× improvement over the truncated Chapront series used in
+  Meeus that was the core of the Astro 1.x library.
+
   """
 
   alias Astro.Ephemeris.Kernel
@@ -73,6 +80,13 @@ defmodule Astro.Ephemeris do
 
   * `{:error, reason}` if a required ephemeris segment is not found.
 
+  ### Examples
+
+      iex> {:ok, {right_ascension, declination, distance}} =
+      ...>   Astro.Ephemeris.moon_position(~U[2024-06-21 12:00:00Z])
+      iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
+      {262.9343, -28.0371, 382267}
+
   """
   @doc since: "2.0.0"
   @spec moon_position(DateTime.t()) ::
@@ -100,6 +114,12 @@ defmodule Astro.Ephemeris do
     in the range [-90, 90], and distance is in kilometers.
 
   * `{:error, reason}` if a required ephemeris segment is not found.
+
+  ### Examples
+
+      iex> {:ok, {right_ascension, declination, distance}} = Astro.Ephemeris.moon_position_dt(0.0)
+      iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
+      {222.4504, -10.9001, 402449}
 
   """
   @spec moon_position_dt(float()) ::
@@ -142,6 +162,13 @@ defmodule Astro.Ephemeris do
 
   * `{:error, reason}` if a required ephemeris segment is not found.
 
+  ### Examples
+
+      iex> {:ok, {right_ascension, declination, distance}} =
+      ...>   Astro.Ephemeris.sun_position(~U[2024-06-21 12:00:00Z])
+      iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
+      {90.6638, 23.4325, 152035789}
+
   """
   @spec sun_position(DateTime.t()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
@@ -169,6 +196,12 @@ defmodule Astro.Ephemeris do
     in the range [-90, 90], and distance is in kilometers.
 
   * `{:error, reason}` if a required ephemeris segment is not found.
+
+  ### Examples
+
+      iex> {:ok, {right_ascension, declination, distance}} = Astro.Ephemeris.sun_position_dt(0.0)
+      iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
+      {281.2947, -23.0353, 147098431}
 
   """
   @spec sun_position_dt(float()) ::
@@ -205,6 +238,11 @@ defmodule Astro.Ephemeris do
   ### Returns
 
   * The equatorial horizontal parallax in degrees.
+
+  ### Examples
+
+      iex> Astro.Ephemeris.equatorial_horizontal_parallax(384_400.0) |> Float.round(6)
+      0.950721
 
   """
   @spec equatorial_horizontal_parallax(float()) :: float()

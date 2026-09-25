@@ -91,6 +91,15 @@ defmodule Astro.Earth do
   The [Astronomical Almanac](https://www.amazon.com/Astronomical-Almanac-2023-Comprehensive-Events/dp/B0BGZLFPF4/ref=sr_1_1)
   uses the same value.
 
+  ### Returns
+
+  * The refraction at the horizon in degrees.
+
+  ### Examples
+
+      iex> Astro.Earth.refraction()
+      0.5666666666666667
+
   """
   @spec refraction :: Astro.degrees()
   def refraction do
@@ -106,6 +115,15 @@ defmodule Astro.Earth do
   appears to cross the horizon. The apparent radius of
   the Sun at the horizon is 16 arc minutes.
 
+  ### Returns
+
+  * The apparent solar radius in degrees.
+
+  ### Examples
+
+      iex> Astro.Earth.solar_radius()
+      0.26666666666666666
+
   """
   @spec solar_radius :: Astro.degrees()
   def solar_radius do
@@ -118,6 +136,15 @@ defmodule Astro.Earth do
   This value is the [IAU](https://iau-a3.gitlab.io/NSFA/NSFA_cbe.html#EarthRadius2009)
   current best estimate and the recommended value for
   astronomical calculations.
+
+  ### Returns
+
+  * The equatorial radius in kilometers.
+
+  ### Examples
+
+      iex> Astro.Earth.earth_radius()
+      6378.1366
 
   """
   @spec earth_radius :: Astro.kilometers()
@@ -145,6 +172,11 @@ defmodule Astro.Earth do
   ### Returns
 
   * The distance to the geometric horizon in meters.
+
+  ### Examples
+
+      iex> Astro.Earth.horizon_distance(100.0)
+      35716.06529280626
 
   """
   def horizon_distance(observer_elevation_m \\ 0.0) do
@@ -178,6 +210,11 @@ defmodule Astro.Earth do
 
   * The mean obliquity as a float angle in degrees
     at j2000.
+
+  ### Examples
+
+      iex> Astro.Earth.obliquity_j2000()
+      23.4397
 
   """
   @spec obliquity_j2000 :: Astro.angle()
@@ -222,6 +259,12 @@ defmodule Astro.Earth do
 
   * `{delta_psi_rad, delta_eps_rad, eps0_rad}` representing
     the longitude, obliquity and mean obliquity.
+
+  ### Examples
+
+      iex> {_delta_psi, _delta_epsilon, mean_obliquity} = Astro.Earth.nutation(0.0)
+      iex> Float.round(mean_obliquity * 180 / :math.pi(), 4)
+      23.4393
 
   """
   @spec nutation(c :: Time.julian_centuries()) :: {float(), float(), float()}
@@ -281,6 +324,11 @@ defmodule Astro.Earth do
   * The solar elevation angle adjusted for the observer's
     elevation.
 
+  ### Examples
+
+      iex> Astro.Earth.elevation_adjustment(100.0)
+      0.32083954000053305
+
   """
   def elevation_adjustment(elevation) do
     :math.acos(earth_radius() / (earth_radius() + elevation / @meters_per_kilometer))
@@ -297,13 +345,21 @@ defmodule Astro.Earth do
   * `solar_elevation` is the requested solar elevation
     in degrees. It will be 90° for sunrise and sunset.
 
-  * `elevation` is elevation in meters
+  * `elevation` is the observer's elevation in meters.
 
   ### Returns
 
-  * The solar elevation angle which, if solar elevation is
-    exactly 90.0 degrees, is adjusted for refraction,
-    elevation and solar radius.
+  * The solar elevation angle adjusted for the observer's
+    elevation and, when it is exactly 90.0 degrees, also for
+    refraction and the solar radius.
+
+  ### Examples
+
+      iex> Astro.Earth.adjusted_solar_elevation(90.0, 100.0)
+      91.15417287333386
+
+      iex> Astro.Earth.adjusted_solar_elevation(96.0, 100.0)
+      96.32083954000053
 
   """
   def adjusted_solar_elevation(@geometric_solar_elevation = solar_elevation, elevation) do

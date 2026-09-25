@@ -1,55 +1,89 @@
 # Astro
 
-[![Hex.pm](https://img.shields.io/hexpm/v/astro.svg)](https://hex.pm/packages/astro)
-[![Hex.pm](https://img.shields.io/hexpm/dw/astro.svg?)](https://hex.pm/packages/astro)
-[![Hex.pm](https://img.shields.io/hexpm/dt/astro.svg?)](https://hex.pm/packages/astro)
-[![Hex.pm](https://img.shields.io/hexpm/l/astro.svg)](https://hex.pm/packages/astro)
+[![Hex.pm](https://img.shields.io/hexpm/v/astro.svg)](https://hex.pm/packages/astro) [![Hex.pm](https://img.shields.io/hexpm/dw/astro.svg?)](https://hex.pm/packages/astro) [![Hex.pm](https://img.shields.io/hexpm/dt/astro.svg?)](https://hex.pm/packages/astro) [![Hex.pm](https://img.shields.io/hexpm/l/astro.svg)](https://hex.pm/packages/astro)
 
-Astro is a library to provide accurate astronomical functions with a focus on functions that support solar, lunar and lunisolar calendars such as the Islamic, Chinese, Hebrew and Persian calendars.
+Astro is a library of accurate astronomical functions, with a focus on those that support solar, lunar and lunisolar calendars such as the Islamic, Chinese, Hebrew and Persian calendars.
 
-## Migration from Astro 1.x
+## Features
 
-The public API functions in the `Astro` module retain the same signatures in Astro 2.x which should mean a smooth migration in most cases.
+* **Sunrise, sunset and twilight** — `Astro.sunrise/3` and `Astro.sunset/3` in the local time zone of any location, for the geometric, civil, nautical or astronomical horizon or any solar elevation you choose.
 
-When upgrading to Astro 2.x the following should be applied:
+* **Moonrise and moonset** — `Astro.moonrise/3` and `Astro.moonset/3`, fully topocentric.
 
-* **Astro 2.x uses a JPL ephemeris.** A compact ephemeris covering 1900–2100 ships with the package, so no download is needed. For dates outside that range see [The JPL Ephemeris](#the-jpl-ephemeris).
+* **Equinoxes and solstices** — `Astro.equinox/3` and `Astro.solstice/3`, in UTC or any time zone.
 
-* **Numerical results may differ slightly.** The move from NOAA/Meeus polynomial approximations to the JPL DE440s ephemeris, combined with an improved ΔT computation, means that computed times for events such as equinoxes, solstices and new moons may shift by up to ~22 seconds.
+* **Lunar phases and new moons** — `Astro.lunar_phase_at/1`, `Astro.lunar_phase_emoji/1`, and searches for the new moon or any phase before or after a moment.
 
-* **Functions outside the `Astro` module may have changed.** Several functions in `Astro.Solar`, `Astro.Lunar`, `Astro.Time` and `Astro.Earth` have been renamed or have changed return types. See the [changelog](CHANGELOG.md) for full details.
+* **Crescent visibility** — `Astro.new_visible_crescent/3` predicts the first visibility of the new crescent with the Odeh, Yallop or Schaefer criteria.
 
-## Usage
+* **Positions of the sun and moon** — right ascension, declination and distance, and the sun's azimuth and elevation from any location.
 
-> #### Installation and Configuration {: .Warning}
->
-> It's important to install and configure `Astro` correctly before use.
-> See the [installation](#installation) notes below.
+* **Length of the day** — `Astro.hours_of_daylight/2` and `Astro.duration_of_daylight/2`, including the 24-hour days of polar summer.
 
-The primary functions are:
+* **JPL ephemeris** — positions come from JPL's DE440s, and a compact ephemeris covering 1900 to 2100 ships with the package, so no download is needed.
 
-### Solar functions
+## Supported Elixir and OTP versions
 
-* `Astro.sunrise/3`
-* `Astro.sunset/3`
-* `Astro.solstice/3`
-* `Astro.equinox/3`
-* `Astro.hours_of_daylight/2`
-* `Astro.sun_position_at/1`
+Astro requires **Elixir 1.17** or later and **Erlang/OTP 26** or later.
 
-### Lunar functions
+## Installation
 
-* `Astro.moonrise/3`
-* `Astro.moonset/3`
-* `Astro.moon_position_at/1`
-* `Astro.illuminated_fraction_of_moon_at/1`
-* `Astro.date_time_new_moon_at_or_after/1`
-* `Astro.date_time_new_moon_before/1`
-* `Astro.date_time_new_moon_nearest/1`
-* `Astro.lunar_phase_at/1`
-* `Astro.lunar_phase_emoji/1`
+Add `astro` to your list of dependencies in `mix.exs`:
 
-### Examples
+```elixir
+def deps do
+  [
+    {:astro, "~> 2.6"}
+  ]
+end
+```
+
+### Install a time zone database
+
+A time zone database is required for time zone conversions. Two popular options are [tzdata](https://hex.pm/packages/tzdata) and [tz](https://hex.pm/packages/tz). Configure it in `config.exs` or `runtime.exs` as the default time zone database, for example:
+
+```elixir
+# If using tzdata
+config :elixir, :time_zone_database, Tzdata.TimeZoneDatabase
+
+# If using tz
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+```
+
+### Optionally install tz_world
+
+The rise and set functions return a date time in the time zone of the location. The [tz_world](https://hex.pm/packages/tz_world) library resolves that time zone and, when it is a dependency, those functions use it automatically. Most applications configure it, although it is not required.
+
+`tz_world` downloads about 50 MB of time zone boundary data, which may not suit an embedded device. `Astro.sunrise/3`, `Astro.sunset/3`, `Astro.moonrise/3` and `Astro.moonset/3` therefore also take a `:time_zone_resolver` option for a function of your own that resolves the time zone of a location.
+
+If `tz_world` is a dependency, install its data:
+
+```bash
+mix deps.get
+mix tz_world.update --force
+```
+
+Then start its backend in your application's supervision tree, either directly or through `Astro.Supervisor`:
+
+```elixir
+defmodule MyApp.Application do
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      # tz_world's recommended backend. Alternatively, list
+      # Astro.Supervisor, which starts it.
+      TzWorld.Backend.SpatialIndex
+    ]
+
+    options = [strategy: :one_for_one, name: MyApp.Supervisor]
+    Supervisor.start_link(children, options)
+  end
+end
+```
+
+## Quick start
+
 ```elixir
 # Sunrise in Sydney on December 4th
 iex> {:ok, datetime} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -97,60 +131,31 @@ iex> Astro.equinox 2019, :september
 {:ok, ~U[2019-09-23 07:49:52.677810Z]}
 ```
 
-### Specifying a location
+## Specifying a location
 
-The desired location of sunrise or sunset can be specified as either:
+A location can be given as:
 
-* a tuple of longitude and latitude (note the order) such as `{-62.3481, 82.5018}`
-* a tuple of longitude, latitude and elevation (note the order) such as `{-62.3481, 82.5018, 0}`.
-* a `Geo.Point.t` struct
-* a `Geo.PointZ.t` struct
+* a `{longitude, latitude}` tuple such as `{-62.3481, 82.5018}`. Note the order.
 
-### Location units and direction
+* a `{longitude, latitude, elevation}` tuple such as `{-62.3481, 82.5018, 0}`.
 
-For this implementation, the latitude and longitude of the functions in `Astro` are specified as follows:
+* a `Geo.Point` struct.
 
-* Longitude is `+` for eastern longitudes and `-` for western longitudes and specified in degrees.
-* Latitude is `+` for northern latitudes and `-` for southern latitudes and specified in degrees.
-* Elevation is specified in meters.
+* a `Geo.PointZ` struct, which also carries an elevation.
 
-## References
+Longitude is positive east and negative west, and latitude positive north and negative south, both in degrees. Elevation is in metres.
 
-* Thanks to @pinnymz for the [ruby-zmanim](https://github.com/pinnymz/ruby-zmanim) gem which has a well structured ruby implementation of sunrise / sunset and some core astronomical algorithms.
+## The JPL ephemeris
 
-* Eventually all roads lead to the canonical book on the subject by Jean Meeus: [Astronomical Algorithms](https://www.amazon.com/Astronomical-Algorithms-Jean-Meeus/dp/0943396352)
-
-* For the intersection of calendars and astronomy, [Calendrical Calculations](https://www.amazon.com/Calendrical-Calculations-Ultimate-Edward-Reingold/dp/1107683165) by Nachum Dershowitz and Edward M. Reingold remains the standard reference.
-
-* [SkyField](https://rhodesmill.org/skyfield/) is a powerful astronomy library for Python. The sunrise/sunset calculations in Astro 2.0 are tested to return times within 1 minute of Skyfield's results. On average the [deviation](rise_and_set_comparisons.md) is 3.8 seconds for sunrise/sunset and 2.5 seconds for moonrise/moonset.
-
-* [timeanddate.com](https://www.timeanddate.com/astronomy/) is a also a great web reference.
-
-## Installation
-
-### Add Astro as a dependency
-
-Astro can be installed by adding `astro` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:astro, "~> 2.0"}
-  ]
-end
-```
-
-### The JPL Ephemeris
-
-Astro computes rise and set times directly from a JPL Development Ephemeris. A compact ephemeris covering **1900 to 2100** is bundled with the package, so no download is required and Astro works as soon as it is installed.
+Astro computes positions directly from a JPL Development Ephemeris. A compact ephemeris covering **1900 to 2100** is bundled with the package, so no download is required and Astro works as soon as it is installed.
 
 The bundled file is extracted from JPL's DE440s kernel and contains only the Sun, Moon and Earth segments Astro uses. The Chebyshev coefficients are copied verbatim, so results are identical to those computed from the full JPL file for any date it covers.
 
-#### Dates outside 1900–2100
+### Dates outside 1900–2100
 
 For dates beyond the bundled range, download the full DE440s kernel, which covers **1849 to 2150**:
 
-```
+```bash
 mix astro.download_ephemeris
 ```
 
@@ -163,109 +168,72 @@ config :astro,
 
 Dates outside the range of the loaded ephemeris return `{:error, :not_found}`.
 
-#### Using a different ephemeris
+### Using a different ephemeris
 
 The `:ephemeris` option accepts any compatible DAF/SPK kernel, such as `de440.bsp` or `de441.bsp` for a much wider date range.
 
 To build your own compact ephemeris over a different span of years — trading file size for coverage at roughly 42 KB per year — use:
 
-```
+```bash
 mix astro.build_ephemeris --from 2000 --to 2050
 ```
 
 Coverage cannot exceed that of the source kernel, which is 1849 to 2150 for the default DE440s. Pass `--source` to subset a wider kernel such as `de441.bsp`.
 
-### Install a time zone database
+## Migration from Astro 1.x
 
-A time zone database is required in order to support time zone conversions. Two popular options are [tzdata](https://hex.pm/packages/tzdata) and [tz](https://hex.pm/packages/tz). The time zone database must be configured in `config.exs` or `runtime.exs` as the default time zone database.  For example:
+The public functions in the `Astro` module keep the same signatures in Astro 2.x, which should mean a smooth migration in most cases. When upgrading:
 
-```elixir
-# If using tzdata
-config :elixir,
-  :time_zone_database, Tzdata.TimeZoneDatabase
+* **Astro 2.x uses a JPL ephemeris.** A compact ephemeris covering 1900–2100 ships with the package, so no download is needed. For dates outside that range see [The JPL ephemeris](#the-jpl-ephemeris).
 
-# If using tz
-config :elixir,
-  :time_zone_database, Tz.TimeZoneDatabase
+* **Numerical results may differ slightly.** The move from NOAA/Meeus polynomial approximations to the JPL DE440s ephemeris, combined with an improved ΔT computation, means that computed times for events such as equinoxes, solstices and new moons may shift by up to ~22 seconds.
+
+* **Functions outside the `Astro` module may have changed.** Several functions in `Astro.Solar`, `Astro.Lunar`, `Astro.Time` and `Astro.Earth` have been renamed or have changed return types. See the [changelog](CHANGELOG.md) for full details.
+
+## Rise and set algorithms
+
+Astro 2 finds rise and set times from the JPL DE440s ephemeris by scanning and bisecting:
+
+* **Astro 1.x** used a NOAA/Meeus analytical solar position: a polynomial and periodic-term approximation of the Sun's coordinates, with three-point interpolation for the rise and set crossing. It had no moonrise or moonset.
+
+* **Astro 2** computes the Sun's or Moon's position directly from the JPL Development Ephemeris at each evaluation point, and finds the altitude's zero crossing with a coarse scan, sampling the altitude at regular intervals (24-minute steps for the Sun, shorter for the Moon) to bracket each sign change, followed by bisection of each bracket to about a second.
+
+For the Moon it is also fully topocentric: the observer's displacement from the Earth's centre is applied to the Moon's position before its altitude is computed, rather than using Meeus's approximation of the parallax in altitude, h0 = 0.7275π − 0.5667°.
+
+A [comparison document](rise_and_set_comparisons.md) shows how Astro's rise and set times compare with Skyfield (JPL DE440s), the USNO (DE430) and [timeanddate.com](https://timeanddate.com).
+
+## References
+
+* Thanks to @pinnymz for the [ruby-zmanim](https://github.com/pinnymz/ruby-zmanim) gem, a well-structured Ruby implementation of sunrise, sunset and some core astronomical algorithms.
+
+* Eventually all roads lead to the canonical book on the subject by Jean Meeus, [Astronomical Algorithms](https://www.amazon.com/Astronomical-Algorithms-Jean-Meeus/dp/0943396352).
+
+* For the intersection of calendars and astronomy, [Calendrical Calculations](https://www.amazon.com/Calendrical-Calculations-Ultimate-Edward-Reingold/dp/1107683165) by Nachum Dershowitz and Edward M. Reingold remains the standard reference.
+
+* [Skyfield](https://rhodesmill.org/skyfield/) is a powerful astronomy library for Python. Astro's rise and set times are tested to be within a minute of Skyfield's; on average they [differ](rise_and_set_comparisons.md) by 3.8 seconds for sunrise and sunset and 2.5 seconds for moonrise and moonset.
+
+* [timeanddate.com](https://www.timeanddate.com/astronomy/) is also a great web reference.
+
+## Documentation
+
+* **[Getting started](guides/getting_started.md)** — installation, the ephemeris, time zones, locations, options and errors.
+
+* **[Solar events](guides/solar.md)** — sunrise, sunset, twilight, solar noon, the length of the day, and the equinoxes and solstices.
+
+* **[Lunar events](guides/lunar.md)** — moonrise, moonset, phases, new moons and crescent visibility.
+
+* **[Rise and set comparisons](rise_and_set_comparisons.md)** — Astro's results against Skyfield, the USNO and timeanddate.com.
+
+The full API documentation is on [HexDocs](https://hexdocs.pm/astro).
+
+## Development
+
+The Astro test suite needs tz_world's data in the test environment. Once the other dependencies are installed, run:
+
+```bash
+MIX_ENV=test mix tz_world.update --force
 ```
 
-### Optionally Install TzWorld
+## License
 
-For functions such as `Astro.sunrise/3` and `Astro.sunset/3` it is common to expect the returned date time to be in the time zone of the specified location. The library `tz_world` provides that capability and, if configured, will automatically be used by those functions.
-
-It is expected that `tz_world` is configured for most applications although it is not formally required.
-
-`tz_world` does however require the download of nearly 30Mb of geojson data and a non-trivial post-processing step to format the data for efficient use by Astro. This might not be suitable for embedded devices and therefore `Astro.sunrise/3`, `Astro.sunset/3`, `Astro.moonrise/3` and `Astro.moonset/3` take an optional `:time_zone_resolver` option to support the implementation of a custom function to resolve the time zone name from a given location.
-
-The following steps should be following if `tz_world` is configured.
-
-#### Install TzWorld Data
-
-Get all dependencies and then install the data required to resolve a time zone from a location which is used by the dependency `tz_world`.
-
-```
-mix deps.get
-mix tz_world.update
-
-# If testing locally also install for the test environment
-MIX_ENV=test mix tz_world.update
-```
-
-#### Add TzWorld to supervision tree
-
-It is also required that `tz_world` be added to your applications supervision tree by adding the relevant `tz_world` backend to it in your `MyApp.Application` module:
-```
-defmodule MyApp.Application do
-  use Application
-
-  def start(_type, _args) do
-    children = [
-      .....
-      # See the documentation for tz_world for the
-      # various available backends. This is the recommended
-      # backend.
-      TzWorld.Backend.SpatialIndex
-    ]
-
-    opts = [strategy: :one_for_one, name: Astro.Supervisor]
-    Supervisor.start_link(children, opts)
-  end
-end
-```
-
-#### Configure your application module
-
-Make sure that you have configured your application in `mix.exs`:
-```elixir
-  def application do
-    [
-      mod: {MyApp.Application, [strategy: :one_for_one]},
-      .....
-    ]
-  end
-```
-
-Documentation can be found at [https://hexdocs.pm/astro](https://hexdocs.pm/astro).
-
-#### Developing Astro Locally
-
-The Astro test suite requires a functioning tz_world database to be available in the test environment. Once all other dependencies are installed, execute:
-
-```
-MIX_ENV=test mix tz_world.update
-```
-
-## Astro improved rise and set algorithms
-
-The implementation of the sun and moon rise and set calculations in Astro 2.0 is a JPL DE440s ephemeris scan-and-bisect algorithm. Specifically:
-
-* Astro version 1.x: was a NOAA/Meeus analytical solar position (polynomial + periodic-term approximation of the Sun's coordinates, with three-point interpolation for the rise/set crossing). There was no moon rise/set calculation in Astro 1.x.
-
-* Astro version 2: JPL DE440s ephemeris with coarse-scan and binary-search — the Sun's (or Moon's) position is computed directly from the JPL Development Ephemeris at each evaluation point, and the altitude zero-crossing is found by:
-  * Coarse scan — sampling altitude at regular intervals (24-minute steps for the Sun, shorter for the Moon) to bracket sign changes
-  * Bisection — narrowing each bracket to ~1 second precision
-
-For the Moon, it's additionally fully topocentric — the observer's geocentric displacement is applied to the Moon's position before computing altitude, rather than using the Meeus h0 = 0.7275π − 0.5667° parallax-in-altitude approximation.
-
-There is a [comparison document](rise_and_set_comparisons.md) demonstrating how Astro's calculations for rise and set compare with Skyfield (JPL DE440s), USNO (DE430),
-and [timeanddate.com](https://timeanddate.com).
+Astro is released under the [Apache License 2.0](LICENSE.md).

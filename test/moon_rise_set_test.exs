@@ -490,4 +490,23 @@ defmodule Astro.MoonRiseSetTest do
       assert {:error, :not_found} = Astro.sunrise(location, ~D[0500-06-01], time_zone: :utc)
     end
   end
+
+  describe "invalid options" do
+    for {option, value, error} <- [
+          {:limb, :bogus, :invalid_limb},
+          {:limb, nil, :invalid_limb},
+          {:limb, "upper", :invalid_limb},
+          {:interpolation, :bogus, :invalid_interpolation},
+          {:interpolation, nil, :invalid_interpolation},
+          {:interpolation, "direct", :invalid_interpolation}
+        ] do
+      test "#{option}: #{inspect(value)} is an error from moonrise/3 and moonset/3" do
+        location = {@tokyo_lon, @tokyo_lat}
+        options = [{unquote(option), unquote(value)}, time_zone: :utc]
+
+        assert Astro.moonrise(location, ~D[2026-03-01], options) == {:error, unquote(error)}
+        assert Astro.moonset(location, ~D[2026-03-01], options) == {:error, unquote(error)}
+      end
+    end
+  end
 end

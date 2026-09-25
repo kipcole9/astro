@@ -177,52 +177,65 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   ### Options
 
-  * `:limb` — which part of the Moon's disk defines the event:
-    * `:upper` (default) — upper limb on the apparent horizon
-      (USNO standard). The event threshold is
+  * `:limb` is the part of the Moon's disk that defines the event.
+
+    * `:upper`, the default, puts the upper limb on the apparent
+      horizon, the USNO standard. The event threshold is
       `−(34′ refraction + semi-diameter)`.
-    * `:center` — centre of disk on the apparent horizon. The event
-      threshold is `−34′ refraction` only.
 
-  * `:interpolation` — how the Moon's position is evaluated during
-    bisection:
-    * `:direct` (default) — evaluate the JPL ephemeris at every
-      bisection probe.
-    * `:lagrange` — three-point Lagrange quadratic interpolation
-      of the geocentric position, mimicking the Meeus Ch.15 approach.
+    * `:center` puts the centre of the disk on the apparent horizon.
+      The event threshold is `−34′` of refraction only.
 
-  * `:time_zone` — the time zone for the returned `DateTime`. The
-    default is `:default` which resolves the time zone from the
-    location. `:utc` returns UTC, or pass a time zone name string
-    (e.g. `"Asia/Tokyo"`).
+  * `:interpolation` is how the Moon's position is evaluated while the
+    event is bisected.
 
-  * `:time_zone_database` — the module implementing the
-    `Calendar.TimeZoneDatabase` behaviour. The default is `:configured`
-    which uses the application's configured time zone database.
+    * `:direct`, the default, evaluates the JPL ephemeris at every step.
 
-  * `:time_zone_resolver` — a 1-arity function that receives a
-    `%Geo.Point{}` and returns `{:ok, time_zone_name}` or
-    `{:error, reason}`. The default uses `TzWorld.timezone_at/1`
-    if `:tz_world` is configured.
+    * `:lagrange` interpolates the geocentric position quadratically
+      from three points, as Meeus Ch. 15 does.
+
+  * `:time_zone` is the time zone of the returned date time: `:default`,
+    the time zone of the location, which is the default; `:utc`; or a
+    time zone name.
+
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is the configured
+    Elixir time zone database.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{coordinates: {lng, lat}}` and returns
+    `{:ok, time_zone_name}` or `{:error, reason}`. The default is
+    `TzWorld.timezone_at/1` when `:tz_world` is a dependency.
 
   ### Returns
 
-  * `{:ok, datetime}` where `datetime` is a `t:DateTime.t/0` in the
-    requested time zone.
+  * `{:ok, date_time}` where `date_time` is the moonrise in the requested
+    time zone.
 
-  * `{:error, :no_time}` if the Moon does not rise on the requested
-    date at the given location (the Moon can remain below the horizon
-    for an entire calendar day).
+  * `{:error, :no_time}` if the Moon does not rise on that date at that
+    location, as it can stay below the horizon for a whole day.
+
+  * `{:error, :invalid_limb}` if `:limb` is not `:upper` or `:center`.
+
+  * `{:error, :invalid_interpolation}` if `:interpolation` is not
+    `:direct` or `:lagrange`.
 
   * `{:error, :time_zone_not_found}` if the requested time zone is
     unknown.
 
-  * `{:error, :time_zone_not_resolved}` if the time zone cannot be
-    resolved from the location.
+  * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
+    for the location, which happens when `:tz_world` is not a dependency
+    and no `:time_zone_resolver` is given.
 
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
-    dependency but its time zone data has not been downloaded. Run
+    dependency but its data has not been installed. Run
     `mix tz_world.update` to install it.
+
+  * `{:error, :utc_only_time_zone_database}` if the moonrise is requested
+    in a time zone other than UTC and no time zone database is
+    configured.
+
+  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
 
   ### Examples
 
@@ -265,52 +278,65 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   ### Options
 
-  * `:limb` — which part of the Moon's disk defines the event:
-    * `:upper` (default) — upper limb on the apparent horizon
-      (USNO standard). The event threshold is
+  * `:limb` is the part of the Moon's disk that defines the event.
+
+    * `:upper`, the default, puts the upper limb on the apparent
+      horizon, the USNO standard. The event threshold is
       `−(34′ refraction + semi-diameter)`.
-    * `:center` — centre of disk on the apparent horizon. The event
-      threshold is `−34′ refraction` only.
 
-  * `:interpolation` — how the Moon's position is evaluated during
-    bisection:
-    * `:direct` (default) — evaluate the JPL ephemeris at every
-      bisection probe.
-    * `:lagrange` — three-point Lagrange quadratic interpolation
-      of the geocentric position, mimicking the Meeus Ch.15 approach.
+    * `:center` puts the centre of the disk on the apparent horizon.
+      The event threshold is `−34′` of refraction only.
 
-  * `:time_zone` — the time zone for the returned `DateTime`. The
-    default is `:default` which resolves the time zone from the
-    location. `:utc` returns UTC, or pass a time zone name string
-    (e.g. `"Asia/Tokyo"`).
+  * `:interpolation` is how the Moon's position is evaluated while the
+    event is bisected.
 
-  * `:time_zone_database` — the module implementing the
-    `Calendar.TimeZoneDatabase` behaviour. The default is `:configured`
-    which uses the application's configured time zone database.
+    * `:direct`, the default, evaluates the JPL ephemeris at every step.
 
-  * `:time_zone_resolver` — a 1-arity function that receives a
-    `%Geo.Point{}` and returns `{:ok, time_zone_name}` or
-    `{:error, reason}`. The default uses `TzWorld.timezone_at/1`
-    if `:tz_world` is configured.
+    * `:lagrange` interpolates the geocentric position quadratically
+      from three points, as Meeus Ch. 15 does.
+
+  * `:time_zone` is the time zone of the returned date time: `:default`,
+    the time zone of the location, which is the default; `:utc`; or a
+    time zone name.
+
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is the configured
+    Elixir time zone database.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{coordinates: {lng, lat}}` and returns
+    `{:ok, time_zone_name}` or `{:error, reason}`. The default is
+    `TzWorld.timezone_at/1` when `:tz_world` is a dependency.
 
   ### Returns
 
-  * `{:ok, datetime}` where `datetime` is a `t:DateTime.t/0` in the
-    requested time zone.
+  * `{:ok, date_time}` where `date_time` is the moonset in the requested
+    time zone.
 
-  * `{:error, :no_time}` if the Moon does not set on the requested
-    date at the given location (the Moon can remain above the horizon
-    for an entire calendar day).
+  * `{:error, :no_time}` if the Moon does not set on that date at that
+    location, as it can stay above the horizon for a whole day.
+
+  * `{:error, :invalid_limb}` if `:limb` is not `:upper` or `:center`.
+
+  * `{:error, :invalid_interpolation}` if `:interpolation` is not
+    `:direct` or `:lagrange`.
 
   * `{:error, :time_zone_not_found}` if the requested time zone is
     unknown.
 
-  * `{:error, :time_zone_not_resolved}` if the time zone cannot be
-    resolved from the location.
+  * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
+    for the location, which happens when `:tz_world` is not a dependency
+    and no `:time_zone_resolver` is given.
 
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
-    dependency but its time zone data has not been downloaded. Run
+    dependency but its data has not been installed. Run
     `mix tz_world.update` to install it.
+
+  * `{:error, :utc_only_time_zone_database}` if the moonset is requested
+    in a time zone other than UTC and no time zone database is
+    configured.
+
+  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
 
   ### Examples
 
@@ -365,7 +391,9 @@ defmodule Astro.Lunar.MoonRiseSet do
     # padded by one Lagrange interval because `build_lagrange_interpolator/1`
     # samples up to @lagrange_interval_s beyond a bracket midpoint; covering
     # both padded endpoints covers every intermediate read.
-    with :ok <- ephemeris_available(dt_start - @lagrange_interval_s),
+    with :ok <- validate_interpolation(interpolation),
+         :ok <- validate_limb(limb),
+         :ok <- ephemeris_available(dt_start - @lagrange_interval_s),
          :ok <- ephemeris_available(dt_end + @lagrange_interval_s) do
       find_moon_event(dt_start, dt_end, direct_fn, event, interpolation, limb, date, %{
         lat: lat,
@@ -481,6 +509,14 @@ defmodule Astro.Lunar.MoonRiseSet do
       {:error, _reason} = error -> error
     end
   end
+
+  # The scan matches on these values, so anything else is reported to the
+  # caller rather than raising a `CaseClauseError` mid-scan.
+  defp validate_interpolation(interpolation) when interpolation in [:direct, :lagrange], do: :ok
+  defp validate_interpolation(_interpolation), do: {:error, :invalid_interpolation}
+
+  defp validate_limb(limb) when limb in [:upper, :center], do: :ok
+  defp validate_limb(_limb), do: {:error, :invalid_limb}
 
   defp topocentric_f(dynamical_time, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
     {:ok, {ra_geo, dec_geo, dist_km}} = Ephemeris.moon_position_dt(dynamical_time)

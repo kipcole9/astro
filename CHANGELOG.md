@@ -12,6 +12,8 @@ This is the changelog for Astro version 2.6.2, not yet released. For older chang
 
 * `Astro.equinox/3` and `Astro.solstice/3` take `:time_zone` (`:utc` by default, or a zone name) and `:time_zone_database` options and return the instant in that zone, whose civil date can differ from the UTC date — for Japan's equinox holidays, in about a third of years. A named zone with no time zone database configured returns `{:error, :utc_only_time_zone_database}`.
 
+* `Astro.Supervisor.child_spec/1` lets `Astro.Supervisor`, which starts the tz_world backend, be listed as a child in an application's supervision tree.
+
 ### Bug Fixes
 
 * The specs of `Astro.date_time_new_moon_before/1`, `date_time_new_moon_nearest/1`, `date_time_new_moon_at_or_after/1`, `date_time_lunar_phase_at_or_before/2` and `date_time_lunar_phase_at_or_after/2` were malformed, so their error return was silently dropped and dialyzer took them never to fail. With the fix below they cannot fail, so they declare `{:ok, DateTime.t()}` and their docs no longer describe an error shape they never returned.
@@ -25,6 +27,24 @@ This is the changelog for Astro version 2.6.2, not yet released. For older chang
 * `Astro.Time.hours_and_date_to_date_time/2` declares the `{:error, reason}` it returns for an invalid date or a time of day of 24 hours or more.
 
 * `Astro.Time.date_time_from_date_and_minutes/2` returns `{:error, :invalid_date}` for a date that is not valid in its calendar, where it raised `MatchError`, and converts a date in another calendar to its ISO date instead of reading its fields as ISO. `Astro.solar_noon/2` returns the same errors and gives a date in another calendar the solar noon of that same day.
+
+* `Astro.sun_azimuth_elevation/2`, `Astro.Time.local_sidereal_time/2` and `Astro.Time.greenwich_mean_sidereal_time/1` raised `ArgumentError` for every input in an application with no time zone database configured. They now need none.
+
+* `Astro.sunrise/3` and `Astro.sunset/3` return `{:error, :invalid_solar_elevation}` for an unknown `:solar_elevation`, where they raised `CaseClauseError`, and their docs now list every error they return.
+
+* `Astro.moonrise/3` and `Astro.moonset/3` return `{:error, :invalid_limb}` or `{:error, :invalid_interpolation}` for an unknown `:limb` or `:interpolation`, where they raised `CaseClauseError`. Their docs and specs promised `:moon_always_below_horizon` and `:moon_always_above_horizon` where they return `{:error, :no_time}`, and now list every error they return.
+
+* `Astro.new_visible_crescent/3` with the `:odeh` method, the default, or the `:yallop` method misclassified many crescents — a crescent 36 hours old at Mecca could be "not visible with optical aid" — because the lunar altitude and semi-diameter it uses were wrong (below). Classifications change on about half of evenings with `:odeh` and a quarter with `:yallop`, and the two methods now agree on 79% of evenings, where they agreed on 39%.
+
+* `Astro.Lunar.lunar_altitude/2`, `angular_semi_diameter/1`, `equatorial_horizontal_parallax/1`, `horizontal_dip/1`, `topocentric_lunar_parallax/2` and `topocentric_lunar_altitude/2` returned wrong values, because the arcsine they share treated its ratio argument as degrees. `lunar_altitude/2` now agrees with the JPL ephemeris to within 0.006°.
+
+* `Astro.Time.mean_sidereal_from_moment/1`, and through it `Astro.sun_azimuth_elevation/2`, `Astro.Time.greenwich_mean_sidereal_time/1`, `local_sidereal_time/2` and `Astro.Lunar.lunar_altitude/2`, measured sidereal time from Terrestrial rather than Universal Time, about 0.27° ahead. They now match Meeus's worked examples, and the sun's elevation agrees with the JPL ephemeris to within 0.01°.
+
+* `Astro.Time.apparent_sidereal_from_moment/1` applied the formula for 0h UT at every time of day. It now returns the apparent sidereal time, as `Astro.Coordinates.gast/1` does.
+
+* `Astro.new_visible_crescent/3` with the `:schaefer` method modelled the sky as dark while the Sun was less than 1° below the horizon, so it could report a crescent under an hour old as visible to the naked eye. Twilight now brightens the sky from the horizon down.
+
+* `Astro.Lunar.lunar_node/1` returned the node's distance from the equinoctial point about 9,000 years after the given moment. The doc of `Astro.Lunar.moon_node/1` now says it returns the Moon's argument of latitude, which it always has.
 
 ## Astro version 2.6.1
 
@@ -269,8 +289,11 @@ This is the changelog for Astro version 1.1.0 released on June 18th, 2024.  For 
 * Adds an option `:time_zone_resolver` to `Astro.sunrise/3` and `Astro.sunset/3` that is a 1-arity function that is invoked to resolve the time zone name from a given latitude and longitude. The default is to use `TzWorld.timezone_at/1` if `TzWorld` is configured, otherwise an error is returned.
 
 * The default time zone database is now detected in the following order:
+
     1. Application.get_env(:elixir, :time_zone_database)
+
     2. TzData.TimeZoneDatabase if TzData is configured
+
     3. Tz.TimeZoneDatabase if Tz is configured
 
 ## Astro version 1.0.2

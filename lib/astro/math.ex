@@ -78,16 +78,20 @@ defmodule Astro.Math do
     |> :math.sin()
   end
 
-  def asin(degrees) do
-    degrees
-    |> to_radians()
+  # The inverse functions take a ratio, not an angle, and return the angle in
+  # degrees: Calendrical Calculations' `arcsin-degrees` and `arccos-degrees`.
+  # Converting the ratio from degrees, as these once did, returned roughly the
+  # ratio itself.
+  def asin(ratio) do
+    ratio
     |> :math.asin()
+    |> to_degrees()
   end
 
-  def acos(degrees) do
-    degrees
-    |> to_radians()
+  def acos(ratio) do
+    ratio
     |> :math.acos()
+    |> to_degrees()
   end
 
   def tan(degrees) do

@@ -2,76 +2,97 @@ defmodule Astro do
   @moduledoc """
   High-level API for common astronomical observations.
 
-  This module is the primary public interface for the Astro library.
-  It provides functions for sunrise/sunset, moonrise/moonset,
-  equinoxes and solstices, lunar phases, and sun/moon position.
-  All functions accept standard Elixir `Date` or `DateTime` structs
-  and return `{:ok, value}` or `{:error, reason}` tuples.
+  This module is the primary public interface for the Astro library. It
+  provides sunrise and sunset, moonrise and moonset, equinoxes and
+  solstices, lunar phases, crescent visibility, and the positions of the
+  sun and moon. Functions accept standard Elixir dates and date times.
+  Those that can fail, such as the rise and set times, return
+  `{:ok, value}` or `{:error, reason}`. The positions and phases, which
+  cannot fail, return their value directly.
 
-  For lower-level access see `Astro.Solar`, `Astro.Lunar`,
-  `Astro.Time`, `Astro.Earth` and `Astro.Ephemeris`.
+  For lower-level access see `Astro.Solar`, `Astro.Lunar`, `Astro.Time`,
+  `Astro.Earth` and `Astro.Ephemeris`.
 
   ## Specifying a location
 
-  Location is specified as a `{longitude, latitude}` tuple (note
-  the order, matching `Geo.Point`), a `Geo.Point.t` struct, or a
-  `Geo.PointZ.t` struct that includes elevation in meters.
+  A location is a `{longitude, latitude}` tuple (note the order, which
+  matches `Geo.Point`), a `Geo.Point` struct, or a `Geo.PointZ` struct
+  that also carries an elevation in metres.
 
-  * Longitude is `+` for east, `-` for west, in degrees.
-  * Latitude is `+` for north, `-` for south, in degrees.
+  * Longitude is positive east and negative west, in degrees.
+
+  * Latitude is positive north and negative south, in degrees.
 
   ## Time zone resolution
 
-  Rise/set functions (`sunrise/3`, `sunset/3`, `moonrise/3`,
+  The rise and set functions (`sunrise/3`, `sunset/3`, `moonrise/3` and
   `moonset/3`) return a `DateTime` in the local time zone of the
-  given location. By default the time zone is resolved via
-  `TzWorld` (if configured). This can be overridden with the
-  following options:
+  location, resolved with `TzWorld` when it is a dependency. These
+  options override that:
 
-  * `:time_zone` — a zone name string, `:utc`, or `:default`
-    (resolve from coordinates via `TzWorld`).
-  * `:time_zone_database` — the time zone database module
-    (e.g. Tz.TimeZoneDatabase).
-  * `:time_zone_resolver` — a custom 1-arity function
-    `(%Geo.Point{}) → {:ok, String.t()}`.
+  * `:time_zone` is a time zone name, `:utc`, or `:default` to resolve
+    the time zone from the location.
+
+  * `:time_zone_database` is the time zone database module, such as
+    `Tz.TimeZoneDatabase`.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `Geo.Point` and returns `{:ok, time_zone_name}`.
 
   ## Function groups
 
   ### Solar
 
-  * `sunrise/3`, `sunset/3` — local sunrise and sunset times
-  * `solar_noon/2` — UTC solar noon for a location and date
-  * `hours_of_daylight/2` — duration of daylight
-  * `sun_position_at/1` — right ascension, declination and distance
-  * `sun_azimuth_elevation/2` — azimuth and altitude at a datetime
-  * `sun_apparent_longitude/1` — apparent ecliptic longitude
+  * `sunrise/3` and `sunset/3` return the local times of sunrise and
+    sunset.
+
+  * `solar_noon/2` returns the solar noon for a location and date.
+
+  * `hours_of_daylight/2` and `duration_of_daylight/2` return the length
+    of the day.
+
+  * `sun_position_at/1` returns the sun's right ascension, declination
+    and distance.
+
+  * `sun_azimuth_elevation/2` returns the sun's azimuth and elevation at
+    a date time.
+
+  * `sun_apparent_longitude/1` returns the sun's apparent ecliptic
+    longitude.
 
   ### Lunar
 
-  * `moonrise/3`, `moonset/3` — local moonrise and moonset times
-  * `moon_position_at/1` — right ascension, declination and distance
-  * `illuminated_fraction_of_moon_at/1` — fraction of the Moon illuminated
-  * `lunar_phase_at/1` — phase angle (0–360°)
-  * `lunar_phase_emoji/1` — Unicode emoji for a phase angle
+  * `moonrise/3` and `moonset/3` return the local times of moonrise and
+    moonset.
 
-  ### New moon search
+  * `moon_position_at/1` returns the moon's right ascension, declination
+    and distance.
 
-  * `date_time_new_moon_before/1`, `date_time_new_moon_at_or_after/1`
-  * `date_time_new_moon_nearest/1`
+  * `illuminated_fraction_of_moon_at/1` returns the fraction of the moon
+    that is illuminated.
 
-  ### Phase search
+  * `lunar_phase_at/1` returns the phase angle, from 0° to 360°.
 
-  * `date_time_lunar_phase_at_or_before/2`
-  * `date_time_lunar_phase_at_or_after/2`
+  * `lunar_phase_emoji/1` returns the emoji for a phase angle.
+
+  ### New moon and phase searches
+
+  * `date_time_new_moon_before/1`, `date_time_new_moon_at_or_after/1` and
+    `date_time_new_moon_nearest/1` find new moons.
+
+  * `date_time_lunar_phase_at_or_before/2` and
+    `date_time_lunar_phase_at_or_after/2` find any phase.
 
   ### Crescent visibility
 
-  * `new_visible_crescent/3` — predict visibility of the new crescent moon
+  * `new_visible_crescent/4` predicts the visibility of the new crescent
+    moon.
 
   ### Equinoxes and solstices
 
-  * `equinox/2` — March or September equinox
-  * `solstice/2` — June or December solstice
+  * `equinox/3` returns the March or September equinox.
+
+  * `solstice/3` returns the June or December solstice.
 
   """
 
@@ -97,7 +118,11 @@ defmodule Astro do
   @type kilometers() :: number()
   @type phase() :: angle()
 
-  @type location :: {longitude, latitude} | Geo.Point.t() | Geo.PointZ.t()
+  @type location ::
+          {longitude, latitude}
+          | {longitude, latitude, altitude}
+          | Geo.Point.t()
+          | Geo.PointZ.t()
   @type date :: Calendar.date() | Calendar.datetime()
   @type options :: keyword()
 
@@ -121,38 +146,51 @@ defmodule Astro do
                                   nil
                               end)
 
-  defguard is_lunar_phase(phase) when phase >= 0.0 and phase <= 360.0
-
   @doc """
-  Returns a tuple `{azimuth, altitude}` for a given
-  date time and location.
+  Guards that a value is a lunar phase angle.
 
   ### Arguments
 
-  * `location` is the latitude, longitude and
-    optionally elevation for the desired sunrise
-    azimuth and altitude. It can be expressed as:
-
-    * `{lng, lat}` - a tuple with longitude and latitude
-      as floating point numbers. **Note** the order of the
-      arguments.
-    * a `Geo.Point.t` struct to represent a location without elevation
-    * a `Geo.PointZ.t` struct to represent a location and elevation
-
-  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
-    any struct that meets the requirements of
-    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
+  * `phase` is the value to test.
 
   ### Returns
 
-  * a tuple of the format `{azimith, altitude}` which are
-    expressed in float degrees.
+  * `true` if `phase` is a number from 0.0 to 360.0 inclusive, otherwise
+    `false`.
 
-  ### Example
+  ### Examples
 
-      iex> {:ok, date_time} = DateTime.new(~D[2023-05-17], ~T[12:47:00], "Australia/Sydney")
-      iex> location = {151.1637781, -33.5145852}
-      iex> {_azimuth, _altitude} = Astro.sun_azimuth_elevation(location, date_time)
+      iex> require Astro
+      iex> Astro.is_lunar_phase(90.0)
+      true
+      iex> Astro.is_lunar_phase(400.0)
+      false
+
+  """
+  defguard is_lunar_phase(phase) when phase >= 0.0 and phase <= 360.0
+
+  @doc """
+  Returns the sun's azimuth and elevation as seen from a location at a
+  date time.
+
+  ### Arguments
+
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
+
+  * `date_time` is a `t:DateTime.t/0`, or any map that meets
+    `t:Calendar.datetime/0`.
+
+  ### Returns
+
+  * `{azimuth, elevation}` in degrees. Azimuth is measured clockwise from
+    north, and elevation above the horizon.
+
+  ### Examples
+
+      iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
+      {343.33472178197934, 77.8645848744289}
 
   """
 
@@ -198,13 +236,13 @@ defmodule Astro do
   end
 
   @doc """
-  Returns a `t:Geo.PointZ` containing
+  Returns a `t:Geo.PointZ.t/0` containing
   the right ascension and declination of
   the sun at a given date or date time.
 
   ### Arguments
 
-  * `date_time` is a `t:DateTime.t/0` or a `t:Date/0` or
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
     `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
@@ -215,7 +253,7 @@ defmodule Astro do
     `%{reference: :celestial, object: :sun}`.
     `distance` is in meters.
 
-  ### Example
+  ### Examples
 
       iex> Astro.sun_position_at(~D[1992-10-13])
       %Geo.PointZ{
@@ -255,7 +293,7 @@ defmodule Astro do
   end
 
   @doc """
-  Returns a `t:Geo.PointZ` containing
+  Returns a `t:Geo.PointZ.t/0` containing
   the right ascension and declination of
   the moon at a given date or date time.
 
@@ -267,12 +305,12 @@ defmodule Astro do
 
   ### Returns
 
-  * a `t:Geo.PointZ` struct with coordinates
+  * a `t:Geo.PointZ.t/0` struct with coordinates
     `{right_ascension, declination, distance}` with properties
     `%{reference: :celestial, object: :moon}`
     `distance` is in meters.
 
-  ### Example
+  ### Examples
 
       iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
       %Geo.PointZ{
@@ -325,7 +363,7 @@ defmodule Astro do
     representing the fractional illumination of
     the moon.
 
-  ### Example
+  ### Examples
 
       iex> fraction = Astro.illuminated_fraction_of_moon_at(~D[2017-03-16])
       iex> Float.round(fraction, 4)
@@ -370,7 +408,7 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
 
-  ### Example
+  ### Examples
 
       iex> Astro.date_time_new_moon_before(~D[2021-08-23])
       {:ok, ~U[2021-08-08 13:50:07.634598Z]}
@@ -421,7 +459,7 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
 
-  ### Example
+  ### Examples
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
       {:ok, ~U[2021-08-08 13:50:07.490242Z]}
@@ -464,7 +502,7 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
 
-  ### Example
+  ### Examples
 
       iex> Astro.date_time_new_moon_at_or_after(~D[2021-08-23])
       {:ok, ~U[2021-09-07 00:51:44.267320Z]}
@@ -507,7 +545,7 @@ defmodule Astro do
   * the lunar phase as a float number of
     degrees.
 
-  ### Example
+  ### Examples
 
       iex> Astro.lunar_phase_at ~U[2021-08-22 12:02:02.816534Z]
       180.00004404669988
@@ -608,7 +646,7 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the phase
     occurs.
 
-  ### Example
+  ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
       {:ok, ~U[2021-07-10 01:16:34.022607Z]}
@@ -656,7 +694,7 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the phase
     occurs.
 
-  ### Example
+  ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
       {:ok, ~U[2021-08-22 12:02:02.816534Z]}
@@ -687,117 +725,100 @@ defmodule Astro do
   @doc """
   Calculates the sunrise for a given location and date.
 
-  Sunrise is the moment when the upper limb of
-  the sun appears on the horizon in the morning.
+  Sunrise is the moment when the upper limb of the sun appears on the
+  horizon in the morning.
 
   ### Arguments
 
-  * `location` is the latitude, longitude and
-    optionally elevation for the desired sunrise
-    time. It can be expressed as:
-
-    * `{lng, lat}` - a tuple with longitude and latitude
-      as floating point numbers. **Note** the order of the
-      arguments.
-    * a `t:Geo.Point.t/0` struct to represent a location without elevation
-    * a `t:Geo.PointZ.t/0` struct to represent a location and elevation
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
 
   * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
-    to indicate the date of the year in which
-    the sunrise time is required.
+    for the day of the sunrise.
 
   * `options` is a keyword list of options.
 
   ### Options
 
-  * `solar_elevation` represents the type of sunrise
-    required. The default is `:geometric` which equates to
-    a solar elevation of 90°. In this case the calculation
-    also accounts for refraction and elevation to return a
-    result which accords with the eye's perception. Other
-    solar elevations are:
+  * `:solar_elevation` is the zenith angle of the sun, in degrees, that
+    marks the sunrise, or one of the names below. The default is
+    `:geometric`.
 
-      * `:civil` representing a solar elevation of 96.0°. At this
-        point the sun is just below the horizon so there is
-        generally enough natural light to carry out most
-        outdoor activities.
+    * `:geometric` is 90°, corrected for refraction and the sun's
+      apparent radius so that it matches the moment the upper limb
+      appears to touch the horizon.
 
-      * `:nautical` representing a solar elevation of 102.0°
-        This is the point at which the horizon is just barely visible
-        and the moon and stars can still be used for navigation.
+    * `:civil` is 96°. The sun is below the horizon but there is
+      generally enough natural light for most outdoor activities.
 
-      * `:astronomical` representing a solar elevation of 108.0°.
-        This is the point beyond which astronomical observation
-        becomes impractical.
+    * `:nautical` is 102°. The horizon is barely visible, and the moon
+      and stars can still be used for navigation.
 
-      * Any floating point number representing the desired
-        solar elevation.
+    * `:astronomical` is 108°. Beyond this, astronomical observation
+      becomes impractical.
 
-  * `:time_zone` is the time zone in which the sunrise
-    is requested. The default is `:default` in which
-    the sunrise time is reported in the time zone of
-    the requested location. `:utc` can be specified or any
-    other time zone name supported by the option
-    `:time_zone_database` is acceptabe.
+  * `:time_zone` is the time zone of the returned date time: `:default`,
+    the time zone of the location, which is the default; `:utc`; or a
+    time zone name.
 
-  * `:time_zone_database` represents the module that
-    implements the `Calendar.TimeZoneDatabase` behaviour.
-    The default is the configured Elixir time zone database or
-    any `Calendar.TimeZoneDatabase` implementation (for example Tz.TimeZoneDatabase or Tzdata.TimeZoneDatabase)
-    depending upon which dependency is configured.
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is the configured
+    Elixir time zone database.
 
-  * `:time_zone_resolver` is a 1-arity function that resolves the
-    time zone name for a given location. The function will receive
-    a `%Geo.Point{cordinates: {lng, lat}}` struct and is expected to
-    return either `{:ok, time_zone_name}` or `{:error, :time_zone_not_found}`.
-    The default is `TzWorld.timezone_at/1` if `:tz_world` is
-    configured.
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{coordinates: {lng, lat}}` and returns
+    `{:ok, time_zone_name}` or `{:error, reason}`. The default is
+    `TzWorld.timezone_at/1` when `:tz_world` is a dependency.
 
   ### Returns
 
-  * a `t:DateTime.t/0` representing the time of sunrise in the
-    requested time zone at the requested location.
+  * `{:ok, date_time}` where `date_time` is the sunrise in the requested
+    time zone.
 
-  * `{:error, :time_zone_not_found}` if the requested
-    time zone is unknown.
+  * `{:error, :no_time}` if there is no sunrise on that date at that
+    location, as happens at very high latitudes in summer and winter.
 
-  * `{:error, :time_zone_not_resolved}` if it is not possible
-    to resolve a time zone name from the location. This can happen
-    if `:tz_world` is not configured as a dependency and no
-    `:time_zone_resolver` option is specified.
+  * `{:error, :invalid_solar_elevation}` if `:solar_elevation` is neither
+    a number nor one of the names above.
+
+  * `{:error, :time_zone_not_found}` if the requested time zone is
+    unknown.
+
+  * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
+    for the location, which happens when `:tz_world` is not a dependency
+    and no `:time_zone_resolver` is given.
 
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
-    dependency but its time zone data has not been downloaded. Run
+    dependency but its data has not been installed. Run
     `mix tz_world.update` to install it.
 
-  * `{:error, :no_time}` if for the requested date
-    and location there is no sunrise. This can occur at
-    very high and very low latitudes during summer and winter.
+  * `{:error, :utc_only_time_zone_database}` if the sunrise is requested
+    in a time zone other than UTC and no time zone database is
+    configured.
 
-  ### Notes
-
-  * If the resolved UTC date time is ambiguous because of a daylight savings
-    transition, the second of the two possibilities is applied. See
-    the `DateTime.from_naive/3` for more information.
+  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
 
   ### Examples
 
-      # Sunrise in Sydney, Australia
-      Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
-      {:ok, #DateTime<2019-12-04 05:37:00.000000+11:00 AEDT Australia/Sydney>}
+      iex> {:ok, date_time} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
+      iex> date_time
+      #DateTime<2019-12-04 05:37:08.672884+11:00 AEDT Australia/Sydney>
 
-      # Sunrise in Alert, Nanavut, Canada
-      Astro.sunrise({-62.3481, 82.5018}, ~D[2019-12-04])
+      iex> Astro.sunrise({-62.3481, 82.5018}, ~D[2019-12-04])
       {:error, :no_time}
 
   """
   @spec sunrise(location, date, options) ::
           {:ok, DateTime.t()}
           | {:error,
-             :time_zone_not_found
+             :no_time
+             | :invalid_solar_elevation
+             | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
-             | :no_time}
+             | :utc_only_time_zone_database
+             | :not_found}
 
   def sunrise(location, date, options \\ []) when is_list(options) do
     Solar.SunRiseSet.sunrise(location, date_to_moment(date), options)
@@ -806,170 +827,207 @@ defmodule Astro do
   @doc """
   Calculates the sunset for a given location and date.
 
-  Sunset is the moment when the upper limb of
-  the sun disappears below the horizon in the evening.
+  Sunset is the moment when the upper limb of the sun disappears below
+  the horizon in the evening.
 
   ### Arguments
 
-  * `location` is the latitude, longitude and
-    optionally elevation for the desired sunrise
-    time. It can be expressed as:
-
-    * `{lng, lat}` - a tuple with longitude and latitude
-      as floating point numbers. **Note** the order of the
-      arguments.
-    * a `Geo.Point.t` struct to represent a location without elevation
-    * a `Geo.PointZ.t` struct to represent a location and elevation
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
 
   * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
-    to indicate the date of the year in which
-    the sunset time is required.
+    for the day of the sunset.
 
   * `options` is a keyword list of options.
 
   ### Options
 
-  * `solar_elevation` represents the type of sunset
-    required. The default is `:geometric` which equates to
-    a solar elevation of 90°. In this case the calulation
-    also accounts for refraction and elevation to return a
-    result which accords with the eyes perception. Other
-    solar elevations are:
+  * `:solar_elevation` is the zenith angle of the sun, in degrees, that
+    marks the sunset, or one of the names below. The default is
+    `:geometric`.
 
-      * `:civil` representing a solar elevation of 96.0°. At this
-        point the sun is just below the horizon so there is
-        generally enough natural light to carry out most
-        outdoor activities.
+    * `:geometric` is 90°, corrected for refraction and the sun's
+      apparent radius so that it matches the moment the upper limb
+      appears to touch the horizon.
 
-      * `:nautical` representing a solar elevation of 102.0°
-        This is the point at which the horizon is just barely visible
-        and the moon and stars can still be used for navigation.
+    * `:civil` is 96°. The sun is below the horizon but there is
+      generally enough natural light for most outdoor activities.
 
-      * `:astronomical`representing a solar elevation of 108.0°.
-        This is the point beyond which astronomical observation
-        becomes impractical.
+    * `:nautical` is 102°. The horizon is barely visible, and the moon
+      and stars can still be used for navigation.
 
-      * Any floating point number representing the desired
-        solar elevation.
+    * `:astronomical` is 108°. Beyond this, astronomical observation
+      becomes impractical.
 
-  * `:time_zone` is the time zone in which the sunset
-    is requested. The default is `:default` in which
-    the sunrise time is reported in the time zone of
-    the requested location. `:utc` can be specified or any
-    other time zone name supported by the option
-    `:time_zone_database` is acceptabe.
+  * `:time_zone` is the time zone of the returned date time: `:default`,
+    the time zone of the location, which is the default; `:utc`; or a
+    time zone name.
 
-  * `:time_zone_database` represents the module that
-    implements the `Calendar.TimeZoneDatabase` behaviour.
-    The default is the configured Elixir time zone database or
-    any `Calendar.TimeZoneDatabase` implementation (for example Tz.TimeZoneDatabase or Tzdata.TimeZoneDatabase)
-    depending upon which dependency is configured.
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is the configured
+    Elixir time zone database.
 
-  * `:time_zone_resolver` is a 1-arity function that resolves the
-    time zone name for a given location. The function will receive
-    a `%Geo.Point{cordinates: {lng, lat}}` struct and is expected to
-    return either `{:ok, time_zone_name}` or `{:error, :time_zone_not_found}`.
-    The default is `TzWorld.timezone_at/1` if `:tz_world` is
-    configured.
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{coordinates: {lng, lat}}` and returns
+    `{:ok, time_zone_name}` or `{:error, reason}`. The default is
+    `TzWorld.timezone_at/1` when `:tz_world` is a dependency.
 
   ### Returns
 
-  * a `t:DateTime.t/0` representing the time of sunset in the
-    requested time zone at the requested location.
+  * `{:ok, date_time}` where `date_time` is the sunset in the requested
+    time zone.
 
-  * `{:error, :time_zone_not_found}` if the requested
-    time zone is unknown.
+  * `{:error, :no_time}` if there is no sunset on that date at that
+    location, as happens at very high latitudes in summer and winter.
 
-  * `{:error, :time_zone_not_resolved}` if it is not possible
-    to resolve a time zone name from the location. This can happen
-    if `:tz_world` is not configured as a dependency and no
-    `:time_zone_resolver` option is specified.
+  * `{:error, :invalid_solar_elevation}` if `:solar_elevation` is neither
+    a number nor one of the names above.
+
+  * `{:error, :time_zone_not_found}` if the requested time zone is
+    unknown.
+
+  * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
+    for the location, which happens when `:tz_world` is not a dependency
+    and no `:time_zone_resolver` is given.
 
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
-    dependency but its time zone data has not been downloaded. Run
+    dependency but its data has not been installed. Run
     `mix tz_world.update` to install it.
 
-  * `{:error, :no_time}` if for the requested date
-    and location there is no sunset. This can occur at
-    very high and very low latitudes during summer and winter.
+  * `{:error, :utc_only_time_zone_database}` if the sunset is requested
+    in a time zone other than UTC and no time zone database is
+    configured.
 
-  ### Notes
-
-  * If the resolved UTC date time is ambiguous because of a daylight savings
-    transition, the second of the two possibilities is applied. See
-    the `DateTime.from_naive/3` for more information.
+  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
 
   ### Examples
 
-      # Sunset in Sydney, Australia
-      Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
-      {:ok, #DateTime<2019-12-04 19:53:00.000000+11:00 AEDT Australia/Sydney>}
+      iex> {:ok, date_time} = Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
+      iex> date_time
+      #DateTime<2019-12-04 19:53:20.995687+11:00 AEDT Australia/Sydney>
 
-      # Sunset in Alert, Nanavut, Canada
-      Astro.sunset({-62.3481, 82.5018}, ~D[2019-12-04])
+      iex> Astro.sunset({-62.3481, 82.5018}, ~D[2019-12-04])
       {:error, :no_time}
 
   """
   @spec sunset(location, date, options) ::
           {:ok, DateTime.t()}
           | {:error,
-             :time_zone_not_found
+             :no_time
+             | :invalid_solar_elevation
+             | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
-             | :no_time}
+             | :utc_only_time_zone_database
+             | :not_found}
 
   def sunset(location, date, options \\ []) when is_list(options) do
     Solar.SunRiseSet.sunset(location, date_to_moment(date), options)
   end
 
   @doc """
-  Returns the datetime of moonrise for a given location and date.
+  Returns the moonrise for a given location and date.
 
-  Uses the JPL DE440s ephemeris with fully topocentric correction
-  to compute the Moon's altitude zero-crossing via scan-and-bisect.
+  The moonrise is the moment the upper limb of the Moon appears above the
+  horizon, found from the JPL DE440s ephemeris with full topocentric
+  correction.
 
   ### Arguments
 
-  * `location` is the location as a `{longitude, latitude}` tuple,
-    a `Geo.Point.t` or a `Geo.PointZ.t`.
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
 
-  * `date` is a `t:Date.t/0` or `t:DateTime.t/0`.
+  * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
+    for the day of the moonrise.
 
   * `options` is a keyword list of options.
 
   ### Options
 
-  * `:time_zone` is the time zone in which the sunrise
-    is requested. The default is `:default` in which
-    the sunrise time is reported in the time zone of
-    the requested location. `:utc` can be specified or any
-    other time zone name supported by the option
-    `:time_zone_database` is acceptabe.
+  * `:limb` is the part of the Moon's disk that defines the event.
 
-  * `:time_zone_database` represents the module that
-    implements the `Calendar.TimeZoneDatabase` behaviour.
-    The default is the configured Elixir time zone database or
-    any `Calendar.TimeZoneDatabase` implementation (for example Tz.TimeZoneDatabase or Tzdata.TimeZoneDatabase)
-    depending upon which dependency is configured.
+    * `:upper`, the default, puts the upper limb on the apparent
+      horizon, the USNO standard. The event threshold is
+      `−(34′ refraction + semi-diameter)`.
 
-  * `:time_zone_resolver` is a 1-arity function that resolves the
-    time zone name for a given location. The function will receive
-    a `%Geo.Point{cordinates: {lng, lat}}` struct and is expected to
-    return either `{:ok, time_zone_name}` or `{:error, :time_zone_not_found}`.
-    The default is `TzWorld.timezone_at/1` if `:tz_world` is
-    configured.
+    * `:center` puts the centre of the disk on the apparent horizon.
+      The event threshold is `−34′` of refraction only.
+
+  * `:interpolation` is how the Moon's position is evaluated while the
+    event is bisected.
+
+    * `:direct`, the default, evaluates the JPL ephemeris at every step.
+
+    * `:lagrange` interpolates the geocentric position quadratically
+      from three points, as Meeus Ch. 15 does.
+
+  * `:time_zone` is the time zone of the returned date time: `:default`,
+    the time zone of the location, which is the default; `:utc`; or a
+    time zone name.
+
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is the configured
+    Elixir time zone database.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{coordinates: {lng, lat}}` and returns
+    `{:ok, time_zone_name}` or `{:error, reason}`. The default is
+    `TzWorld.timezone_at/1` when `:tz_world` is a dependency.
 
   ### Returns
 
-  * `{:ok, date_time}` with the local time of moonrise, or
+  * `{:ok, date_time}` where `date_time` is the moonrise in the requested
+    time zone.
 
-  * `{:error, :moon_always_below_horizon}` if the Moon does not
-    rise on the given date at the given location.
+  * `{:error, :no_time}` if the Moon does not rise on that date at that
+    location, as it can stay below the horizon for a whole day.
+
+  * `{:error, :invalid_limb}` if `:limb` is not `:upper` or `:center`.
+
+  * `{:error, :invalid_interpolation}` if `:interpolation` is not
+    `:direct` or `:lagrange`.
+
+  * `{:error, :time_zone_not_found}` if the requested time zone is
+    unknown.
+
+  * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
+    for the location, which happens when `:tz_world` is not a dependency
+    and no `:time_zone_resolver` is given.
+
+  * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
+    dependency but its data has not been installed. Run
+    `mix tz_world.update` to install it.
+
+  * `{:error, :utc_only_time_zone_database}` if the moonrise is requested
+    in a time zone other than UTC and no time zone database is
+    configured.
+
+  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
+
+  ### Examples
+
+      iex> {:ok, date_time} = Astro.moonrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
+      iex> date_time
+      #DateTime<2019-12-04 12:20:56.695846+11:00 AEDT Australia/Sydney>
+
+      iex> Astro.moonrise({-62.3481, 82.5018}, ~D[2024-01-01])
+      {:error, :no_time}
 
   """
   @doc since: "2.0.0"
   @spec moonrise(location, date, options) ::
-          {:ok, DateTime.t()} | {:error, :moon_always_below_horizon}
+          {:ok, DateTime.t()}
+          | {:error,
+             :no_time
+             | :invalid_limb
+             | :invalid_interpolation
+             | :time_zone_not_found
+             | :time_zone_not_resolved
+             | :tz_world_data_not_installed
+             | :utc_only_time_zone_database
+             | :not_found}
 
   def moonrise(location, date, options \\ default_options())
 
@@ -978,53 +1036,107 @@ defmodule Astro do
   end
 
   @doc """
-  Returns the datetime of moonset for a given location and date.
+  Returns the moonset for a given location and date.
 
-  Uses the JPL DE440s ephemeris with fully topocentric correction
-  to compute the Moon's altitude zero-crossing via scan-and-bisect.
+  The moonset is the moment the upper limb of the Moon disappears below the
+  horizon, found from the JPL DE440s ephemeris with full topocentric
+  correction.
 
   ### Arguments
 
-  * `location` is the location as a `{longitude, latitude}` tuple,
-    a `Geo.Point.t` or a `Geo.PointZ.t`.
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
 
-  * `date` is a `t:Date.t/0` or `t:DateTime.t/0`.
+  * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
+    for the day of the moonset.
 
   * `options` is a keyword list of options.
 
   ### Options
 
-  * `:time_zone` is the time zone in which the sunrise
-    is requested. The default is `:default` in which
-    the sunrise time is reported in the time zone of
-    the requested location. `:utc` can be specified or any
-    other time zone name supported by the option
-    `:time_zone_database` is acceptabe.
+  * `:limb` is the part of the Moon's disk that defines the event.
 
-  * `:time_zone_database` represents the module that
-    implements the `Calendar.TimeZoneDatabase` behaviour.
-    The default is the configured Elixir time zone database or
-    any `Calendar.TimeZoneDatabase` implementation (for example Tz.TimeZoneDatabase or Tzdata.TimeZoneDatabase)
-    depending upon which dependency is configured.
+    * `:upper`, the default, puts the upper limb on the apparent
+      horizon, the USNO standard. The event threshold is
+      `−(34′ refraction + semi-diameter)`.
 
-  * `:time_zone_resolver` is a 1-arity function that resolves the
-    time zone name for a given location. The function will receive
-    a `%Geo.Point{cordinates: {lng, lat}}` struct and is expected to
-    return either `{:ok, time_zone_name}` or `{:error, :time_zone_not_found}`.
-    The default is `TzWorld.timezone_at/1` if `:tz_world` is
-    configured.
+    * `:center` puts the centre of the disk on the apparent horizon.
+      The event threshold is `−34′` of refraction only.
+
+  * `:interpolation` is how the Moon's position is evaluated while the
+    event is bisected.
+
+    * `:direct`, the default, evaluates the JPL ephemeris at every step.
+
+    * `:lagrange` interpolates the geocentric position quadratically
+      from three points, as Meeus Ch. 15 does.
+
+  * `:time_zone` is the time zone of the returned date time: `:default`,
+    the time zone of the location, which is the default; `:utc`; or a
+    time zone name.
+
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is the configured
+    Elixir time zone database.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{coordinates: {lng, lat}}` and returns
+    `{:ok, time_zone_name}` or `{:error, reason}`. The default is
+    `TzWorld.timezone_at/1` when `:tz_world` is a dependency.
 
   ### Returns
 
-  * `{:ok, date_time}` with the local time of moonset, or
+  * `{:ok, date_time}` where `date_time` is the moonset in the requested
+    time zone.
 
-  * `{:error, :moon_always_above_horizon}` if the Moon does not
-    set on the given date at the given location.
+  * `{:error, :no_time}` if the Moon does not set on that date at that
+    location, as it can stay above the horizon for a whole day.
+
+  * `{:error, :invalid_limb}` if `:limb` is not `:upper` or `:center`.
+
+  * `{:error, :invalid_interpolation}` if `:interpolation` is not
+    `:direct` or `:lagrange`.
+
+  * `{:error, :time_zone_not_found}` if the requested time zone is
+    unknown.
+
+  * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
+    for the location, which happens when `:tz_world` is not a dependency
+    and no `:time_zone_resolver` is given.
+
+  * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
+    dependency but its data has not been installed. Run
+    `mix tz_world.update` to install it.
+
+  * `{:error, :utc_only_time_zone_database}` if the moonset is requested
+    in a time zone other than UTC and no time zone database is
+    configured.
+
+  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
+
+  ### Examples
+
+      iex> {:ok, date_time} = Astro.moonset({151.20666584, -33.8559799094}, ~D[2019-12-04])
+      iex> date_time
+      #DateTime<2019-12-04 01:13:28.212125+11:00 AEDT Australia/Sydney>
+
+      iex> Astro.moonset({-62.3481, 82.5018}, ~D[2024-01-01])
+      {:error, :no_time}
 
   """
   @doc since: "2.0.0"
   @spec moonset(location, date, options) ::
-          {:ok, DateTime.t()} | {:error, :moon_always_above_horizon}
+          {:ok, DateTime.t()}
+          | {:error,
+             :no_time
+             | :invalid_limb
+             | :invalid_interpolation
+             | :time_zone_not_found
+             | :time_zone_not_resolved
+             | :tz_world_data_not_installed
+             | :utc_only_time_zone_database
+             | :not_found}
 
   def moonset(location, date, options \\ default_options())
 
@@ -1042,15 +1154,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `location` is the latitude, longitude and optionally elevation for
-    the observation site. It can be expressed as:
-
-    * `{lng, lat}` - a tuple with longitude and latitude as floating
-      point numbers. **Note** the order of the arguments.
-
-    * a `t:Geo.Point.t/0` struct to represent a location without elevation.
-
-    * a `t:Geo.PointZ.t/0` struct to represent a location and elevation.
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
 
   * `date` is a `t:Date.t/0` or `t:DateTime.t/0` indicating the evening
     on which crescent visibility is to be evaluated.
@@ -1102,7 +1208,7 @@ defmodule Astro do
   ### Method comparison
 
   | Aspect | Yallop (1997) | Odeh (2006) | Schaefer (1988/2000) |
-  |--------|---------------|-------------|----------------------|
+  |---|---|---|---|
   | Basis | Empirical polynomial | Empirical polynomial | Physical model |
   | Observations | 295 | 737 | N/A (theory) |
   | ARCV type | Geocentric | Topocentric | N/A |
@@ -1147,26 +1253,56 @@ defmodule Astro do
   end
 
   @doc """
-  Same as `new_visible_crescent/3` with `method: :schaefer` but
-  accepts additional atmospheric options.
+  Predicts the visibility of the new crescent moon with Schaefer's
+  method, adjusted for the atmosphere.
 
-  See `new_visible_crescent/3` for full documentation.
+  This is `new_visible_crescent/3` with the `:schaefer` method, taking
+  the same location and date and returning the same classes. See
+  `new_visible_crescent/3` for how the methods compare.
+
+  ### Arguments
+
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
+
+  * `date` is a `t:Date.t/0` or `t:DateTime.t/0` indicating the evening
+    on which crescent visibility is to be evaluated.
+
+  * `method` is `:schaefer`, the only method that takes options.
+
+  * `options` is a keyword list of options.
 
   ### Options
 
-  * `:extinction` — V-band zenith extinction coefficient. Default `0.172`.
+  * `:extinction` is the V-band zenith extinction coefficient. The
+    default is `0.172`, a clean sea-level site. Typical values are
+    `0.12` on a high mountain, `0.17` at sea level and `0.25` in hazy
+    conditions.
 
-  ### Example
+  ### Returns
+
+  * `{:ok, visibility}` where `visibility` is one of the classes `:A`
+    to `:E` described in `new_visible_crescent/3`.
+
+  * `{:error, :no_sunset}` if no sunset occurs on the given date at the
+    given location.
+
+  * `{:error, :not_found}` if the date is outside the range covered by
+    the installed ephemeris.
+
+  ### Examples
 
       iex> location = {39.8579, 21.3891}
-      iex> {:ok, visibility} = Astro.new_visible_crescent(location, ~D[2025-03-31], :schaefer, extinction: 0.25)
-      iex> visibility in [:A, :B, :C, :D, :E]
-      true
+      iex> Astro.new_visible_crescent(location, ~D[2025-03-31], :schaefer, extinction: 0.25)
+      {:ok, :A}
 
   """
   @doc since: "2.1.0"
   @spec new_visible_crescent(location(), date(), :schaefer, keyword()) ::
           {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset | :not_found}
+
+  def new_visible_crescent(location, date, method, options)
 
   def new_visible_crescent(location, date, :schaefer, options) when is_list(options) do
     moment = Time.date_time_to_moment(date)
@@ -1203,17 +1339,17 @@ defmodule Astro do
   ### Returns
 
   * `{:ok, datetime}`, the equinox in the requested time
-    zone, or
+    zone.
 
   * `{:error, :year_out_of_range}` if `year` is outside the
-    supported range of 1000 CE to 3000 CE, or
+    supported range of 1000 CE to 3000 CE.
 
   * `{:error, :time_zone_not_found}` if the time zone is
-    not known to the time zone database, or
+    not known to the time zone database.
 
   * `{:error, :utc_only_time_zone_database}` if a time zone
     other than UTC is requested and no time zone database
-    is configured, or
+    is configured.
 
   * `{:error, :invalid_time_zone_database}` if
     `:time_zone_database` is not a time zone database.
@@ -1305,17 +1441,17 @@ defmodule Astro do
   ### Returns
 
   * `{:ok, datetime}`, the solstice in the requested time
-    zone, or
+    zone.
 
   * `{:error, :year_out_of_range}` if `year` is outside the
-    supported range of 1000 CE to 3000 CE, or
+    supported range of 1000 CE to 3000 CE.
 
   * `{:error, :time_zone_not_found}` if the time zone is
-    not known to the time zone database, or
+    not known to the time zone database.
 
   * `{:error, :utc_only_time_zone_database}` if a time zone
     other than UTC is requested and no time zone database
-    is configured, or
+    is configured.
 
   * `{:error, :invalid_time_zone_database}` if
     `:time_zone_database` is not a time zone database.
@@ -1390,15 +1526,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `location` is the latitude, longitude and
-    optionally elevation for the desired solar noon
-    time. It can be expressed as:
-
-    * `{lng, lat}` - a tuple with longitude and latitude
-      as floating point numbers. **Note** the order of the
-      arguments.
-    * a `Geo.Point.t` struct to represent a location without elevation.
-    * a `Geo.PointZ.t` struct to represent a location and elevation.
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
 
   * `date` is any `t:Calendar.date/0`. A date in a calendar other
     than `Calendar.ISO` is converted to its ISO date first.
@@ -1406,15 +1536,15 @@ defmodule Astro do
   ### Returns
 
   * `{:ok, datetime}`, the UTC datetime of solar noon at the given
-    location on the given date, or
+    location on the given date.
 
   * `{:error, :invalid_date}` if `date` is not a valid date in its
-    calendar, or
+    calendar.
 
   * `{:error, :incompatible_calendars}` if its calendar cannot be
     converted to `Calendar.ISO`.
 
-  ### Example
+  ### Examples
 
       iex> Astro.solar_noon {151.20666584, -33.8559799094}, ~D[2019-12-06]
       {:ok, ~U[2019-12-06 01:45:42Z]}
@@ -1507,15 +1637,9 @@ defmodule Astro do
 
   ### Arguments
 
-  * `location` is the latitude, longitude and
-    optionally elevation for the desired hours of
-    daylight. It can be expressed as:
-
-    * `{lng, lat}` - a tuple with longitude and latitude
-      as floating point numbers. **Note** the order of the
-      arguments.
-    * a `Geo.Point.t` struct to represent a location without elevation
-    * a `Geo.PointZ.t` struct to represent a location and elevation.
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
 
   * `date` is any `t:Date.t/0` in the Gregorian
     calendar (for example, `Calendar.ISO`).
@@ -1584,20 +1708,11 @@ defmodule Astro do
   `%Duration{hour: 24}`) during the polar summer rather than
   capping at `~T[23:59:59]`.
 
-  This function is only defined when running on Elixir 1.17 or
-  later, where the `Duration` module is available.
-
   ### Arguments
 
-  * `location` is the latitude, longitude and optionally
-    elevation for the desired duration of daylight. It can be
-    expressed as:
-
-    * `{lng, lat}` - a tuple with longitude and latitude
-      as floating point numbers. **Note** the order of the
-      arguments.
-    * a `Geo.Point.t` struct to represent a location without elevation.
-    * a `Geo.PointZ.t` struct to represent a location and elevation.
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries an elevation in metres. Longitude comes first.
 
   * `date` is any `t:Date.t/0` in the Gregorian calendar
     (for example, `Calendar.ISO`).

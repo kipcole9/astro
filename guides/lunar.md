@@ -1,11 +1,8 @@
 # Lunar events
 
-Moonrise and moonset, the phase cycle, illumination, and whether the new
-crescent can actually be seen.
+Moonrise and moonset, the phase cycle, illumination, and whether the new crescent can actually be seen.
 
-Examples use Sydney, `{151.20666584, -33.8559799094}`, and assume `:tz_world` is
-running so times come back in the zone at the location. See
-[Getting started](getting_started.html) if that is not set up.
+Examples use Sydney, `{151.20666584, -33.8559799094}`, and assume `:tz_world` is running so times come back in the zone at the location. See [Getting started](getting_started.html) if that is not set up.
 
 ## Moonrise and moonset
 
@@ -26,16 +23,11 @@ iex> Astro.moonrise({151.20666584, -33.8559799094}, ~D[2019-12-04], time_zone: :
 {:ok, ~U[2019-12-04 01:20:56.695846Z]}
 ```
 
-Note the moon set *before* it rose on this date. That is not an error. The moon
-rises roughly 50 minutes later each day, so on about one day a month it skips a
-calendar date entirely and the rise and set you get belong to different cycles.
-Expect `{:error, :no_time}` on those days, and do not assume a rise always
-precedes the set on the same date.
+Note the moon set *before* it rose on this date. That is not an error. The moon rises roughly 50 minutes later each day, so on about one day a month it skips a calendar date entirely and the rise and set you get belong to different cycles. Expect `{:error, :no_time}` on those days, and do not assume a rise always precedes the set on the same date.
 
 ## Phase
 
-`lunar_phase_at/1` returns the phase angle in degrees — the elongation of the
-moon from the sun:
+`lunar_phase_at/1` returns the phase angle in degrees — the elongation of the moon from the sun:
 
 | Angle | Phase |
 |---|---|
@@ -51,8 +43,7 @@ iex> Astro.lunar_phase_at(~D[2019-12-04])
 
 Just under 90°, so a day or so before first quarter.
 
-`lunar_phase_emoji/1` turns an angle into the matching glyph, which is handy for
-display:
+`lunar_phase_emoji/1` turns an angle into the matching glyph, which is handy for display:
 
 ```elixir
 iex> Astro.lunar_phase_emoji(86.8427160627657)
@@ -62,9 +53,7 @@ iex> Astro.lunar_phase_emoji(180)
 "🌕"
 ```
 
-The emoji follow the northern-hemisphere convention, where a waxing moon is lit
-on the right. Seen from Sydney the same moon is lit on the left, so the glyph
-will look mirrored to a southern viewer.
+The emoji follow the northern-hemisphere convention, where a waxing moon is lit on the right. Seen from Sydney the same moon is lit on the left, so the glyph will look mirrored to a southern viewer.
 
 ## Illumination
 
@@ -75,14 +64,11 @@ iex> Astro.illuminated_fraction_of_moon_at(~D[2019-12-04])
 0.4739255300395426
 ```
 
-This is not a linear function of the phase angle. At the quarters the disc is
-half lit, but illumination changes fastest there and slowest near new and full,
-which is why a "nearly full" moon looks full for several nights.
+This is not a linear function of the phase angle. At the quarters the disc is half lit, but illumination changes fastest there and slowest near new and full, which is why a "nearly full" moon looks full for several nights.
 
 ## Finding a phase in time
 
-Rather than asking what the phase is on a date, these search for when a phase
-occurs. All return UTC, because a phase is a single instant worldwide.
+Rather than asking what the phase is on a date, these search for when a phase occurs. All return UTC, because a phase is a single instant worldwide.
 
 ```elixir
 iex> Astro.date_time_new_moon_before(~D[2019-12-04])
@@ -101,15 +87,11 @@ iex> Astro.date_time_lunar_phase_at_or_after(~D[2019-12-04], 180)
 {:ok, ~U[2019-12-12 05:12:21.264711Z]}
 ```
 
-`date_time_lunar_phase_at_or_before/2` searches backwards. Together these are
-what lunar and lunisolar calendars are built from — the new moon instants set
-the month boundaries.
+`date_time_lunar_phase_at_or_before/2` searches backwards. Together these are what lunar and lunisolar calendars are built from — the new moon instants set the month boundaries.
 
 ## Crescent visibility
 
-Knowing when the new moon occurs is not the same as knowing when anyone can see
-the crescent that follows it. That gap matters for calendars that begin a month
-on first sighting.
+Knowing when the new moon occurs is not the same as knowing when anyone can see the crescent that follows it. That gap matters for calendars that begin a month on first sighting.
 
 `new_visible_crescent/3` grades the chance of sighting at sunset on a date:
 
@@ -126,38 +108,31 @@ iex> Astro.new_visible_crescent({-0.1275, 51.5072}, ~D[2025-03-31])
 {:ok, :A}
 ```
 
-The same evening from Sydney, for a different lunation, is hopeless — the moon
-sets too soon after the sun:
+The same evening from Sydney, for a different lunation, is hopeless — the moon sets too soon after the sun:
 
 ```elixir
 iex> Astro.new_visible_crescent({151.20666584, -33.8559799094}, ~D[2019-12-26])
 {:ok, :E}
 ```
 
-Three criteria are available, and they disagree near the limit, which is the
-interesting part:
+Three criteria are available, and they disagree near the limit, which is the interesting part:
 
-* `:odeh` (the default) — Odeh (2006), an empirical polynomial fitted to 737
-  observations using topocentric arc of vision.
-* `:yallop` — Yallop (1997), the same shape of model over 295 observations,
-  using geocentric arc of vision.
-* `:schaefer` — Schaefer (1988/2000), a physical model of atmospheric
-  extinction rather than a fit to observations. It accepts an extinction
-  coefficient via a fourth argument.
+* `:odeh` (the default) — Odeh (2006), an empirical polynomial fitted to 737 observations using topocentric arc of vision.
+
+* `:yallop` — Yallop (1997), the same shape of model over 295 observations, using geocentric arc of vision.
+
+* `:schaefer` — Schaefer (1988/2000), a physical model of atmospheric extinction rather than a fit to observations. It accepts an extinction coefficient via a fourth argument.
 
 ```elixir
 iex> Astro.new_visible_crescent({-0.1275, 51.5072}, ~D[2025-03-31], :yallop)
 {:ok, :A}
 ```
 
-Two error cases are worth distinguishing: `{:error, :no_sunset}` means a polar
-day with no sunset to compute from, a genuine astronomical condition, while
-`{:error, :not_found}` means the date is outside the loaded ephemeris.
+Two error cases are worth distinguishing: `{:error, :no_sunset}` means a polar day with no sunset to compute from, a genuine astronomical condition, while `{:error, :not_found}` means the date is outside the loaded ephemeris.
 
 ## Position of the moon
 
-`moon_position_at/1` gives the geocentric celestial position as a `Geo.PointZ` —
-right ascension and declination in degrees, distance in metres:
+`moon_position_at/1` gives the geocentric celestial position as a `Geo.PointZ` — right ascension and declination in degrees, distance in metres:
 
 ```elixir
 iex> Astro.moon_position_at(~D[2019-12-04])
@@ -168,5 +143,4 @@ iex> Astro.moon_position_at(~D[2019-12-04])
 }
 ```
 
-That distance, roughly 403,500 km, is near apogee — the moon's distance varies
-by about 13% over a month, which is where "supermoon" comes from.
+That distance, roughly 403,500 km, is near apogee — the moon's distance varies by about 13% over a month, which is where "supermoon" comes from.
