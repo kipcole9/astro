@@ -93,18 +93,18 @@ defmodule Mix.Tasks.Astro.BuildEphemeris do
 
     {source, temporary?} = source_kernel(Keyword.get(options, :source))
 
-    try do
-      Mix.shell().info("Extracting #{from}-#{to} from #{source} ...")
+    Mix.shell().info("Extracting #{from}-#{to} from #{source} ...")
 
-      case Subset.extract(source, dest, bodies: bodies, from: from, to: to) do
-        {:ok, report} ->
-          report(report, source)
+    outcome =
+      source
+      |> Subset.extract(dest, bodies: bodies, from: from, to: to)
+      |> report(source)
 
-        {:error, reason} ->
-          Mix.raise("Could not build ephemeris: #{inspect(reason)}")
-      end
-    after
-      if temporary?, do: File.rm(source)
+    if temporary?, do: File.rm(source)
+
+    case outcome do
+      :ok -> :ok
+      {:error, reason} -> Mix.raise("Could not build ephemeris: #{inspect(reason)}")
     end
   end
 
@@ -141,7 +141,9 @@ defmodule Mix.Tasks.Astro.BuildEphemeris do
     {path, false}
   end
 
-  defp report(report, source) do
+  defp report({:error, _reason} = error, _source), do: error
+
+  defp report({:ok, report}, source) do
     {first, last} = report.coverage
     source_mb = megabytes(File.stat!(source).size)
     dest_mb = megabytes(report.bytes)
@@ -153,6 +155,8 @@ defmodule Mix.Tasks.Astro.BuildEphemeris do
       covers    #{first}-#{last}
       segments  #{Enum.map_join(report.segments, ", ", fn {t, c} -> "#{t}->#{c}" end)}
     """)
+
+    :ok
   end
 
   defp megabytes(bytes) do

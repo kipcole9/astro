@@ -265,20 +265,20 @@ defmodule Astro.Ephemeris.Downloader do
     # (System curl works only because its LibreSSL build does not offer TLS 1.3
     # at all.) The pin is kept on the cert-verification fallback path too, since
     # the broken handshake fails regardless of `verify` mode.
-    try do
-      [
-        versions: [:"tlsv1.2"],
-        verify: :verify_peer,
-        cacerts: :public_key.cacerts_get(),
-        depth: 3,
-        customize_hostname_check: [
-          match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+    case :public_key.cacerts_load() do
+      :ok ->
+        [
+          versions: [:"tlsv1.2"],
+          verify: :verify_peer,
+          cacerts: :public_key.cacerts_get(),
+          depth: 3,
+          customize_hostname_check: [
+            match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+          ]
         ]
-      ]
-    rescue
-      _ -> [versions: [:"tlsv1.2"], verify: :verify_none]
-    catch
-      _, _ -> [versions: [:"tlsv1.2"], verify: :verify_none]
+
+      {:error, _reason} ->
+        [versions: [:"tlsv1.2"], verify: :verify_none]
     end
   end
 end

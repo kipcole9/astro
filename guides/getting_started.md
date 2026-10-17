@@ -80,11 +80,11 @@ Three forms are accepted, and they are equivalent:
 ```elixir
 iex> {:ok, datetime} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
 iex> datetime
-#DateTime<2019-12-04 05:37:08.672884+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 05:37:06.211944+11:00 AEDT Australia/Sydney>
 
 iex> {:ok, datetime} = Astro.sunrise(%Geo.Point{coordinates: {151.20666584, -33.8559799094}}, ~D[2019-12-04])
 iex> datetime
-#DateTime<2019-12-04 05:37:08.672884+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 05:37:06.211944+11:00 AEDT Australia/Sydney>
 ```
 
 `Geo.PointZ` also works and carries an altitude, which affects rise and set times slightly.
@@ -114,7 +114,7 @@ Asking for UTC avoids the coordinate-to-zone lookup entirely, so it works with n
 
 ```elixir
 iex> Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04], time_zone: :utc)
-{:ok, ~U[2019-12-04 18:37:05.706214Z]}
+{:ok, ~U[2019-12-04 18:37:03.234290Z]}
 ```
 
 Note this is the sunrise falling inside the UTC day, which near a date boundary is a different event from the one inside the local day.

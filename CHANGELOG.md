@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+* Solar and lunar positions, ecliptic longitudes, latitudes and distances in `Astro.Solar`, `Astro.Lunar` and `Astro.Lunar.CrescentVisibility` are computed from the JPL DE440s ephemeris instead of the Meeus series. Results shift by seconds of arc; event times by seconds.
+
+### Removed
+
+* `Astro.Solar.sun_apparent_longitude/1`, `sun_true_longitude/1`, `sun_equation_of_center/1`, `sun_geometric_mean_anomaly/1`, `earth_orbit_eccentricity/1`, `obliquity_correction/1`, `mean_obliquity_of_ecliptic/1` and `solar_declination/1`, and `Astro.Lunar.mean_lunar_ecliptic_longitude/1` and `lunar_elongation/1`. Use `Astro.Ephemeris` for positions.
+
+### Bug Fixes
+
+* JPL nutation was rotated in the wrong sense, misplacing the Sun and Moon by up to ~30″ and shifting rise and set times by a few seconds. JPL-based equinox instants now match published values to within ~5 seconds.
+
+* The geocentric Sun added the Earth's offset from the Earth–Moon barycentre instead of subtracting it, an error of up to ~9,000 km in solar distance.
+
+* JPL positions are corrected for light time and aberration, so they are apparent rather than geometric positions, as documented.
+
 ## Astro version 2.7.0
 
 This is the changelog for Astro version 2.7.0, released on September 25th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

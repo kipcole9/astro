@@ -70,7 +70,7 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   """
 
-  alias Astro.{Time, Lunar, Solar}
+  alias Astro.{Lunar, Solar, Time}
 
   import Astro.Math,
     only: [
@@ -131,6 +131,8 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   # Scan interval for Schaefer best-time search (fraction of day ≈ 3 minutes)
   @scan_step 3.0 / 1440.0
+
+  @half_pi :math.pi() / 2.0
 
   # ════════════════════════════════════════════════════════════════════════════════
   # Yallop (1997)
@@ -444,8 +446,6 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   # Air mass using Kasten & Young approximation.
   # z is zenith distance in radians.
-  @half_pi :math.pi() / 2.0
-
   defp air_mass(z) when z < @half_pi do
     cos_z = :math.cos(z)
     1.0 / (cos_z + 0.025 * :math.exp(-11.0 * cos_z))

@@ -2,39 +2,27 @@ defmodule Astro.Solar do
   @moduledoc """
   Solar position, orbital mechanics, and equinox/solstice calculations.
 
-  This module implements the analytical (polynomial + periodic-term)
-  algorithms from Jean Meeus' *Astronomical Algorithms* for the Sun's
-  geometric and apparent position, declination, equation of time, and
-  equinox/solstice events.
+  The Sun's apparent position is evaluated from the JPL DE440s
+  ephemeris via `Astro.Ephemeris`. The Meeus *Astronomical Algorithms*
+  series are retained only for the geometric mean longitude used by
+  the equation of time and for the initial estimate that seeds the
+  equinox and solstice search.
 
-  For sunrise and sunset calculations see `Astro.Solar.SunRiseSet`,
-  which uses the JPL DE440s ephemeris rather than the Meeus
-  approximations in this module.
+  For sunrise and sunset calculations see `Astro.Solar.SunRiseSet`.
 
   ## Function groups
 
   ### Position
 
   * `solar_position/1` — right ascension, declination and distance
-  * `solar_declination/1` — declination from Julian centuries
-  * `solar_distance/1` — Earth–Sun distance in AU
-  * `solar_ecliptic_longitude/1` — ecliptic longitude at a moment
+  * `solar_ecliptic_longitude/1` — apparent ecliptic longitude at a moment
   * `solar_ecliptic_longitude_after/2`, `estimate_prior_solar_ecliptic_longitude/2`
+  * `sun_geometric_mean_longitude/1` — mean longitude from Julian centuries
 
-  ### Apparent longitude and related
-
-  * `sun_apparent_longitude/1` — apparent longitude (nutation + aberration corrected)
-  * `sun_apparent_longitude_alt/1` — higher-precision 49-term series (Meeus Table 25.D)
-  * `sun_true_longitude/1`, `sun_equation_of_center/1`
-  * `sun_geometric_mean_longitude/1`, `sun_geometric_mean_anomaly/1`
-  * `aberration/1`
-
-  ### Time and geometry
+  ### Time
 
   * `equation_of_time/1` — difference between apparent and mean solar time
   * `solar_noon_utc/2` — UTC solar noon for a given longitude
-  * `earth_orbit_eccentricity/1`
-  * `obliquity_correction/1`, `mean_obliquity_of_ecliptic/1`
 
   ### Equinoxes and solstices
 
@@ -53,99 +41,20 @@ defmodule Astro.Solar do
   to convert between the two.
   """
 
-  alias Astro.{Math, Time, Earth, Coordinates}
+  alias Astro.{Math, Time}
 
   import Time,
     only: [
-      minutes_per_day: 0,
-      julian_centuries_from_moment: 1
+      minutes_per_day: 0
     ]
 
   import Math,
     only: [
-      sin: 1,
-      cos: 1,
-      sigma: 2,
       deg: 1,
       mod: 2
     ]
 
   @minutes_per_degree 4.0
-
-  # Apparent longitude periodic terms from Meeus Table 25.D (49 terms).
-  # Each row: coefficient, addend (degrees), multiplier (degrees per Julian century).
-  # Parsed at compile time into three parallel lists for use in sun_apparent_longitude_alt/1.
-
-  @sun_apparent_longitude_terms """
-  403406  270.54861      0.9287892
-  195207  340.19128  35999.1376958
-  119433   63.91854  35999.4089666
-  112392  331.26220  35998.7287385
-    3891  317.843    71998.20261
-    2819   86.631    71998.4403
-    1721  240.052    36000.35726
-     660  310.26     71997.4812
-     350  247.23     32964.4678
-     334  260.87       -19.4410
-     314  297.82    445267.1117
-     268  343.14     45036.8840
-     242  166.79         3.1008
-     234   81.53     22518.4434
-     158    3.50       -19.9739
-     132  132.75     65928.9345
-     129  182.95      9038.0293
-     114  162.03      3034.7684
-      99   29.8      33718.148
-      93  266.4       3034.448
-      86  249.2      -2280.773
-      78  157.6      29929.992
-      72  257.8      31556.493
-      68  185.1        149.588
-      64   69.9       9037.750
-      46    8.0     107997.405
-      38  197.1      -4444.176
-      37  250.4        151.771
-      32   65.3      67555.316
-      29  162.7      31556.080
-      28  341.5      -4561.540
-      27  291.6     107996.706
-      27   98.5       1221.655
-      25  146.7      62894.167
-      24  110.0      31437.369
-      21    5.2      14578.298
-      21  342.6     -31931.757
-      20  230.9      34777.243
-      18  256.1       1221.999
-      17   45.3      62894.511
-      14  242.9      -4442.039
-      13  115.2     107997.909
-      13  151.8        119.066
-      13  285.3      16859.071
-      12   53.3         -4.578
-      10  126.6      26895.292
-      10  205.7        -39.127
-      10   85.9      12297.536
-      10  146.1      90073.778
-  """
-
-  @sal_parsed @sun_apparent_longitude_terms
-              |> String.split("\n", trim: true)
-              |> Enum.map(fn line ->
-                line
-                |> String.split()
-                |> Enum.map(fn s ->
-                  case Float.parse(s) do
-                    {f, ""} -> f
-                    {f, _} -> f
-                  end
-                end)
-                |> List.to_tuple()
-              end)
-
-  # The parsed rows are already the {coefficient, addend, multiplier} terms
-  # sigma/2 sums over. Matching each one here fails the build on a malformed
-  # row rather than at the first call.
-  @sal_terms Enum.map(@sal_parsed, fn {_coefficient, _addend, _multiplier} = term -> term end)
 
   # Equinox/solstice periodic terms from Meeus Table 27.C (24 terms).
   # Each row: amplitude, addend (degrees), multiplier (degrees per Julian century).
@@ -202,27 +111,20 @@ defmodule Astro.Solar do
     astronomical: 108.0
   }
 
+  @valid_solar_elevation Map.keys(@solar_elevation)
+
   @doc false
   def solar_position(t) do
-    julian_centuries = julian_centuries_from_moment(t)
-    apparent_longitude = sun_apparent_longitude(julian_centuries)
-    declination = solar_declination(julian_centuries)
-    distance = solar_distance(julian_centuries)
-    right_ascension = Coordinates.right_ascension(t, 0.0, apparent_longitude)
+    {:ok, {right_ascension, declination, distance_km}} =
+      Astro.Ephemeris.sun_position_from_moment(t)
 
-    {right_ascension, declination, distance}
+    # Callers expect right ascension in (-180, 180], the range of the
+    # previous atan2-based result, so it can occupy a Geo.PointZ longitude.
+    right_ascension =
+      if right_ascension > 180.0, do: right_ascension - 360.0, else: right_ascension
+
+    {right_ascension, declination, Math.km_to_au(distance_km)}
   end
-
-  @doc false
-  def solar_distance(julian_centuries) do
-    eccentricity = earth_orbit_eccentricity(julian_centuries)
-    mean_solar_anomaly = sun_geometric_mean_anomaly(julian_centuries)
-    true_anomaly = mean_solar_anomaly + julian_centuries
-
-    1.000001018 * (1.0 - eccentricity * eccentricity) / (1 + eccentricity * cos(true_anomaly))
-  end
-
-  @valid_solar_elevation Map.keys(@solar_elevation)
 
   @doc false
   def solar_elevation(solar_elevation) when solar_elevation in @valid_solar_elevation do
@@ -231,44 +133,6 @@ defmodule Astro.Solar do
 
   def solar_elevation(solar_elevation) when is_number(solar_elevation) do
     solar_elevation
-  end
-
-  @doc """
-  Returns the solar declination in degrees.
-
-  ### Arguments
-
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
-
-  ### Returns
-
-  * the solar declination in degrees as a `float`.
-
-  ### Notes
-
-  The solar declination is the angle between the direction
-  of the centre of the solar disk measured from Earth's
-  centre and the equatorial plane. It ranges from approximately
-  +23.44° at the June solstice to −23.44° at the December
-  solstice, and is 0° at the equinoxes.
-
-  ### Examples
-
-      iex> Astro.Solar.solar_declination(0.0)
-      ...> |> Float.round(4)
-      -23.0325
-
-  """
-  @spec solar_declination(float) :: float()
-  def solar_declination(julian_centuries) do
-    correction = obliquity_correction(julian_centuries)
-    lambda = sun_apparent_longitude(julian_centuries)
-    sint = Math.sin(correction) * Math.sin(lambda)
-
-    sint
-    |> :math.asin()
-    |> Math.to_degrees()
   end
 
   @doc """
@@ -301,12 +165,12 @@ defmodule Astro.Solar do
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2024-03-20])
       iex> Astro.Solar.solar_ecliptic_longitude(moment)
-      359.87362951019264
+      359.87145169401623
 
   """
   def solar_ecliptic_longitude(t) do
-    c = Time.julian_centuries_from_moment(t)
-    sun_apparent_longitude(c)
+    {:ok, {longitude, _latitude, _distance}} = Astro.Ephemeris.sun_ecliptic_position(t)
+    longitude
   end
 
   @doc """
@@ -385,136 +249,6 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns the Sun's apparent longitude in degrees.
-
-  ### Arguments
-
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
-
-  ### Returns
-
-  * the Sun's apparent longitude in degrees as a `float`,
-    in the range 0..360.
-
-  ### Notes
-
-  The apparent longitude is the Sun's celestial longitude
-  corrected for aberration and nutation, as opposed to
-  mean longitude.
-
-  An equinox is the instant when the Sun's apparent
-  geocentric longitude is 0° (northward equinox) or
-  180° (southward equinox).
-
-  ### Examples
-
-      iex> Astro.Solar.sun_apparent_longitude(0.0)
-      280.3725548788095
-
-  """
-  @spec sun_apparent_longitude(Time.julian_centuries()) :: float()
-  def sun_apparent_longitude(julian_centuries) do
-    true_longitude = sun_true_longitude(julian_centuries)
-    omega = omega(julian_centuries)
-
-    (true_longitude - 0.00569 - 0.00478 * :math.sin(Math.to_radians(omega)))
-    |> Math.mod(360)
-  end
-
-  defp omega(julian_centuries) do
-    125.04 - 1934.136 * julian_centuries
-  end
-
-  @doc false
-  @spec sun_apparent_longitude_alt(Time.julian_centuries()) :: Time.season()
-  def sun_apparent_longitude_alt(julian_centuries) do
-    lambda =
-      deg(282.7771834) + deg(36000.76953744) * julian_centuries +
-        deg(0.000005729577951308232) *
-          sigma(@sal_terms, fn {x, y, z} -> x * sin(y + z * julian_centuries) end)
-
-    {nutation, _, _} = Earth.nutation(julian_centuries)
-    mod(lambda + aberration(julian_centuries) + nutation, 360.0)
-  end
-
-  @doc false
-  @spec aberration(Time.moment()) :: Astro.angle()
-  def aberration(c) do
-    deg(0.0000974) * cos(deg(177.63) + deg(35999.01848) * c) - deg(0.005575)
-  end
-
-  @doc """
-  Returns the Sun's true longitude in degrees.
-
-  ### Arguments
-
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
-
-  ### Returns
-
-  * the Sun's true longitude in degrees as a `float`.
-
-  ### Notes
-
-  In celestial mechanics, true longitude is the ecliptic
-  longitude at which an orbiting body could actually be
-  found if its inclination were zero. It is the sum of the
-  geometric mean longitude and the equation of the centre.
-
-  ### Examples
-
-      iex> Astro.Solar.sun_true_longitude(0.0)
-      280.38215851056276
-
-  """
-  @spec sun_true_longitude(float) :: float()
-  def sun_true_longitude(julian_centuries) do
-    sun_geometric_mean_longitude(julian_centuries) + sun_equation_of_center(julian_centuries)
-  end
-
-  @doc """
-  Returns the Sun's equation of the centre in degrees.
-
-  ### Arguments
-
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
-
-  ### Returns
-
-  * the equation of the centre in degrees as a `float`.
-
-  ### Notes
-
-  In two-body Keplerian orbital mechanics, the equation
-  of the centre is the angular difference between the
-  actual position of a body in its elliptical orbit and
-  the position it would occupy if its motion were uniform,
-  in a circular orbit of the same period. It is defined
-  as the difference between the true anomaly ν and the
-  mean anomaly M.
-
-  ### Examples
-
-      iex> Astro.Solar.sun_equation_of_center(0.0)
-      -0.08430148943719645
-
-  """
-  @spec sun_equation_of_center(float) :: float()
-  def sun_equation_of_center(julian_centuries) do
-    mrad = sun_geometric_mean_anomaly(julian_centuries) |> Math.to_radians()
-    sinm = :math.sin(mrad)
-    sin2m = :math.sin(2 * mrad)
-    sin3m = :math.sin(3 * mrad)
-
-    sinm * (1.914602 - julian_centuries * (0.004817 + 0.000014 * julian_centuries)) +
-      sin2m * (0.019993 - 0.000101 * julian_centuries) +
-      sin3m * 0.000289
-  end
-
-  @doc """
   Returns solar noon as minutes since midnight UTC.
 
   ### Arguments
@@ -540,7 +274,7 @@ defmodule Astro.Solar do
   ### Examples
 
       iex> Astro.Solar.solar_noon_utc(0.0, 151.2093)
-      1328.3378566361976
+      1328.2818354717708
 
   """
   @spec solar_noon_utc(float, Astro.longitude()) :: float()
@@ -595,92 +329,18 @@ defmodule Astro.Solar do
   ### Examples
 
       iex> Astro.Solar.equation_of_time(0.0)
-      -3.3012588023605938
+      -3.244441990189671
 
   """
   @spec equation_of_time(float) :: float()
   def equation_of_time(julian_centuries) when is_float(julian_centuries) do
-    epsilon = obliquity_correction(julian_centuries) |> Math.to_radians()
-    sgml = sun_geometric_mean_longitude(julian_centuries) |> Math.to_radians()
-    sgma = sun_geometric_mean_anomaly(julian_centuries) |> Math.to_radians()
-    eoe = earth_orbit_eccentricity(julian_centuries)
+    moment = Time.moment_from_julian_centuries(julian_centuries)
+    {:ok, {right_ascension, _dec, _dist}} = Astro.Ephemeris.sun_position_from_moment(moment)
 
-    y = :math.tan(epsilon / 2.0)
-    y = y * y
-
-    sin2l0 = :math.sin(2.0 * sgml)
-    sin4l0 = :math.sin(4.0 * sgml)
-    cos2l0 = :math.cos(2.0 * sgml)
-    sinm = :math.sin(sgma)
-    sin2m = :math.sin(2.0 * sgma)
-
-    eq_time =
-      y * sin2l0 - 2.0 * eoe * sinm + 4.0 * eoe * y * sinm * cos2l0 - 0.5 * y * y * sin4l0 -
-        1.25 * eoe * eoe * sin2m
-
-    Math.to_degrees(eq_time) * 4.0
-  end
-
-  @doc """
-  Returns the Earth's orbital eccentricity.
-
-  ### Arguments
-
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
-
-  ### Returns
-
-  * a unitless value of eccentricity as a `float`.
-    A value of 0 is a circular orbit, values between
-    0 and 1 form an elliptic orbit, 1 is a parabolic
-    escape orbit, and greater than 1 is a hyperbola.
-    Earth's current eccentricity is approximately 0.0167.
-
-  ### Examples
-
-      iex> Astro.Solar.earth_orbit_eccentricity(0.0)
-      0.016708634
-
-  """
-  @spec earth_orbit_eccentricity(float) :: float()
-  def earth_orbit_eccentricity(julian_centuries) do
-    0.016708634 - julian_centuries * (0.000042037 + 0.0000001267 * julian_centuries)
-  end
-
-  @doc """
-  Returns the Sun's geometric mean anomaly in degrees.
-
-  ### Arguments
-
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
-
-  ### Returns
-
-  * the mean anomaly in degrees as a `float`,
-    in the range 0..360.
-
-  ### Notes
-
-  In celestial mechanics, the mean anomaly is the fraction
-  of an elliptical orbit's period that has elapsed since the
-  orbiting body passed periapsis, expressed as an angle. It is
-  the angular distance from the pericentre which a fictitious
-  body would have if it moved in a circular orbit, with constant
-  speed, in the same orbital period as the actual body in its
-  elliptical orbit.
-
-  ### Examples
-
-      iex> Astro.Solar.sun_geometric_mean_anomaly(0.0)
-      357.52911
-
-  """
-  @spec sun_geometric_mean_anomaly(float) :: float()
-  def sun_geometric_mean_anomaly(julian_centuries) do
-    anomaly = 357.52911 + julian_centuries * (35999.05029 - 0.0001537 * julian_centuries)
-    Math.mod(anomaly, 360.0)
+    mean_longitude = sun_geometric_mean_longitude(julian_centuries)
+    diff = mean_longitude - right_ascension
+    diff = diff - 360.0 * Float.round(diff / 360.0, 0)
+    diff * @minutes_per_degree
   end
 
   @doc """
@@ -714,81 +374,8 @@ defmodule Astro.Solar do
   """
   @spec sun_geometric_mean_longitude(float) :: float()
   def sun_geometric_mean_longitude(julian_centuries) do
-    longitude = 280.46646 + julian_centuries * (36000.76983 + 0.0003032 * julian_centuries)
+    longitude = 280.46646 + julian_centuries * (36_000.76983 + 0.0003032 * julian_centuries)
     Math.mod(longitude, 360.0)
-  end
-
-  @doc """
-  Returns the corrected obliquity of the ecliptic in degrees.
-
-  ### Arguments
-
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
-
-  ### Returns
-
-  * the corrected obliquity of the ecliptic in degrees
-    as a `float`.
-
-  ### Notes
-
-  The corrected obliquity accounts for the nutation in
-  obliquity (a short-period oscillation), in addition
-  to the mean obliquity which changes slowly over
-  millennia.
-
-  ### Examples
-
-      iex> Astro.Solar.obliquity_correction(0.0)
-      23.437821291789415
-
-  """
-  @spec obliquity_correction(float) :: float()
-  def obliquity_correction(julian_centuries) do
-    obliquity_of_ecliptic = mean_obliquity_of_ecliptic(julian_centuries)
-
-    omega = omega(julian_centuries)
-    correction = obliquity_of_ecliptic + 0.00256 * :math.cos(Math.to_radians(omega))
-    Math.mod(correction, 360.0)
-  end
-
-  @doc """
-  Returns the mean obliquity of the ecliptic in degrees.
-
-  ### Arguments
-
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
-
-  ### Returns
-
-  * the mean obliquity of the ecliptic in degrees
-    as a `float`.
-
-  ### Notes
-
-  Obliquity is the angle between the Earth's rotational
-  axis and the perpendicular to its orbital plane. Earth's
-  current mean obliquity is about 23.44° and decreasing
-  very slowly over millennia. This function returns the
-  mean value without the short-period nutation correction;
-  see `obliquity_correction/1` for the corrected value.
-
-  ### Examples
-
-      iex> Astro.Solar.mean_obliquity_of_ecliptic(0.0)
-      23.43929111111111
-
-  """
-  @spec mean_obliquity_of_ecliptic(float) :: float()
-  def mean_obliquity_of_ecliptic(julian_centuries) do
-    seconds =
-      21.448 -
-        julian_centuries * (46.8150 + julian_centuries * (0.00059 - julian_centuries * 0.001813))
-
-    # in degrees
-    23.0 + (26.0 + seconds / 60.0) / 60.0
   end
 
   @doc """

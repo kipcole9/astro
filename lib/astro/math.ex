@@ -36,6 +36,10 @@ defmodule Astro.Math do
     m / @au_to_m
   end
 
+  def km_to_au(km) do
+    km / @au_to_km
+  end
+
   def degrees(degrees) do
     :math.fmod(degrees, 360.0)
   end
@@ -311,10 +315,10 @@ defmodule Astro.Math do
   def final(k, pred) do
     new_k = k + 1
 
-    if !pred.(new_k) do
-      k
-    else
+    if pred.(new_k) do
       final(new_k, pred)
+    else
+      k
     end
   end
 

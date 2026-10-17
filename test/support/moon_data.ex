@@ -1,4 +1,6 @@
 defmodule Astro.Moon.TestData do
+  @moduledoc false
+
   @moon_phase "moon_phase_2021"
   @year 2021
 

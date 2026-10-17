@@ -96,7 +96,7 @@ defmodule Astro do
 
   """
 
-  alias Astro.{Solar, Lunar, Location, Time, Math, Guards}
+  alias Astro.{Guards, Location, Lunar, Math, Solar, Time}
 
   import Astro.Math,
     only: [
@@ -127,6 +127,10 @@ defmodule Astro do
   @type options :: keyword()
 
   @seconds_per_day 86_400
+
+  @emoji_base 0x1F310
+  @emoji_phase_count 8
+  @emoji_phase 360.0 / @emoji_phase_count
 
   # Selects the preferred time zone database at compile time based on
   # which implementation (`:tz` or `:tzdata`) is loaded — `:tz` is
@@ -190,7 +194,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
-      {343.33472178197934, 77.8645848744289}
+      {343.3188030033631, 77.86324225944439}
 
   """
 
@@ -257,7 +261,7 @@ defmodule Astro do
 
       iex> Astro.sun_position_at(~D[1992-10-13])
       %Geo.PointZ{
-        coordinates: {-161.61854343627374, -7.785324796344723, 149169604737.93973},
+        coordinates: {-161.62124021392057, -7.784068610032727, 149240324714.5998},
         properties: %{object: :sun, reference: :celestial},
         srid: nil
       }
@@ -314,7 +318,7 @@ defmodule Astro do
 
       iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
       %Geo.PointZ{
-        coordinates: {134.69343, 13.766512, 368409007.322444},
+        coordinates: {134.697256, 13.765116, 368404879.697206},
         properties: %{object: :moon, reference: :celestial},
         srid: nil
       }
@@ -462,7 +466,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:50:07.490242Z]}
+      {:ok, ~U[2021-08-08 13:50:07.353761Z]}
 
   """
   @doc since: "2.0.0"
@@ -548,7 +552,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.lunar_phase_at ~U[2021-08-22 12:02:02.816534Z]
-      180.00004404669988
+      180.00068292003178
 
       iex> Astro.lunar_phase_at(~U[2021-07-10 01:16:34.022607Z])
       3.6600909621461326e-6
@@ -614,10 +618,6 @@ defmodule Astro do
       "🌕"
 
   """
-  @emoji_base 0x1F310
-  @emoji_phase_count 8
-  @emoji_phase 360.0 / @emoji_phase_count
-
   @spec lunar_phase_emoji(phase()) :: String.t()
   def lunar_phase_emoji(phase) when is_lunar_phase(phase) do
     # Each symbol covers 45 degrees centred on its phase, so the new moon's
@@ -649,7 +649,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
-      {:ok, ~U[2021-07-10 01:16:34.022607Z]}
+      {:ok, ~U[2021-07-10 01:16:33.727105Z]}
 
   """
 
@@ -697,7 +697,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
-      {:ok, ~U[2021-08-22 12:02:02.816534Z]}
+      {:ok, ~U[2021-08-22 12:01:57.906773Z]}
 
   """
 
@@ -803,7 +803,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
       iex> date_time
-      #DateTime<2019-12-04 05:37:08.672884+11:00 AEDT Australia/Sydney>
+      #DateTime<2019-12-04 05:37:06.211944+11:00 AEDT Australia/Sydney>
 
       iex> Astro.sunrise({-62.3481, 82.5018}, ~D[2019-12-04])
       {:error, :no_time}
@@ -905,7 +905,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
       iex> date_time
-      #DateTime<2019-12-04 19:53:20.995687+11:00 AEDT Australia/Sydney>
+      #DateTime<2019-12-04 19:53:18.161182+11:00 AEDT Australia/Sydney>
 
       iex> Astro.sunset({-62.3481, 82.5018}, ~D[2019-12-04])
       {:error, :no_time}
@@ -1010,7 +1010,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = Astro.moonrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
       iex> date_time
-      #DateTime<2019-12-04 12:20:56.695846+11:00 AEDT Australia/Sydney>
+      #DateTime<2019-12-04 12:20:54.394229+11:00 AEDT Australia/Sydney>
 
       iex> Astro.moonrise({-62.3481, 82.5018}, ~D[2024-01-01])
       {:error, :no_time}
@@ -1119,7 +1119,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = Astro.moonset({151.20666584, -33.8559799094}, ~D[2019-12-04])
       iex> date_time
-      #DateTime<2019-12-04 01:13:28.212125+11:00 AEDT Australia/Sydney>
+      #DateTime<2019-12-04 01:13:25.833583+11:00 AEDT Australia/Sydney>
 
       iex> Astro.moonset({-62.3481, 82.5018}, ~D[2024-01-01])
       {:error, :no_time}
@@ -1547,7 +1547,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.solar_noon {151.20666584, -33.8559799094}, ~D[2019-12-06]
-      {:ok, ~U[2019-12-06 01:45:42Z]}
+      {:ok, ~U[2019-12-06 01:45:37Z]}
 
   ### Notes
 
@@ -1595,13 +1595,13 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.sun_apparent_longitude ~D[2019-03-21]
-      0.08035853207991295
+      0.08388697548688041
       iex> Astro.sun_apparent_longitude ~D[2019-06-22]
-      90.32130455695378
+      90.32184913672332
       iex> Astro.sun_apparent_longitude ~D[2019-09-23]
-      179.68691978440197
+      179.68056395276588
       iex> Astro.sun_apparent_longitude ~D[2019-12-23]
-      270.83941087483504
+      270.83530633318776
 
   ### Notes
 
@@ -1621,9 +1621,8 @@ defmodule Astro do
   @spec sun_apparent_longitude(Calendar.date()) :: degrees()
   def sun_apparent_longitude(date) do
     date
-    |> Time.julian_day_from_date()
-    |> Time.julian_centuries_from_julian_day()
-    |> Solar.sun_apparent_longitude()
+    |> Time.date_time_to_moment()
+    |> Solar.solar_ecliptic_longitude()
   end
 
   @doc """
@@ -1656,7 +1655,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.hours_of_daylight({151.20666584, -33.8559799094}, ~D[2019-12-10])
-      {:ok, ~T[14:20:51]}
+      {:ok, ~T[14:20:50]}
 
       # No sunset in summer
       iex> Astro.hours_of_daylight({-62.3481, 82.5018}, ~D[2019-06-07])
@@ -1729,7 +1728,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.duration_of_daylight({151.20666584, -33.8559799094}, ~D[2019-12-10])
-      {:ok, %Duration{hour: 14, minute: 20, second: 51}}
+      {:ok, %Duration{hour: 14, minute: 20, second: 50}}
 
       # 24 hours of daylight in the polar summer, uncapped
       iex> Astro.duration_of_daylight({-62.3481, 82.5018}, ~D[2019-06-07])
@@ -1777,36 +1776,35 @@ defmodule Astro do
     # sunset reuses it rather than repeating the tz_world lookup. Otherwise
     # sunset resolves exactly as before, which keeps a location with no sunrise
     # -- a polar point in open ocean, say -- behaving as it always has.
-    sunset_options =
-      case sunrise_result do
-        {:ok, %DateTime{time_zone: time_zone}} -> [time_zone: time_zone]
-        _other -> []
-      end
+    sunset_result = sunset(location, date, sunset_options(sunrise_result))
+    daylight_from_events(sunrise_result, sunset_result, location, date)
+  end
 
-    case {sunrise_result, sunset(location, date, sunset_options)} do
-      {{:ok, sunrise}, {:ok, sunset}} ->
-        {:ok, daylight_between(sunrise, sunset)}
+  defp sunset_options({:ok, %DateTime{time_zone: time_zone}}), do: [time_zone: time_zone]
+  defp sunset_options(_sunrise_result), do: []
 
-      {{:error, :no_time}, {:ok, sunset}} ->
-        {:ok, seconds_since_midnight(sunset)}
+  defp daylight_from_events({:ok, sunrise}, {:ok, sunset}, _location, _date),
+    do: {:ok, daylight_between(sunrise, sunset)}
 
-      {{:ok, sunrise}, {:error, :no_time}} ->
-        {:ok, @seconds_per_day - seconds_since_midnight(sunrise)}
+  defp daylight_from_events({:error, :no_time}, {:ok, sunset}, _location, _date),
+    do: {:ok, seconds_since_midnight(sunset)}
 
-      {{:error, :no_time}, {:error, :no_time}} ->
-        if Solar.SunRiseSet.sun_above_horizon?(location, date_to_moment(date)) do
-          {:ok, @seconds_per_day}
-        else
-          {:ok, 0}
-        end
+  defp daylight_from_events({:ok, sunrise}, {:error, :no_time}, _location, _date),
+    do: {:ok, @seconds_per_day - seconds_since_midnight(sunrise)}
 
-      {{:error, reason}, _} ->
-        {:error, reason}
-
-      {_, {:error, reason}} ->
-        {:error, reason}
+  defp daylight_from_events({:error, :no_time}, {:error, :no_time}, location, date) do
+    if Solar.SunRiseSet.sun_above_horizon?(location, date_to_moment(date)) do
+      {:ok, @seconds_per_day}
+    else
+      {:ok, 0}
     end
   end
+
+  defp daylight_from_events({:error, reason}, _sunset_result, _location, _date),
+    do: {:error, reason}
+
+  defp daylight_from_events(_sunrise_result, {:error, reason}, _location, _date),
+    do: {:error, reason}
 
   # When sunset precedes sunrise on the same calendar day the Sun was already
   # up at local midnight, set briefly, then rose again — daylight is the whole

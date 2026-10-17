@@ -88,12 +88,12 @@ end
 # Sunrise in Sydney on December 4th
 iex> {:ok, datetime} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
 iex> datetime
-#DateTime<2019-12-04 05:37:08.672884+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 05:37:06.211944+11:00 AEDT Australia/Sydney>
 
 # Sunset in Sydney on December 4th
 iex> {:ok, datetime} = Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
 iex> datetime
-#DateTime<2019-12-04 19:53:20.995687+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 19:53:18.161182+11:00 AEDT Australia/Sydney>
 
 # Sunset in the town of Alert in Nunavut, Canada
 # ...doesn't exist since there is no sunset in summer

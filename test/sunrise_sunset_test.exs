@@ -120,7 +120,7 @@ defmodule Astro.SunriseSunsetTest do
 
       assert actual.hour == 4
       assert actual.minute == 9
-      assert_in_delta actual.second, 54, 1
+      assert_in_delta actual.second, 50, 1
     end
 
     test "London dawn" do
@@ -130,8 +130,8 @@ defmodule Astro.SunriseSunsetTest do
                Astro.sunrise(london_z, ~D[2024-05-26], solar_elevation: :civil)
 
       assert actual.hour == 4
-      assert actual.minute == 10
-      assert_in_delta actual.second, 3, 1
+      assert actual.minute == 9
+      assert_in_delta actual.second, 59, 1
     end
   end
 

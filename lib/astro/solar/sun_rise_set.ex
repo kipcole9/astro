@@ -110,7 +110,7 @@ defmodule Astro.Solar.SunRiseSet do
 
   """
 
-  alias Astro.{Ephemeris, Coordinates, Time}
+  alias Astro.{Coordinates, Ephemeris, Time}
 
   # Coarse scan step (seconds). The Sun is always visible for at least a few
   # minutes when it rises, so 24-minute steps bracket the event reliably.
@@ -409,27 +409,22 @@ defmodule Astro.Solar.SunRiseSet do
     with {:ok, h0} <- h0_from_options(options),
          :ok <- ephemeris_available(dt_start),
          :ok <- ephemeris_available(dt_end) do
-      find_sun_event(dt_start, dt_end, event, date, location, lat, lng, h0, options)
+      site = %{lat: lat, lng: lng, h0: h0}
+      find_sun_event(dt_start, dt_end, event, date, location, site, options)
     end
   end
 
-  defp find_sun_event(dt_start, dt_end, event, date, location, lat, lng, h0, options) do
-    scan_pairs =
+  defp find_sun_event(dt_start, dt_end, event, date, location, site, options) do
+    %{lat: lat, lng: lng, h0: h0} = site
+
+    brackets =
       Stream.iterate(dt_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= dt_end))
       |> Enum.map(fn dynamical_time ->
         {dynamical_time, altitude_f(dynamical_time, lat, lng, h0)}
       end)
-
-    brackets =
-      scan_pairs
       |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.filter(fn [{_dt1, f1}, {_dt2, f2}] ->
-        case event do
-          :rise -> f1 < 0.0 and f2 >= 0.0
-          :set -> f1 > 0.0 and f2 <= 0.0
-        end
-      end)
+      |> Enum.filter(fn [{_dt1, f1}, {_dt2, f2}] -> crossing?(event, f1, f2) end)
 
     # The zone for a fixed location is the same for every candidate bracket, so
     # it is resolved once rather than per bracket: a tz_world lookup can cost
@@ -439,28 +434,34 @@ defmodule Astro.Solar.SunRiseSet do
 
     result =
       Enum.find_value(brackets, fn [{dt_lo, f_lo}, {dt_hi, f_hi}] ->
-        dt_event = bisect(dt_lo, f_lo, dt_hi, f_hi, lat, lng, h0, @bisect_max)
-
-        with {:ok, utc_dt} <-
-               Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event)) do
-          case to_requested_zone(utc_dt, time_zone, options) do
-            {:ok, local_dt}
-            when local_dt.year == date.year and
-                   local_dt.month == date.month and
-                   local_dt.day == date.day ->
-              {:ok, local_dt}
-
-            {:ok, _} ->
-              nil
-
-            error ->
-              error
-          end
-        end
+        dt_lo
+        |> bisect(f_lo, dt_hi, f_hi, lat, lng, h0, @bisect_max)
+        |> event_on_date(date, time_zone, options)
       end)
 
     result || {:error, :no_time}
   end
+
+  defp crossing?(:rise, f1, f2), do: f1 < 0.0 and f2 >= 0.0
+  defp crossing?(:set, f1, f2), do: f1 > 0.0 and f2 <= 0.0
+
+  # The event in the requested zone if it falls on `date`, `nil` if it falls
+  # on a neighbouring day, or the error from either conversion.
+  defp event_on_date(dt_event, date, time_zone, options) do
+    with {:ok, utc_dt} <- Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event)),
+         {:ok, local_dt} <- to_requested_zone(utc_dt, time_zone, options) do
+      on_date(local_dt, date)
+    end
+  end
+
+  defp on_date(%{year: year, month: month, day: day} = local_dt, %{
+         year: year,
+         month: month,
+         day: day
+       }),
+       do: {:ok, local_dt}
+
+  defp on_date(_local_dt, _date), do: nil
 
   # The ephemeris covers a bounded span of years; report an out-of-range time
   # as a clean error rather than letting the unmatched result crash the caller.

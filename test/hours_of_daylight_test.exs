@@ -32,8 +32,8 @@ defmodule Astro.HoursOfDaylightTest do
     # fix this returned {:error, :invalid_time}.
     test "the reported Fairbanks case returns the correct daylight" do
       {:ok, time} = Astro.hours_of_daylight(@fairbanks, ~D[2026-06-13])
-      # ≈ 21h34m55s.
-      assert_in_delta seconds_of_day(time), 77_695, 2
+      # ≈ 21h35m12s.
+      assert_in_delta seconds_of_day(time), 77_712, 2
     end
 
     test "every day across the solstice window returns a valid Time" do

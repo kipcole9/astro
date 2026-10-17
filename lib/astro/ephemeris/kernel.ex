@@ -300,23 +300,11 @@ defmodule Astro.Ephemeris.Kernel do
 
   # ── Binary parsing ───────────────────────────────────────────────────────────
 
-  defp detect_endian(data) do
-    case data do
-      <<"DAF/SPK ", _::binary>> ->
-        # ND is stored at bytes 8-11 as a 4-byte signed integer; for SPK it is 2.
-        <<_::8-bytes, nd_le::little-signed-32, _::binary>> = data
-
-        if nd_le == 2 do
-          {:ok, :little}
-        else
-          <<_::8-bytes, nd_be::big-signed-32, _::binary>> = data
-          if nd_be == 2, do: {:ok, :big}, else: {:error, :unrecognised_nd}
-        end
-
-      _ ->
-        {:error, :not_daf_spk}
-    end
-  end
+  # ND is stored at bytes 8-11 as a 4-byte signed integer; for SPK it is 2.
+  defp detect_endian(<<"DAF/SPK ", 2::little-signed-32, _::binary>>), do: {:ok, :little}
+  defp detect_endian(<<"DAF/SPK ", 2::big-signed-32, _::binary>>), do: {:ok, :big}
+  defp detect_endian(<<"DAF/SPK ", _::binary>>), do: {:error, :unrecognised_nd}
+  defp detect_endian(_data), do: {:error, :not_daf_spk}
 
   defp read_fward(data, _endian) do
     # fward at bytes 76-79 (0-indexed), 4-byte little-endian (or big) integer.

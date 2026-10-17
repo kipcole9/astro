@@ -141,6 +141,8 @@ defmodule Astro.MixProject do
       {:tz, "~> 0.26", optional: true},
       {:ex_doc, "~> 0.19", only: [:dev, :release], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false, optional: true},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ex_slop, "~> 0.1", only: [:dev, :test], runtime: false},
       {:stream_data, "~> 1.0", only: [:test]}
     ] ++ maybe_json_polyfill()
   end

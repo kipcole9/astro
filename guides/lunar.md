@@ -9,18 +9,18 @@ Examples use Sydney, `{151.20666584, -33.8559799094}`, and assume `:tz_world` is
 ```elixir
 iex> {:ok, datetime} = Astro.moonrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
 iex> datetime
-#DateTime<2019-12-04 12:20:56.695846+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 12:20:54.394229+11:00 AEDT Australia/Sydney>
 
 iex> {:ok, datetime} = Astro.moonset({151.20666584, -33.8559799094}, ~D[2019-12-04])
 iex> datetime
-#DateTime<2019-12-04 01:13:28.212125+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 01:13:25.833583+11:00 AEDT Australia/Sydney>
 ```
 
 They take the same options as the solar equivalents, minus `:solar_elevation`:
 
 ```elixir
 iex> Astro.moonrise({151.20666584, -33.8559799094}, ~D[2019-12-04], time_zone: :utc)
-{:ok, ~U[2019-12-04 01:20:56.695846Z]}
+{:ok, ~U[2019-12-04 01:20:54.394229Z]}
 ```
 
 Note the moon set *before* it rose on this date. That is not an error. The moon rises roughly 50 minutes later each day, so on about one day a month it skips a calendar date entirely and the rise and set you get belong to different cycles. Expect `{:error, :no_time}` on those days, and do not assume a rise always precedes the set on the same date.
@@ -38,7 +38,7 @@ Note the moon set *before* it rose on this date. That is not an error. The moon 
 
 ```elixir
 iex> Astro.lunar_phase_at(~D[2019-12-04])
-86.8427160627657
+86.84254359151987
 ```
 
 Just under 90°, so a day or so before first quarter.
@@ -61,7 +61,7 @@ The fraction of the visible disc that is lit, from 0.0 to 1.0:
 
 ```elixir
 iex> Astro.illuminated_fraction_of_moon_at(~D[2019-12-04])
-0.4739255300395426
+0.47390993113962177
 ```
 
 This is not a linear function of the phase angle. At the quarters the disc is half lit, but illumination changes fastest there and slowest near new and full, which is why a "nearly full" moon looks full for several nights.
@@ -84,7 +84,7 @@ For phases other than new, give the angle:
 
 ```elixir
 iex> Astro.date_time_lunar_phase_at_or_after(~D[2019-12-04], 180)
-{:ok, ~U[2019-12-12 05:12:21.264711Z]}
+{:ok, ~U[2019-12-12 05:12:15.895278Z]}
 ```
 
 `date_time_lunar_phase_at_or_before/2` searches backwards. Together these are what lunar and lunisolar calendars are built from — the new moon instants set the month boundaries.
@@ -137,7 +137,7 @@ Two error cases are worth distinguishing: `{:error, :no_sunset}` means a polar d
 ```elixir
 iex> Astro.moon_position_at(~D[2019-12-04])
 %Geo.PointZ{
-  coordinates: {-18.265497077930355, -12.617389187144866, 403536594.40775913},
+  coordinates: {-18.270576185602863, -12.61944556006415, 403540383.15134287},
   srid: nil,
   properties: %{reference: :celestial, object: :moon}
 }

@@ -49,8 +49,8 @@ defmodule Astro.Ephemeris do
 
   """
 
-  alias Astro.Ephemeris.Kernel
   alias Astro.Coordinates
+  alias Astro.Ephemeris.Kernel
 
   # NAIF body IDs
   @moon_id 301
@@ -58,6 +58,14 @@ defmodule Astro.Ephemeris do
   @emb_id 3
   @sun_id 10
   @ssb_id 0
+
+  # Light time is only needed to about 1% for a sub-milliarcsecond
+  # position, so it is estimated rather than taken from a second
+  # ephemeris evaluation. The Moon's varies by ±7% about its mean,
+  # which moves the Moon by under 0.05″.
+  @moon_light_time_s 1.282
+  @au_light_time_s 499.004784
+  @seconds_per_day 86_400.0
 
   @doc """
   Computes the apparent geocentric position of the Moon for the given
@@ -85,7 +93,7 @@ defmodule Astro.Ephemeris do
       iex> {:ok, {right_ascension, declination, distance}} =
       ...>   Astro.Ephemeris.moon_position(~U[2024-06-21 12:00:00Z])
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
-      {262.9343, -28.0371, 382267}
+      {262.932, -28.0416, 382267}
 
   """
   @doc since: "2.0.0"
@@ -119,26 +127,15 @@ defmodule Astro.Ephemeris do
 
       iex> {:ok, {right_ascension, declination, distance}} = Astro.Ephemeris.moon_position_dt(0.0)
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
-      {222.4504, -10.9001, 402449}
+      {222.4436, -10.8979, 402449}
 
   """
   @spec moon_position_dt(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
   def moon_position_dt(dynamical_time) do
-    with {:ok, seg_moon} <- Kernel.find_segment(@moon_id, @emb_id, dynamical_time),
-         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
-      {mx, my, mz} = Kernel.position(seg_moon, dynamical_time)
-      {ex, ey, ez} = Kernel.position(seg_earth, dynamical_time)
-
-      # Moon relative to Earth (geocentric), ICRF/J2000 Cartesian (km)
-      geo = {mx - ex, my - ey, mz - ez}
-
-      # Rotate to true equator and equinox of date (precession + nutation)
+    with {:ok, geo} <- moon_geocentric_cartesian(dynamical_time - @moon_light_time_s) do
       apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time)
-
-      # Convert to spherical coordinates
-      {ra, dec, dist} = Coordinates.cartesian_to_spherical(apparent)
-      {:ok, {ra, dec, dist}}
+      {:ok, Coordinates.cartesian_to_spherical(apparent)}
     end
   end
 
@@ -147,8 +144,8 @@ defmodule Astro.Ephemeris do
   datetime.
 
   Chains the Sun/SSB, EMB/SSB and Earth/EMB segments from the loaded
-  JPL ephemeris (Sun/SSB − EMB/SSB + Earth/EMB), then applies
-  IAU 1980 precession and nutation.
+  JPL ephemeris (Sun/SSB − EMB/SSB − Earth/EMB), corrects for light
+  time and aberration, then applies IAU 1980 precession and nutation.
 
   ### Arguments
 
@@ -167,7 +164,7 @@ defmodule Astro.Ephemeris do
       iex> {:ok, {right_ascension, declination, distance}} =
       ...>   Astro.Ephemeris.sun_position(~U[2024-06-21 12:00:00Z])
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
-      {90.6638, 23.4325, 152035789}
+      {90.6564, 23.4368, 152026542}
 
   """
   @spec sun_position(DateTime.t()) ::
@@ -201,28 +198,181 @@ defmodule Astro.Ephemeris do
 
       iex> {:ok, {right_ascension, declination, distance}} = Astro.Ephemeris.sun_position_dt(0.0)
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
-      {281.2947, -23.0353, 147098431}
+      {281.2776, -23.0325, 147103733}
 
   """
   @spec sun_position_dt(float()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
   def sun_position_dt(dynamical_time) do
-    with {:ok, seg_sun} <- Kernel.find_segment(@sun_id, @ssb_id, dynamical_time),
-         {:ok, seg_emb} <- Kernel.find_segment(@emb_id, @ssb_id, dynamical_time),
-         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
-      {sx, sy, sz} = Kernel.position(seg_sun, dynamical_time)
-      {bx, by, bz} = Kernel.position(seg_emb, dynamical_time)
-      {ex, ey, ez} = Kernel.position(seg_earth, dynamical_time)
-
-      # Sun relative to Earth (geocentric), ICRF/J2000 Cartesian (km):
-      #   Sun/SSB − (EMB/SSB − Earth/EMB) = Sun/SSB − EMB/SSB + Earth/EMB
-      geo = {sx - bx + ex, sy - by + ey, sz - bz + ez}
-
+    with {:ok, geo} <- sun_geocentric_cartesian(dynamical_time - sun_light_time(dynamical_time)) do
       apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time)
-      {ra, dec, dist} = Coordinates.cartesian_to_spherical(apparent)
-      {:ok, {ra, dec, dist}}
+      {:ok, Coordinates.cartesian_to_spherical(apparent)}
     end
   end
+
+  # ── Ecliptic position functions ───────────────────────────────────────────────
+
+  @doc """
+  Computes the apparent geocentric ecliptic position of the Sun for the
+  given dynamical time.
+
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * `{:ok, {longitude_deg, latitude_deg, distance_km}}` where longitude
+    is in degrees in the range [0, 360) and latitude is in degrees
+    in the range [-90, 90].
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
+  ### Examples
+
+      iex> {:ok, {longitude, latitude, distance}} = Astro.Ephemeris.sun_ecliptic_position_dt(0.0)
+      iex> {Float.round(longitude, 4), Float.round(latitude, 6), round(distance)}
+      {280.3682, 2.38e-4, 147103733}
+
+  """
+  @spec sun_ecliptic_position_dt(float()) ::
+          {:ok, {float(), float(), float()}} | {:error, term()}
+  def sun_ecliptic_position_dt(dynamical_time) do
+    with {:ok, geo} <- sun_geocentric_cartesian(dynamical_time - sun_light_time(dynamical_time)) do
+      apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time)
+      ecliptic = Coordinates.true_equator_to_ecliptic(apparent, dynamical_time)
+      {:ok, Coordinates.cartesian_to_ecliptic_spherical(ecliptic)}
+    end
+  end
+
+  @doc """
+  Computes the apparent geocentric ecliptic position of the Sun for the
+  given moment.
+
+  ### Arguments
+
+  * `moment` is a moment (fractional days since epoch).
+
+  ### Returns
+
+  * `{:ok, {longitude_deg, latitude_deg, distance_km}}`.
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
+  """
+  @spec sun_ecliptic_position(Astro.Time.moment()) ::
+          {:ok, {float(), float(), float()}} | {:error, term()}
+  def sun_ecliptic_position(moment) do
+    moment
+    |> Astro.Time.dynamical_time_from_moment()
+    |> sun_ecliptic_position_dt()
+  end
+
+  @doc """
+  Computes the apparent geocentric ecliptic position of the Moon for the
+  given dynamical time.
+
+  ### Arguments
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * `{:ok, {longitude_deg, latitude_deg, distance_km}}` where longitude
+    is in degrees in the range [0, 360) and latitude is in degrees
+    in the range [-90, 90].
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
+  ### Examples
+
+      iex> {:ok, {longitude, latitude, distance}} = Astro.Ephemeris.moon_ecliptic_position_dt(0.0)
+      iex> {Float.round(longitude, 4), Float.round(latitude, 4), round(distance)}
+      {223.3149, 5.1709, 402449}
+
+  """
+  @spec moon_ecliptic_position_dt(float()) ::
+          {:ok, {float(), float(), float()}} | {:error, term()}
+  def moon_ecliptic_position_dt(dynamical_time) do
+    with {:ok, geo} <- moon_geocentric_cartesian(dynamical_time - @moon_light_time_s) do
+      apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time)
+      ecliptic = Coordinates.true_equator_to_ecliptic(apparent, dynamical_time)
+      {:ok, Coordinates.cartesian_to_ecliptic_spherical(ecliptic)}
+    end
+  end
+
+  @doc """
+  Computes the apparent geocentric ecliptic position of the Moon for the
+  given moment.
+
+  ### Arguments
+
+  * `moment` is a moment (fractional days since epoch).
+
+  ### Returns
+
+  * `{:ok, {longitude_deg, latitude_deg, distance_km}}`.
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
+  """
+  @spec moon_ecliptic_position(Astro.Time.moment()) ::
+          {:ok, {float(), float(), float()}} | {:error, term()}
+  def moon_ecliptic_position(moment) do
+    moment
+    |> Astro.Time.dynamical_time_from_moment()
+    |> moon_ecliptic_position_dt()
+  end
+
+  # ── Moment-based equatorial wrappers ────────────────────────────────────────
+
+  @doc """
+  Computes the apparent geocentric equatorial position of the Sun for
+  the given moment.
+
+  ### Arguments
+
+  * `moment` is a moment (fractional days since epoch).
+
+  ### Returns
+
+  * `{:ok, {ra_deg, dec_deg, distance_km}}`.
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
+  """
+  @spec sun_position_from_moment(Astro.Time.moment()) ::
+          {:ok, {float(), float(), float()}} | {:error, term()}
+  def sun_position_from_moment(moment) do
+    moment
+    |> Astro.Time.dynamical_time_from_moment()
+    |> sun_position_dt()
+  end
+
+  @doc """
+  Computes the apparent geocentric equatorial position of the Moon for
+  the given moment.
+
+  ### Arguments
+
+  * `moment` is a moment (fractional days since epoch).
+
+  ### Returns
+
+  * `{:ok, {ra_deg, dec_deg, distance_km}}`.
+
+  * `{:error, reason}` if a required ephemeris segment is not found.
+
+  """
+  @spec moon_position_from_moment(Astro.Time.moment()) ::
+          {:ok, {float(), float(), float()}} | {:error, term()}
+  def moon_position_from_moment(moment) do
+    moment
+    |> Astro.Time.dynamical_time_from_moment()
+    |> moon_position_dt()
+  end
+
+  # ── Parallax ────────────────────────────────────────────────────────────────
 
   @doc """
   Returns the equatorial horizontal parallax for a given geocentric
@@ -247,8 +397,42 @@ defmodule Astro.Ephemeris do
   """
   @spec equatorial_horizontal_parallax(float()) :: float()
   def equatorial_horizontal_parallax(distance_km) do
-    # WGS-84 equatorial radius
     r_earth_km = 6378.137
     :math.asin(r_earth_km / distance_km) * 180.0 / :math.pi()
+  end
+
+  # ── Private geocentric Cartesian helpers ────────────────────────────────────
+
+  # Light time plus annual aberration is, to first order, the geometric
+  # geocentric vector evaluated one light-time earlier. The Earth-Sun
+  # distance comes from the almanac series in the mean anomaly, good to
+  # 1e-4 AU, which is 0.05 s of light time.
+  defp sun_light_time(dynamical_time) do
+    mean_anomaly = (357.529 + 0.98560028 * dynamical_time / @seconds_per_day) * :math.pi() / 180.0
+
+    distance_au =
+      1.00014 - 0.01671 * :math.cos(mean_anomaly) - 0.00014 * :math.cos(2.0 * mean_anomaly)
+
+    distance_au * @au_light_time_s
+  end
+
+  defp moon_geocentric_cartesian(dynamical_time) do
+    with {:ok, seg_moon} <- Kernel.find_segment(@moon_id, @emb_id, dynamical_time),
+         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
+      {mx, my, mz} = Kernel.position(seg_moon, dynamical_time)
+      {ex, ey, ez} = Kernel.position(seg_earth, dynamical_time)
+      {:ok, {mx - ex, my - ey, mz - ez}}
+    end
+  end
+
+  defp sun_geocentric_cartesian(dynamical_time) do
+    with {:ok, seg_sun} <- Kernel.find_segment(@sun_id, @ssb_id, dynamical_time),
+         {:ok, seg_emb} <- Kernel.find_segment(@emb_id, @ssb_id, dynamical_time),
+         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
+      {sx, sy, sz} = Kernel.position(seg_sun, dynamical_time)
+      {bx, by, bz} = Kernel.position(seg_emb, dynamical_time)
+      {ex, ey, ez} = Kernel.position(seg_earth, dynamical_time)
+      {:ok, {sx - bx - ex, sy - by - ey, sz - bz - ez}}
+    end
   end
 end

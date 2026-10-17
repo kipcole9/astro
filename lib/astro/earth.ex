@@ -38,9 +38,6 @@ defmodule Astro.Earth do
 
   @meters_per_kilometer 1000.0
 
-  @doc false
-  def meters_per_kilometer, do: @meters_per_kilometer
-
   @geometric_solar_elevation 90.0
 
   # 34 arc minutes in degrees
@@ -55,12 +52,39 @@ defmodule Astro.Earth do
   # Arcseconds per degree
   @arcsec_per_deg 3600.0
 
-  @doc false
-  def arcsec_per_deg, do: @arcsec_per_deg
-
   # Equatorial radius in kilometers
   @earth_radius 6_378.1366
   @earth_radius_m @earth_radius * @meters_per_kilometer
+
+  # Top 17 terms of the IAU 1980 nutation series.
+  # Format: {D, M, M', F, Om, dpsi_s (0.0001"), deps_c (0.0001")}
+  @nutation_terms [
+    {0, 0, 0, 0, 1, -171_996.0, 92_025.0},
+    {-2, 0, 0, 2, 2, -13_187.0, 5_736.0},
+    {0, 0, 0, 2, 2, -2_274.0, 977.0},
+    {0, 0, 0, 0, 2, 2_062.0, -895.0},
+    {0, 1, 0, 0, 0, 1_426.0, 54.0},
+    {0, 0, 1, 0, 0, 712.0, -7.0},
+    {-2, 1, 0, 2, 2, -517.0, 224.0},
+    {0, 0, 0, 2, 1, -386.0, 200.0},
+    {0, 0, 1, 2, 2, -301.0, 129.0},
+    {-2, -1, 0, 2, 2, 217.0, -95.0},
+    {-2, 0, 1, 0, 0, -158.0, 0.0},
+    {-2, 0, 0, 2, 1, 129.0, -70.0},
+    {0, 0, -1, 2, 2, 123.0, -53.0},
+    {2, 0, 0, 0, 0, 63.0, 0.0},
+    {0, 0, 1, 0, 1, 63.0, -33.0},
+    {2, 0, -1, 2, 2, -59.0, 26.0},
+    {0, 0, -1, 0, 1, -58.0, 32.0}
+  ]
+
+  @deg_to_rad :math.pi() / 180.0
+
+  @doc false
+  def meters_per_kilometer, do: @meters_per_kilometer
+
+  @doc false
+  def arcsec_per_deg, do: @arcsec_per_deg
 
   @doc """
   Returns an estimate of the effect of refraction
@@ -221,30 +245,6 @@ defmodule Astro.Earth do
   def obliquity_j2000 do
     @obliquity
   end
-
-  # Top 17 terms of the IAU 1980 nutation series.
-  # Format: {D, M, M', F, Om, dpsi_s (0.0001"), deps_c (0.0001")}
-  @nutation_terms [
-    {0, 0, 0, 0, 1, -171_996.0, 92_025.0},
-    {-2, 0, 0, 2, 2, -13_187.0, 5_736.0},
-    {0, 0, 0, 2, 2, -2_274.0, 977.0},
-    {0, 0, 0, 0, 2, 2_062.0, -895.0},
-    {0, 1, 0, 0, 0, 1_426.0, 54.0},
-    {0, 0, 1, 0, 0, 712.0, -7.0},
-    {-2, 1, 0, 2, 2, -517.0, 224.0},
-    {0, 0, 0, 2, 1, -386.0, 200.0},
-    {0, 0, 1, 2, 2, -301.0, 129.0},
-    {-2, -1, 0, 2, 2, 217.0, -95.0},
-    {-2, 0, 1, 0, 0, -158.0, 0.0},
-    {-2, 0, 0, 2, 1, 129.0, -70.0},
-    {0, 0, -1, 2, 2, 123.0, -53.0},
-    {2, 0, 0, 0, 0, 63.0, 0.0},
-    {0, 0, 1, 0, 1, 63.0, -33.0},
-    {2, 0, -1, 2, 2, -59.0, 26.0},
-    {0, 0, -1, 0, 1, -58.0, 32.0}
-  ]
-
-  @deg_to_rad :math.pi() / 180.0
 
   @doc """
   Computes IAU 1980 [nutation](https://en.wikipedia.org/wiki/Astronomical_nutation#:~:text=Earth's%20nutation,-Learn%20more&text=Nutation%20(N)%20of%20the%20Earth,spherical%20figure%20of%20the%20Earth.))

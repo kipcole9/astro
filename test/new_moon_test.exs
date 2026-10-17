@@ -38,6 +38,8 @@ defmodule Astro.Moon.NewMoon.Test do
                Astro.date_time_new_moon_before(~D[2021-08-23])
 
       # The date-time clause was once defined under this deprecated name.
+      # `apply/3` calls it without a compile-time deprecation warning.
+      # credo:disable-for-next-line Credo.Check.Refactor.Apply
       assert apply(Astro, :date_time_new_moon_at_or_before, [~U[2021-08-23 00:00:00Z]]) ==
                Astro.date_time_new_moon_before(~U[2021-08-23 00:00:00Z])
     end

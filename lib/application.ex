@@ -6,13 +6,22 @@ defmodule Astro.Application do
   alias Astro.Ephemeris.{Downloader, Kernel}
 
   def start(_type, _args) do
-    with {:ok, path} <- Downloader.ensure_ephemeris(Downloader.ephemeris_path()),
-         {:ok, kernel} <- Kernel.load(path) do
+    with {:ok, kernel} <- load_ephemeris() do
       :ok = :persistent_term.put(Kernel.ephemeris_key(), kernel)
       Supervisor.start_link([], strategy: :one_for_one, name: __MODULE__)
-    else
-      {:error, reason} ->
-        {:error, ephemeris_error(reason)}
+    end
+  end
+
+  defp load_ephemeris do
+    case ephemeris_kernel() do
+      {:ok, kernel} -> {:ok, kernel}
+      {:error, reason} -> {:error, ephemeris_error(reason)}
+    end
+  end
+
+  defp ephemeris_kernel do
+    with {:ok, path} <- Downloader.ensure_ephemeris(Downloader.ephemeris_path()) do
+      Kernel.load(path)
     end
   end
 

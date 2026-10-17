@@ -1,4 +1,6 @@
 defmodule Astro.Sun.TestData do
+  @moduledoc false
+
   def sunrise(file) do
     File.read!("./test/data/#{file}.csv")
     |> String.replace(~r/#.*\n/, "")

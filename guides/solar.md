@@ -9,11 +9,11 @@ Examples use Sydney, `{151.20666584, -33.8559799094}`, and assume `:tz_world` is
 ```elixir
 iex> {:ok, datetime} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
 iex> datetime
-#DateTime<2019-12-04 05:37:08.672884+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 05:37:06.211944+11:00 AEDT Australia/Sydney>
 
 iex> {:ok, datetime} = Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
 iex> datetime
-#DateTime<2019-12-04 19:53:20.995687+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 19:53:18.161182+11:00 AEDT Australia/Sydney>
 ```
 
 Both return `{:error, :no_time}` where the event does not happen — inside the Arctic or Antarctic circles around the solstices:
@@ -41,15 +41,15 @@ The default of `90.0` is not geometric sunrise. It includes the standard allowan
 ```elixir
 iex> {:ok, datetime} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04], solar_elevation: :civil)
 iex> datetime
-#DateTime<2019-12-04 05:08:29.916808+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 05:08:27.477835+11:00 AEDT Australia/Sydney>
 
 iex> {:ok, datetime} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04], solar_elevation: :nautical)
 iex> datetime
-#DateTime<2019-12-04 04:33:25.167049+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 04:33:22.761027+11:00 AEDT Australia/Sydney>
 
 iex> {:ok, datetime} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04], solar_elevation: :astronomical)
 iex> datetime
-#DateTime<2019-12-04 03:55:20.466748+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 03:55:18.115644+11:00 AEDT Australia/Sydney>
 ```
 
 The same option applies to sunset, where it gives the end of that twilight rather than its start:
@@ -57,7 +57,7 @@ The same option applies to sunset, where it gives the end of that twilight rathe
 ```elixir
 iex> {:ok, datetime} = Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04], solar_elevation: :civil)
 iex> datetime
-#DateTime<2019-12-04 20:22:02.773030+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 20:21:59.916558+11:00 AEDT Australia/Sydney>
 ```
 
 Any float works if you need a threshold of your own — a local religious observance, or an aviation rule:
@@ -65,7 +65,7 @@ Any float works if you need a threshold of your own — a local religious observ
 ```elixir
 iex> {:ok, datetime} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04], solar_elevation: 95.0)
 iex> datetime
-#DateTime<2019-12-04 05:14:08.317668+11:00 AEDT Australia/Sydney>
+#DateTime<2019-12-04 05:14:05.873223+11:00 AEDT Australia/Sydney>
 ```
 
 ## Solar noon
@@ -74,7 +74,7 @@ The moment the sun crosses the local meridian, which is when it is highest. It i
 
 ```elixir
 iex> Astro.solar_noon({151.20666584, -33.8559799094}, ~D[2019-12-04])
-{:ok, ~U[2019-12-04 01:44:53Z]}
+{:ok, ~U[2019-12-04 01:44:49Z]}
 ```
 
 ## Length of the day
@@ -131,7 +131,7 @@ For the geometry itself rather than the events derived from it.
 
 ```elixir
 iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
-{343.33472178197934, 77.8645848744289}
+{343.3188030033631, 77.86324225944439}
 ```
 
 `sun_position_at/1` gives the geocentric celestial position as a `Geo.PointZ` — right ascension and declination in degrees, with distance in metres:
@@ -139,7 +139,7 @@ iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 0
 ```elixir
 iex> Astro.sun_position_at(~D[2019-12-04])
 %Geo.PointZ{
-  coordinates: {-110.01065731989793, -22.162056908520697, 147435883428.31708},
+  coordinates: {-110.01452943382776, -22.161615681484147, 147457293563.44452},
   srid: nil,
   properties: %{reference: :celestial, object: :sun}
 }
@@ -149,5 +149,5 @@ iex> Astro.sun_position_at(~D[2019-12-04])
 
 ```elixir
 iex> Astro.sun_apparent_longitude(~D[2019-12-04])
-251.5228008540026
+251.52000223036924
 ```

@@ -98,7 +98,7 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   """
 
-  alias Astro.{Ephemeris, Coordinates, Time}
+  alias Astro.{Coordinates, Ephemeris, Time}
 
   # WGS-84 geodetic → geocentric latitude conversion factor.
   @geodetic_factor 0.99664719
@@ -407,31 +407,14 @@ defmodule Astro.Lunar.MoonRiseSet do
   end
 
   defp find_moon_event(dt_start, dt_end, direct_fn, event, interpolation, limb, date, context) do
-    %{
-      lat: lat,
-      lng: lng,
-      rho_sin_phi: rho_sin_phi,
-      rho_cos_phi: rho_cos_phi,
-      location: location,
-      options: options
-    } = context
+    %{location: location, options: options} = context
 
-    # Evaluate f at each scan point.
-    scan_pairs =
+    brackets =
       Stream.iterate(dt_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= dt_end))
       |> Enum.map(fn dynamical_time -> {dynamical_time, direct_fn.(dynamical_time)} end)
-
-    # Collect every bracket with the correct sign-change polarity.
-    brackets =
-      scan_pairs
       |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.filter(fn [{_dt1, f1}, {_dt2, f2}] ->
-        case event do
-          :rise -> f1 < 0.0 and f2 >= 0.0
-          :set -> f1 > 0.0 and f2 <= 0.0
-        end
-      end)
+      |> Enum.filter(fn [{_dt1, f1}, {_dt2, f2}] -> crossing?(event, f1, f2) end)
 
     # The zone for a fixed location is the same for every candidate bracket, so
     # it is resolved once rather than per bracket: a tz_world lookup can cost
@@ -441,56 +424,50 @@ defmodule Astro.Lunar.MoonRiseSet do
 
     result =
       Enum.find_value(brackets, fn [{dt_lo, _f_lo}, {dt_hi, _f_hi}] ->
-        # For Lagrange mode, build an interpolator centred on the bracket
-        # midpoint and use it for bisection refinement.
-        alt_fn =
-          case interpolation do
-            :lagrange ->
-              dt_mid = (dt_lo + dt_hi) / 2.0
-              interp = build_lagrange_interpolator(dt_mid)
-
-              fn dynamical_time ->
-                lagrange_topocentric_f(
-                  dynamical_time,
-                  interp,
-                  lat,
-                  lng,
-                  rho_sin_phi,
-                  rho_cos_phi,
-                  limb
-                )
-              end
-
-            :direct ->
-              direct_fn
-          end
+        alt_fn = refinement_fn(interpolation, dt_lo, dt_hi, direct_fn, limb, context)
 
         # Re-evaluate bracket endpoints with the chosen function
-        f_lo_b = alt_fn.(dt_lo)
-        f_hi_b = alt_fn.(dt_hi)
-
-        dt_event = bisect_with_fn(dt_lo, f_lo_b, dt_hi, f_hi_b, alt_fn, @bisect_max)
-
-        with {:ok, utc_dt} <-
-               Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event)) do
-          case to_requested_zone(utc_dt, time_zone, options) do
-            {:ok, local_dt}
-            when local_dt.year == date.year and
-                   local_dt.month == date.month and
-                   local_dt.day == date.day ->
-              {:ok, local_dt}
-
-            {:ok, _} ->
-              nil
-
-            error ->
-              error
-          end
-        end
+        dt_lo
+        |> bisect_with_fn(alt_fn.(dt_lo), dt_hi, alt_fn.(dt_hi), alt_fn, @bisect_max)
+        |> event_on_date(date, time_zone, options)
       end)
 
     result || {:error, :no_time}
   end
+
+  defp crossing?(:rise, f1, f2), do: f1 < 0.0 and f2 >= 0.0
+  defp crossing?(:set, f1, f2), do: f1 > 0.0 and f2 <= 0.0
+
+  # For Lagrange mode, an interpolator centred on the bracket midpoint is
+  # used for the bisection refinement.
+  defp refinement_fn(:direct, _dt_lo, _dt_hi, direct_fn, _limb, _context), do: direct_fn
+
+  defp refinement_fn(:lagrange, dt_lo, dt_hi, _direct_fn, limb, context) do
+    %{lat: lat, lng: lng, rho_sin_phi: rho_sin_phi, rho_cos_phi: rho_cos_phi} = context
+    interp = build_lagrange_interpolator((dt_lo + dt_hi) / 2.0)
+
+    fn dynamical_time ->
+      lagrange_topocentric_f(dynamical_time, interp, lat, lng, rho_sin_phi, rho_cos_phi, limb)
+    end
+  end
+
+  # The event in the requested zone if it falls on `date`, `nil` if it falls
+  # on a neighbouring day, or the error from either conversion.
+  defp event_on_date(dt_event, date, time_zone, options) do
+    with {:ok, utc_dt} <- Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event)),
+         {:ok, local_dt} <- to_requested_zone(utc_dt, time_zone, options) do
+      on_date(local_dt, date)
+    end
+  end
+
+  defp on_date(%{year: year, month: month, day: day} = local_dt, %{
+         year: year,
+         month: month,
+         day: day
+       }),
+       do: {:ok, local_dt}
+
+  defp on_date(_local_dt, _date), do: nil
 
   # ── Altitude function ────────────────────────────────────────────────────────
 

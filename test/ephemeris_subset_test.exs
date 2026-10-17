@@ -85,7 +85,7 @@ defmodule Astro.Ephemeris.SubsetTest do
       {:ok, subset} = Kernel.load(dest)
 
       # 2000-01-01 through 2020, sampled every ~2 years.
-      times = for years <- 0..20//2, do: years * 3.15576e7
+      times = for years <- 0..20//2, do: years * 31_557_600.0
 
       for {target, centre} <- Subset.default_bodies(), time <- times do
         :persistent_term.put(Kernel.ephemeris_key(), full)
@@ -160,7 +160,7 @@ defmodule Astro.Ephemeris.SubsetTest do
       {:ok, earth} = Kernel.find_segment(399, 3)
 
       for years <- 0..20//5 do
-        time = years * 3.15576e7
+        time = years * 31_557_600.0
         {mx, my, mz} = Kernel.position(moon, time)
         {ex, ey, ez} = Kernel.position(earth, time)
 

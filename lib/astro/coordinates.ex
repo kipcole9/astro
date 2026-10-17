@@ -31,8 +31,6 @@ defmodule Astro.Coordinates do
 
   alias Astro.{Earth, Time}
 
-  import Astro.Math, only: [sin: 1, cos: 1, tan: 1, atan_r: 2, to_degrees: 1]
-
   @jd_j2000 Time.jd_j2000()
   @seconds_per_day Time.seconds_per_day()
   @arcsec_per_deg Earth.arcsec_per_deg()
@@ -127,7 +125,7 @@ defmodule Astro.Coordinates do
 
       iex> {x, y, z} = Astro.Coordinates.icrf_to_true_equator({1.0, 0.0, 0.0}, 0.0)
       iex> {Float.round(x, 6), Float.round(y, 6), Float.round(z, 6)}
-      {1.0, 6.2e-5, -2.7e-5}
+      {1.0, -6.2e-5, -2.7e-5}
 
   """
   @spec icrf_to_true_equator({float(), float(), float()}, float()) ::
@@ -151,10 +149,11 @@ defmodule Astro.Coordinates do
     # true obliquity (radians)
     eps = eps0 + d_eps
 
-    # Nutation rotation N = Rx(-ε) · Rz(-Δψ) · Rx(ε0)
-    {x4, y4, z4} = rot_x({x3, y3, z3}, eps0)
-    {x5, y5, z5} = rot_z({x4, y4, z4}, -d_psi)
-    {x6, y6, z6} = rot_x({x5, y5, z5}, -eps)
+    # Nutation N = R1(-ε) · R3(-Δψ) · R1(ε0) in astronomy convention, which
+    # is Rx(ε) · Rz(Δψ) · Rx(-ε0) in standard math convention.
+    {x4, y4, z4} = rot_x({x3, y3, z3}, -eps0)
+    {x5, y5, z5} = rot_z({x4, y4, z4}, d_psi)
+    {x6, y6, z6} = rot_x({x5, y5, z5}, eps)
 
     {x6, y6, z6}
   end
@@ -254,33 +253,74 @@ defmodule Astro.Coordinates do
     if gast < 0.0, do: gast + 360.0, else: gast
   end
 
-  # ── Ecliptic to equatorial ───────────────────────────────────────────────────
+  # ── Equatorial to ecliptic ────────────────────────────────────────────────────
 
-  @doc false
-  # Equatorial declination in degrees from ecliptic latitude `beta` and
-  # longitude `lambda` (both in degrees) at moment `t`, using the
-  # time-varying obliquity of the ecliptic.
-  @spec declination(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
-  def declination(t, beta, lambda) do
-    julian_centuries = Time.julian_centuries_from_moment(t)
-    epsilon = Astro.Solar.obliquity_correction(julian_centuries)
+  @doc """
+  Rotates a true-equator-of-date Cartesian vector to the ecliptic
+  of date by reversing the obliquity rotation.
 
-    :math.asin(sin(beta) * cos(epsilon) + cos(beta) * sin(epsilon) * sin(lambda))
-    |> to_degrees()
-    |> :math.fmod(360.0)
+  The rotation is Rx(ε) where ε is the true obliquity (mean obliquity
+  + nutation in obliquity) from `Astro.Earth.nutation/1`.
+
+  ### Arguments
+
+  * `{x, y, z}` is a Cartesian position vector in the true equator
+    and equinox of date frame, in any consistent unit (typically
+    kilometers).
+
+  * `dynamical_time` is TDB seconds past J2000.0.
+
+  ### Returns
+
+  * `{x_ecl, y_ecl, z_ecl}` in the ecliptic of date frame,
+    in the same units as the input.
+
+  ### Examples
+
+      iex> {x, y, z} = Astro.Coordinates.true_equator_to_ecliptic({1.0, 0.0, 0.0}, 0.0)
+      iex> {Float.round(x, 6), Float.round(y, 6), Float.round(z, 6)}
+      {1.0, 0.0, 0.0}
+
+  """
+  @spec true_equator_to_ecliptic({float(), float(), float()}, float()) ::
+          {float(), float(), float()}
+  def true_equator_to_ecliptic({x, y, z}, dynamical_time) do
+    t = julian_centuries_from_dynamical_time(dynamical_time)
+    {_d_psi, d_eps, eps0} = Earth.nutation(t)
+    eps = eps0 + d_eps
+    rot_x({x, y, z}, -eps)
   end
 
-  @doc false
-  # Equatorial right ascension in degrees from ecliptic latitude `beta` and
-  # longitude `lambda` (both in degrees) at moment `t`, using the
-  # time-varying obliquity of the ecliptic.
-  @spec right_ascension(Time.moment(), Astro.angle(), Astro.angle()) :: Astro.angle()
-  def right_ascension(t, beta, lambda) do
-    julian_centuries = Time.julian_centuries_from_moment(t)
-    epsilon = Astro.Solar.obliquity_correction(julian_centuries)
+  @doc """
+  Converts ecliptic Cartesian coordinates to spherical coordinates.
 
-    atan_r(sin(lambda) * cos(epsilon) - tan(beta) * sin(epsilon), cos(lambda))
-    |> to_degrees()
+  ### Arguments
+
+  * `{x, y, z}` is an ecliptic Cartesian position vector in
+    kilometers.
+
+  ### Returns
+
+  * `{longitude_deg, latitude_deg, distance_km}` where longitude
+    is in degrees in the range [0, 360), latitude is in degrees
+    in the range [-90, 90], and distance is in kilometers.
+
+  ### Examples
+
+      iex> Astro.Coordinates.cartesian_to_ecliptic_spherical({1.0, 1.0, 0.0})
+      {45.0, 0.0, 1.4142135623730951}
+
+  """
+  @spec cartesian_to_ecliptic_spherical({float(), float(), float()}) ::
+          {float(), float(), float()}
+  def cartesian_to_ecliptic_spherical({x, y, z}) do
+    dist = :math.sqrt(x * x + y * y + z * z)
+    lat_rad = :math.asin(z / dist)
+    lng_rad = :math.atan2(y, x)
+    lng_deg = lng_rad * 180.0 / :math.pi()
+    lng_deg = if lng_deg < 0.0, do: lng_deg + 360.0, else: lng_deg
+    lat_deg = lat_rad * 180.0 / :math.pi()
+    {lng_deg, lat_deg, dist}
   end
 
   # ── Rotation helpers ─────────────────────────────────────────────────────────

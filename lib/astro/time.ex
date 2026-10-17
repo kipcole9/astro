@@ -181,7 +181,7 @@ defmodule Astro.Time do
 
   """
 
-  alias Astro.{Math, Guards, Location}
+  alias Astro.{Guards, Location, Math}
   import Astro.Math, only: [deg: 1, mod: 2]
 
   @typedoc """
@@ -247,6 +247,66 @@ defmodule Astro.Time do
   @julian_day_jan_1_2000 2_451_545
   @julian_days_per_century 36_525.0
   @julian_epoch_days 1_721_425.5
+
+  # IERS-observed ΔT values (TT − UT1 ≈ TT − UTC to within 0.9 s),
+  # one value per year at the year midpoint (July 1), 1972–2025.
+  # Source: IERS Earth Orientation Parameters, Bulletin A/B.
+  # Each row spans a decade (10 annual entries); first year shown in comment.
+  @iers_first_year 1972
+  @iers_last_year 2025
+  @iers_delta_t_table """
+                        42.23 43.37 44.49 45.48 46.46 47.52 48.53 49.59 50.54 51.38
+                        52.17 52.96 53.79 54.34 54.87 55.32 55.82 56.30 56.86 57.57
+                        58.31 59.12 59.98 60.78 61.63 62.29 62.97 63.47 63.83 64.09
+                        64.30 64.47 64.57 64.69 64.85 65.15 65.46 65.78 66.07 66.32
+                        66.60 66.91 67.28 67.64 68.10 68.59 68.97 69.22 69.36 69.36
+                        69.18 69.04 69.18 69.30
+                      """
+                      |> String.split()
+                      |> Enum.map(&String.to_float/1)
+                      |> Enum.with_index(@iers_first_year)
+                      |> Map.new(fn {val, year} -> {year, val} end)
+  # Linear extrapolation rate beyond the IERS table (seconds/year).
+  @iers_extrap_rate 0.15
+
+  # Meeus biennial lookup table for 1620–2002 (ΔT in seconds, even years only).
+  # Source: Meeus, Astronomical Algorithms, Table 10.A.
+  # Each row spans 20 years (10 biennial entries); the comment gives the first year.
+  @meeus_delta_t_tuple """
+                         121  112  103   95   88   82   77   72   68   63
+                          60   56   53   51   48   46   44   42   40   38
+                          35   33   31   29   26   24   22   20   18   16
+                          14   12   11   10    9    8    7    7    7    7
+                           7    7    8    8    9    9    9    9    9   10
+                          10   10   10   10   10   10   10   11   11   11
+                          11   11   12   12   12   12   13   13   13   14
+                          14   14   14   15   15   15   15   15   16   16
+                          16   16   16   16   16   16   15   15   14   13
+                        13.1 12.5 12.2 12.0 12.0 12.0 12.0 12.0 12.0 11.9
+                        11.6 11.0 10.2  9.2  8.2  7.1  6.2  5.6  5.4  5.3
+                         5.4  5.6  5.9  6.2  6.5  6.8  7.1  7.3  7.5  7.6
+                         7.7  7.3  6.2  5.2  2.7  1.4 -1.2 -2.8 -3.8 -4.8
+                        -5.5 -5.3 -5.6 -5.7 -5.9 -6.0 -6.3 -6.5 -6.2 -4.7
+                        -2.8 -0.1  2.6  5.3  7.7 10.4 13.3 16.0 18.2 20.2
+                        21.1 22.4 23.5 23.8 24.3 24.0 23.9 23.9 23.7 24.0
+                        24.3 25.3 26.2 27.3 28.2 29.1 30.0 30.7 31.4 32.2
+                        33.1 34.0 35.0 36.5 38.3 40.2 42.2 44.5 46.5 48.5
+                        50.5 52.5 53.8 54.9 55.8 56.9 58.3 60.0 61.6 63.0
+                        63.8 64.3
+                       """
+                       |> String.split()
+                       |> Enum.map(
+                         &String.to_float(if String.contains?(&1, "."), do: &1, else: &1 <> ".0")
+                       )
+                       |> List.to_tuple()
+
+  @meeus_first_year 1620
+  @meeus_last_year 2002
+
+  @jd_j2000 2_451_545.0
+
+  # Offset from Gregorian day 0 (0000-01-01) to JD 0.
+  @jd_gregorian_epoch 1_721_059.5
   @utc_zone "Etc/UTC"
 
   @minutes_per_degree 4
@@ -582,7 +642,7 @@ defmodule Astro.Time do
 
     terms =
       Enum.map(
-        [280.46061837, 36525 * 360.98564736629, 0.000387933, -1 / 38_710_000.0],
+        [280.46061837, 36_525 * 360.98564736629, 0.000387933, -1 / 38_710_000.0],
         &Math.deg/1
       )
 
@@ -758,7 +818,7 @@ defmodule Astro.Time do
     div(1461 * (year + 4800 + div(month - 14, 12)), 4) +
       div(367 * (month - 2 - 12 * div(month - 14, 12)), 12) -
       div(3 * div(year + 4900 + div(month - 14, 12), 100), 4) +
-      day - 32075 - 0.5
+      day - 32_075 - 0.5
   end
 
   def julian_day_from_date(%{year: _, month: _, day: _, calendar: _} = date) do
@@ -837,6 +897,33 @@ defmodule Astro.Time do
   """
   def julian_centuries_from_moment(t) do
     (dynamical_from_universal(t) - j2000()) / @julian_days_per_century
+  end
+
+  @doc """
+  Returns the moment (UT) corresponding to a given number of Julian
+  centuries from J2000.0.
+
+  This is the inverse of `julian_centuries_from_moment/1`.
+
+  ### Arguments
+
+  * `julian_centuries` is a float number of Julian centuries from
+    J2000.0.
+
+  ### Returns
+
+  * The moment (fractional days since epoch) as a `float`.
+
+  ### Examples
+
+      iex> moment = Astro.Time.moment_from_julian_centuries(0.0)
+      iex> Astro.Time.julian_centuries_from_moment(moment) |> Float.round(10)
+      0.0
+
+  """
+  @spec moment_from_julian_centuries(julian_centuries()) :: moment()
+  def moment_from_julian_centuries(julian_centuries) do
+    universal_from_dynamical(julian_centuries * @julian_days_per_century + j2000())
   end
 
   @doc """
@@ -1436,61 +1523,6 @@ defmodule Astro.Time do
 
   # ── Unified ΔT computation ────────────────────────────────────────────────
 
-  # IERS-observed ΔT values (TT − UT1 ≈ TT − UTC to within 0.9 s),
-  # one value per year at the year midpoint (July 1), 1972–2025.
-  # Source: IERS Earth Orientation Parameters, Bulletin A/B.
-  # Each row spans a decade (10 annual entries); first year shown in comment.
-  @iers_first_year 1972
-  @iers_last_year 2025
-  @iers_delta_t_table """
-                        42.23 43.37 44.49 45.48 46.46 47.52 48.53 49.59 50.54 51.38
-                        52.17 52.96 53.79 54.34 54.87 55.32 55.82 56.30 56.86 57.57
-                        58.31 59.12 59.98 60.78 61.63 62.29 62.97 63.47 63.83 64.09
-                        64.30 64.47 64.57 64.69 64.85 65.15 65.46 65.78 66.07 66.32
-                        66.60 66.91 67.28 67.64 68.10 68.59 68.97 69.22 69.36 69.36
-                        69.18 69.04 69.18 69.30
-                      """
-                      |> String.split()
-                      |> Enum.map(&String.to_float/1)
-                      |> Enum.with_index(@iers_first_year)
-                      |> Map.new(fn {val, year} -> {year, val} end)
-  # Linear extrapolation rate beyond the IERS table (seconds/year).
-  @iers_extrap_rate 0.15
-
-  # Meeus biennial lookup table for 1620–2002 (ΔT in seconds, even years only).
-  # Source: Meeus, Astronomical Algorithms, Table 10.A.
-  # Each row spans 20 years (10 biennial entries); the comment gives the first year.
-  @meeus_delta_t_tuple """
-                         121  112  103   95   88   82   77   72   68   63
-                          60   56   53   51   48   46   44   42   40   38
-                          35   33   31   29   26   24   22   20   18   16
-                          14   12   11   10    9    8    7    7    7    7
-                           7    7    8    8    9    9    9    9    9   10
-                          10   10   10   10   10   10   10   11   11   11
-                          11   11   12   12   12   12   13   13   13   14
-                          14   14   14   15   15   15   15   15   16   16
-                          16   16   16   16   16   16   15   15   14   13
-                        13.1 12.5 12.2 12.0 12.0 12.0 12.0 12.0 12.0 11.9
-                        11.6 11.0 10.2  9.2  8.2  7.1  6.2  5.6  5.4  5.3
-                         5.4  5.6  5.9  6.2  6.5  6.8  7.1  7.3  7.5  7.6
-                         7.7  7.3  6.2  5.2  2.7  1.4 -1.2 -2.8 -3.8 -4.8
-                        -5.5 -5.3 -5.6 -5.7 -5.9 -6.0 -6.3 -6.5 -6.2 -4.7
-                        -2.8 -0.1  2.6  5.3  7.7 10.4 13.3 16.0 18.2 20.2
-                        21.1 22.4 23.5 23.8 24.3 24.0 23.9 23.9 23.7 24.0
-                        24.3 25.3 26.2 27.3 28.2 29.1 30.0 30.7 31.4 32.2
-                        33.1 34.0 35.0 36.5 38.3 40.2 42.2 44.5 46.5 48.5
-                        50.5 52.5 53.8 54.9 55.8 56.9 58.3 60.0 61.6 63.0
-                        63.8 64.3
-                       """
-                       |> String.split()
-                       |> Enum.map(
-                         &String.to_float(if String.contains?(&1, "."), do: &1, else: &1 <> ".0")
-                       )
-                       |> List.to_tuple()
-
-  @meeus_first_year 1620
-  @meeus_last_year 2002
-
   @doc """
   Returns ΔT (TT − UTC) in seconds for the given decimal year.
 
@@ -1600,13 +1632,8 @@ defmodule Astro.Time do
   # ── Dynamical time / moment conversions ──────────────────────────────────────
 
   # J2000.0 Julian date (TT): 2000-01-01 12:00:00 TT
-  @jd_j2000 2_451_545.0
-
   @doc false
   def jd_j2000, do: @jd_j2000
-
-  # Offset from Gregorian day 0 (0000-01-01) to JD 0.
-  @jd_gregorian_epoch 1_721_059.5
 
   @doc """
   Returns dynamical time (TDB seconds past J2000.0) for a given
