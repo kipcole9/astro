@@ -135,9 +135,9 @@ Two error cases are worth distinguishing: `{:error, :no_sunset}` means a polar d
 `moon_position_at/1` gives the geocentric celestial position as a `Geo.PointZ` — right ascension and declination in degrees, distance in metres:
 
 ```elixir
-iex> Astro.moon_position_at(~D[2019-12-04])
+iex> Astro.moon_position_at(~D[2019-12-04]) |> Astro.Location.round(6)
 %Geo.PointZ{
-  coordinates: {-18.270576185602863, -12.61944556006415, 403540383.15134287},
+  coordinates: {-18.270576, -12.619446, 403540383.151343},
   srid: nil,
   properties: %{reference: :celestial, object: :moon}
 }

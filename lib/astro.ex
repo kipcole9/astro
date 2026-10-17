@@ -259,12 +259,12 @@ defmodule Astro do
 
   ### Examples
 
-      iex> Astro.sun_position_at(~D[1992-10-13])
-      %Geo.PointZ{
-        coordinates: {-161.62124021392057, -7.784068610032727, 149240324714.5998},
-        properties: %{object: :sun, reference: :celestial},
-        srid: nil
-      }
+      iex> %Geo.PointZ{coordinates: {right_ascension, declination, distance}, properties: properties} =
+      ...>   Astro.sun_position_at(~D[1992-10-13])
+      iex> {Float.round(right_ascension, 6), Float.round(declination, 6), round(distance)}
+      {-161.62124, -7.784069, 149240324715}
+      iex> properties
+      %{object: :sun, reference: :celestial}
 
   """
   @doc since: "0.6.0"

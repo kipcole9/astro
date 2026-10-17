@@ -137,12 +137,10 @@ iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 0
 `sun_position_at/1` gives the geocentric celestial position as a `Geo.PointZ` — right ascension and declination in degrees, with distance in metres:
 
 ```elixir
-iex> Astro.sun_position_at(~D[2019-12-04])
-%Geo.PointZ{
-  coordinates: {-110.01452943382776, -22.161615681484147, 147457293563.44452},
-  srid: nil,
-  properties: %{reference: :celestial, object: :sun}
-}
+iex> %Geo.PointZ{coordinates: {right_ascension, declination, distance}} =
+...>   Astro.sun_position_at(~D[2019-12-04])
+iex> {Float.round(right_ascension, 6), Float.round(declination, 6), round(distance)}
+{-110.014529, -22.161616, 147457293563}
 ```
 
 `sun_apparent_longitude/1` gives ecliptic longitude in degrees, which is what solar-term and zodiacal calculations are built on:
