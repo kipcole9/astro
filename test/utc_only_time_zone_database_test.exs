@@ -20,7 +20,8 @@ defmodule Astro.UtcOnlyTimeZoneDatabaseTest do
                  ~U[2019-12-04 02:00:00Z]
                )
 
-      assert is_float(azimuth) and is_float(elevation)
+      assert azimuth >= 0.0 and azimuth < 360.0
+      assert elevation >= -90.0 and elevation <= 90.0
     end
 
     test "sidereal time is computed" do

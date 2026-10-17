@@ -41,7 +41,7 @@ defmodule Astro.Solar do
   to convert between the two.
   """
 
-  alias Astro.{Math, Time}
+  alias Astro.{Earth, Math, Time}
 
   import Time,
     only: [
@@ -55,6 +55,9 @@ defmodule Astro.Solar do
     ]
 
   @minutes_per_degree 4.0
+
+  # Annual aberration constant in degrees (20.4898″ at 1 AU).
+  @aberration_constant 20.4898 / 3600.0
 
   # Equinox/solstice periodic terms from Meeus Table 27.C (24 terms).
   # Each row: amplitude, addend (degrees), multiplier (degrees per Julian century).
@@ -376,6 +379,96 @@ defmodule Astro.Solar do
   def sun_geometric_mean_longitude(julian_centuries) do
     longitude = 280.46646 + julian_centuries * (36_000.76983 + 0.0003032 * julian_centuries)
     Math.mod(longitude, 360.0)
+  end
+
+  # ── Deprecated ────────────────────────────────────────────────────────────────
+
+  @doc false
+  @deprecated "Use Astro.Solar.solar_ecliptic_longitude/1, which takes a moment, instead"
+  @spec sun_apparent_longitude(Time.julian_centuries()) :: float()
+  def sun_apparent_longitude(julian_centuries) do
+    apparent_longitude(julian_centuries)
+  end
+
+  @doc false
+  @deprecated "Use Astro.Solar.solar_position/1, which takes a moment, instead"
+  @spec solar_declination(Time.julian_centuries()) :: float()
+  def solar_declination(julian_centuries) do
+    moment = Time.moment_from_julian_centuries(julian_centuries)
+
+    {:ok, {_right_ascension, declination, _distance}} =
+      Astro.Ephemeris.sun_position_from_moment(moment)
+
+    declination
+  end
+
+  @doc false
+  @deprecated "Use Astro.Solar.solar_ecliptic_longitude/1 for the Sun's apparent longitude instead"
+  @spec sun_true_longitude(Time.julian_centuries()) :: float()
+  def sun_true_longitude(julian_centuries) do
+    true_longitude(julian_centuries)
+  end
+
+  @doc false
+  @deprecated "Astro.Solar.sun_equation_of_center/1 will be removed in Astro 3.0"
+  @spec sun_equation_of_center(Time.julian_centuries()) :: float()
+  def sun_equation_of_center(julian_centuries) do
+    mrad = julian_centuries |> geometric_mean_anomaly() |> Math.to_radians()
+
+    :math.sin(mrad) * (1.914602 - julian_centuries * (0.004817 + 0.000014 * julian_centuries)) +
+      :math.sin(2 * mrad) * (0.019993 - 0.000101 * julian_centuries) +
+      :math.sin(3 * mrad) * 0.000289
+  end
+
+  @doc false
+  @deprecated "Astro.Solar.sun_geometric_mean_anomaly/1 will be removed in Astro 3.0"
+  @spec sun_geometric_mean_anomaly(Time.julian_centuries()) :: float()
+  def sun_geometric_mean_anomaly(julian_centuries) do
+    geometric_mean_anomaly(julian_centuries)
+  end
+
+  @doc false
+  @deprecated "Astro.Solar.earth_orbit_eccentricity/1 will be removed in Astro 3.0"
+  @spec earth_orbit_eccentricity(Time.julian_centuries()) :: float()
+  def earth_orbit_eccentricity(julian_centuries) do
+    0.016708634 - julian_centuries * (0.000042037 + 0.0000001267 * julian_centuries)
+  end
+
+  @doc false
+  @deprecated "Use Astro.Earth.nutation/1, which returns the obliquity in radians, instead"
+  @spec obliquity_correction(Time.julian_centuries()) :: float()
+  def obliquity_correction(julian_centuries) do
+    {_delta_psi, delta_epsilon, mean_obliquity} = Earth.nutation(julian_centuries)
+    Math.to_degrees(mean_obliquity + delta_epsilon)
+  end
+
+  @doc false
+  @deprecated "Use Astro.Earth.nutation/1, which returns the obliquity in radians, instead"
+  @spec mean_obliquity_of_ecliptic(Time.julian_centuries()) :: float()
+  def mean_obliquity_of_ecliptic(julian_centuries) do
+    {_delta_psi, _delta_epsilon, mean_obliquity} = Earth.nutation(julian_centuries)
+    Math.to_degrees(mean_obliquity)
+  end
+
+  defp geometric_mean_anomaly(julian_centuries) do
+    anomaly = 357.52911 + julian_centuries * (35_999.05029 - 0.0001537 * julian_centuries)
+    Math.mod(anomaly, 360.0)
+  end
+
+  defp apparent_longitude(julian_centuries) do
+    julian_centuries
+    |> Time.moment_from_julian_centuries()
+    |> solar_ecliptic_longitude()
+  end
+
+  # The geometric longitude referred to the mean equinox of date: the
+  # apparent longitude without nutation and with aberration restored.
+  defp true_longitude(julian_centuries) do
+    moment = Time.moment_from_julian_centuries(julian_centuries)
+    {:ok, {longitude, _latitude, distance_km}} = Astro.Ephemeris.sun_ecliptic_position(moment)
+    {delta_psi, _delta_epsilon, _mean_obliquity} = Earth.nutation(julian_centuries)
+    aberration = @aberration_constant / Math.km_to_au(distance_km)
+    Math.mod(longitude - Math.to_degrees(delta_psi) + aberration, 360.0)
   end
 
   @doc """

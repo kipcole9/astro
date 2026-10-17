@@ -6,9 +6,13 @@
 
 * Solar and lunar positions, ecliptic longitudes, latitudes and distances in `Astro.Solar`, `Astro.Lunar` and `Astro.Lunar.CrescentVisibility` are computed from the JPL DE440s ephemeris instead of the Meeus series. Results shift by seconds of arc; event times by seconds.
 
-### Removed
+### Deprecated
 
-* `Astro.Solar.sun_apparent_longitude/1`, `sun_true_longitude/1`, `sun_equation_of_center/1`, `sun_geometric_mean_anomaly/1`, `earth_orbit_eccentricity/1`, `obliquity_correction/1`, `mean_obliquity_of_ecliptic/1` and `solar_declination/1`, and `Astro.Lunar.mean_lunar_ecliptic_longitude/1` and `lunar_elongation/1`. Use `Astro.Ephemeris` for positions.
+* `Astro.Solar.sun_apparent_longitude/1`, `sun_true_longitude/1` and `solar_declination/1` now use the JPL ephemeris; use `solar_ecliptic_longitude/1` and `solar_position/1`, which take a moment.
+
+* `Astro.Solar.obliquity_correction/1` and `mean_obliquity_of_ecliptic/1` now use the IAU 1980 nutation; use `Astro.Earth.nutation/1`.
+
+* `Astro.Solar.sun_equation_of_center/1`, `sun_geometric_mean_anomaly/1`, `earth_orbit_eccentricity/1`, and `Astro.Lunar.mean_lunar_ecliptic_longitude/1` and `lunar_elongation/1` are unchanged and will be removed in Astro 3.0.
 
 ### Bug Fixes
 

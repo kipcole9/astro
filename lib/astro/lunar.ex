@@ -957,6 +957,24 @@ defmodule Astro.Lunar do
     |> to_degrees()
   end
 
+  @doc false
+  @deprecated "Astro.Lunar.mean_lunar_ecliptic_longitude/1 will be removed in Astro 3.0"
+  @spec mean_lunar_ecliptic_longitude(c :: Time.julian_centuries()) :: Astro.angle()
+  def mean_lunar_ecliptic_longitude(c) do
+    c
+    |> poly([218.3164477, 481_267.88123421, -0.0015786, 1 / 538_841.0, -1 / 65_194_000.0])
+    |> degrees()
+  end
+
+  @doc false
+  @deprecated "Astro.Lunar.lunar_elongation/1 will be removed in Astro 3.0"
+  @spec lunar_elongation(c :: Time.julian_centuries()) :: Astro.angle()
+  def lunar_elongation(c) do
+    c
+    |> poly([297.8501921, 445_267.1114034, -0.0018819, 1 / 545_868, -1 / 113_065_000.0])
+    |> degrees()
+  end
+
   @doc """
   Returns the Moon's angular semi-diameter in degrees for a given moment.
 
