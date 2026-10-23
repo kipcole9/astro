@@ -22,6 +22,8 @@ This is the changelog for Astro version 2.8.0, released on October 23rd, 2026. F
 
 * Solar and lunar positions, ecliptic longitudes, latitudes and distances in `Astro.Solar`, `Astro.Lunar` and `Astro.Lunar.CrescentVisibility` are computed from the JPL DE440s ephemeris instead of the Meeus series. Results shift by seconds of arc; event times by seconds.
 
+* `Astro.Solar.solar_ecliptic_longitude/1`, and so `solar_ecliptic_longitude_after/2` and `estimate_prior_solar_ecliptic_longitude/2`, fall back to the Meeus series for a moment the loaded ephemeris does not cover, where 2.8.0 raised `MatchError`. Lunisolar calendars find their solar terms for any era again.
+
 ### Deprecated
 
 * `Astro.Solar.sun_apparent_longitude/1`, `sun_true_longitude/1` and `solar_declination/1` now use the JPL ephemeris; use `solar_ecliptic_longitude/1` and `solar_position/1`, which take a moment.

@@ -26,6 +26,26 @@ defmodule Astro.OutOfRangeTest do
     end
   end
 
+  test "the solar ecliptic longitude falls back to the Meeus series outside the ephemeris" do
+    moment = Astro.Time.date_time_to_moment(@date)
+    assert_in_delta Astro.Solar.solar_ecliptic_longitude(moment), 69.58874839794431, 1.0e-9
+  end
+
+  test "the solar longitude searches find a solstice outside the ephemeris" do
+    after_moment = Astro.Time.date_time_to_moment(~D[1500-11-01])
+    prior_moment = Astro.Time.date_time_to_moment(~D[1500-01-01])
+
+    assert {:ok, %DateTime{year: 1500, month: 12, day: 22}} =
+             270
+             |> Astro.Solar.solar_ecliptic_longitude_after(after_moment)
+             |> Astro.Time.date_time_from_moment()
+
+    assert {:ok, %DateTime{year: 1499, month: 12, day: 21}} =
+             270
+             |> Astro.Solar.estimate_prior_solar_ecliptic_longitude(prior_moment)
+             |> Astro.Time.date_time_from_moment()
+  end
+
   test "the new moon searches that do not use the ephemeris still succeed" do
     assert {:ok, %DateTime{}} = Astro.date_time_new_moon_before(@date)
     assert {:ok, %DateTime{}} = Astro.date_time_new_moon_at_or_after(@date)

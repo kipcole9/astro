@@ -165,16 +165,42 @@ defmodule Astro.Solar do
   of a calendar date which is perturbed by leap years and calendar
   imperfections.
 
+  For a moment the loaded ephemeris does not cover, the longitude is
+  computed from the Meeus series, accurate to about 0.01°, as Astro 2.7
+  computed it for every moment. Calendars that count months by the
+  Sun's longitude, such as the Chinese and Japanese lunisolar
+  calendars, find their solar terms for dates of any era this way.
+
   ### Examples
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2024-03-20])
       iex> Astro.Solar.solar_ecliptic_longitude(moment)
       359.87145169401623
 
+      iex> moment = Astro.Time.date_time_to_moment(~D[1000-06-01])
+      iex> Astro.Solar.solar_ecliptic_longitude(moment) |> Float.round(4)
+      69.5887
+
   """
   def solar_ecliptic_longitude(t) do
-    {:ok, {longitude, _latitude, _distance}} = Astro.Ephemeris.sun_ecliptic_position(t)
-    longitude
+    case Astro.Ephemeris.sun_ecliptic_position(t) do
+      {:ok, {longitude, _latitude, _distance}} -> longitude
+      {:error, :not_found} -> meeus_apparent_longitude(Time.julian_centuries_from_moment(t))
+    end
+  end
+
+  # The Sun's apparent longitude from the Meeus series, accurate to about
+  # 0.01°, for a moment the loaded ephemeris does not cover: the true
+  # longitude, the geometric mean longitude and the equation of the
+  # centre, corrected for aberration and the nutation in longitude. This
+  # is how Astro 2.7 computed `solar_ecliptic_longitude/1` for every
+  # moment, and the solar terms of calendars of any era are found with it.
+  defp meeus_apparent_longitude(julian_centuries) do
+    omega = 125.04 - 1934.136 * julian_centuries
+
+    (sun_geometric_mean_longitude(julian_centuries) + equation_of_center(julian_centuries) -
+       0.00569 - 0.00478 * :math.sin(Math.to_radians(omega)))
+    |> Math.mod(360.0)
   end
 
   @doc """
@@ -414,6 +440,10 @@ defmodule Astro.Solar do
   @deprecated "Astro.Solar.sun_equation_of_center/1 will be removed in Astro 3.0"
   @spec sun_equation_of_center(Time.julian_centuries()) :: float()
   def sun_equation_of_center(julian_centuries) do
+    equation_of_center(julian_centuries)
+  end
+
+  defp equation_of_center(julian_centuries) do
     mrad = julian_centuries |> geometric_mean_anomaly() |> Math.to_radians()
 
     :math.sin(mrad) * (1.914602 - julian_centuries * (0.004817 + 0.000014 * julian_centuries)) +
