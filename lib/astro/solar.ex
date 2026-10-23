@@ -39,6 +39,7 @@ defmodule Astro.Solar do
   since epoch) or **Julian centuries** from J2000.0, as noted in each
   function's documentation. Use `Astro.Time.julian_centuries_from_moment/1`
   to convert between the two.
+
   """
 
   alias Astro.{Earth, Math, Time}

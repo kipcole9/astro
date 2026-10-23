@@ -33,7 +33,7 @@ Add `astro` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:astro, "~> 2.6"}
+    {:astro, "~> 2.8"}
   ]
 end
 ```
@@ -166,7 +166,7 @@ config :astro,
   ephemeris: "/path/to/de440s.bsp"
 ```
 
-Dates outside the range of the loaded ephemeris return `{:error, :not_found}`.
+Functions that need the ephemeris return `{:error, :not_found}` for dates outside the range of the loaded ephemeris. `Astro.equinox/3` and `Astro.solstice/3` (for the years 1000 to 3000), `Astro.date_time_new_moon_before/1` and `Astro.date_time_new_moon_at_or_after/1` do not use it and work outside that range.
 
 ### Using a different ephemeris
 
@@ -188,7 +188,7 @@ The public functions in the `Astro` module keep the same signatures in Astro 2.x
 
 * **Numerical results may differ slightly.** The move from NOAA/Meeus polynomial approximations to the JPL DE440s ephemeris, combined with an improved ΔT computation, means that computed times for events such as equinoxes, solstices and new moons may shift by up to ~22 seconds.
 
-* **Functions outside the `Astro` module may have changed.** Several functions in `Astro.Solar`, `Astro.Lunar`, `Astro.Time` and `Astro.Earth` have been renamed or have changed return types. See the [changelog](CHANGELOG.md) for full details.
+* **Functions outside the `Astro` module may have changed.** Several functions in `Astro.Solar`, `Astro.Lunar`, `Astro.Time` and `Astro.Earth` have been renamed or have changed return types. See the [changelog](https://hexdocs.pm/astro/changelog.html) for full details.
 
 ## Rise and set algorithms
 
@@ -200,7 +200,7 @@ Astro 2 finds rise and set times from the JPL DE440s ephemeris by scanning and b
 
 For the Moon it is also fully topocentric: the observer's displacement from the Earth's centre is applied to the Moon's position before its altitude is computed, rather than using Meeus's approximation of the parallax in altitude, h0 = 0.7275π − 0.5667°.
 
-A [comparison document](rise_and_set_comparisons.md) shows how Astro's rise and set times compare with Skyfield (JPL DE440s), the USNO (DE430) and [timeanddate.com](https://timeanddate.com).
+A [comparison document](https://hexdocs.pm/astro/rise_and_set_comparisons.html) shows how Astro's rise and set times compare with Skyfield (JPL DE440s), the USNO (DE430) and [timeanddate.com](https://timeanddate.com).
 
 ## References
 
@@ -210,19 +210,19 @@ A [comparison document](rise_and_set_comparisons.md) shows how Astro's rise and 
 
 * For the intersection of calendars and astronomy, [Calendrical Calculations](https://www.amazon.com/Calendrical-Calculations-Ultimate-Edward-Reingold/dp/1107683165) by Nachum Dershowitz and Edward M. Reingold remains the standard reference.
 
-* [Skyfield](https://rhodesmill.org/skyfield/) is a powerful astronomy library for Python. Astro's rise and set times are tested to be within a minute of Skyfield's; on average they [differ](rise_and_set_comparisons.md) by 3.8 seconds for sunrise and sunset and 2.5 seconds for moonrise and moonset.
+* [Skyfield](https://rhodesmill.org/skyfield/) is a powerful astronomy library for Python. Astro's rise and set times agree with Skyfield's to within 2 seconds; on average they [differ](https://hexdocs.pm/astro/rise_and_set_comparisons.html) by 1.0 second for sunrise and sunset and 0.1 seconds for moonrise and moonset.
 
 * [timeanddate.com](https://www.timeanddate.com/astronomy/) is also a great web reference.
 
 ## Documentation
 
-* **[Getting started](guides/getting_started.md)** — installation, the ephemeris, time zones, locations, options and errors.
+* **[Getting started](https://hexdocs.pm/astro/getting_started.html)** — installation, the ephemeris, time zones, locations, options and errors.
 
-* **[Solar events](guides/solar.md)** — sunrise, sunset, twilight, solar noon, the length of the day, and the equinoxes and solstices.
+* **[Solar events](https://hexdocs.pm/astro/solar.html)** — sunrise, sunset, twilight, solar noon, the length of the day, and the equinoxes and solstices.
 
-* **[Lunar events](guides/lunar.md)** — moonrise, moonset, phases, new moons and crescent visibility.
+* **[Lunar events](https://hexdocs.pm/astro/lunar.html)** — moonrise, moonset, phases, new moons and crescent visibility.
 
-* **[Rise and set comparisons](rise_and_set_comparisons.md)** — Astro's results against Skyfield, the USNO and timeanddate.com.
+* **[Rise and set comparisons](https://hexdocs.pm/astro/rise_and_set_comparisons.html)** — Astro's results against Skyfield, the USNO and timeanddate.com.
 
 The full API documentation is on [HexDocs](https://hexdocs.pm/astro).
 
@@ -236,4 +236,4 @@ MIX_ENV=test mix tz_world.update --force
 
 ## License
 
-Astro is released under the [Apache License 2.0](LICENSE.md).
+Astro is released under the [Apache License 2.0](https://hexdocs.pm/astro/license.html).

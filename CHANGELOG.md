@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## Astro version 2.8.0
+
+This is the changelog for Astro version 2.8.0, released on October 23rd, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Added
+
+* `Astro.Ephemeris.sun_ecliptic_position/1`, `moon_ecliptic_position/1` and their `_dt` forms return apparent ecliptic longitude, latitude and distance.
+
+* `Astro.Ephemeris.sun_position_from_moment/1` and `moon_position_from_moment/1` return apparent right ascension, declination and distance for a moment.
+
+* `Astro.Coordinates.true_equator_to_ecliptic/2`, `Astro.Coordinates.cartesian_to_ecliptic_spherical/1` and `Astro.Time.moment_from_julian_centuries/1`.
+
+* `Astro.Ephemeris.check_coverage/2` reports whether the loaded ephemeris covers a moment or span of moments.
+
+### Breaking Changes
+
+* `Astro.lunar_phase_at/1`, `illuminated_fraction_of_moon_at/1`, `date_time_new_moon_nearest/1`, `date_time_lunar_phase_at_or_before/2`, `date_time_lunar_phase_at_or_after/2`, `sun_position_at/1`, `moon_position_at/1`, `sun_apparent_longitude/1`, `sun_azimuth_elevation/2` and `solar_noon/2` return `{:error, :not_found}` for dates the loaded ephemeris does not cover (1900–2100 for the bundled file), where 2.7.0 returned a value from the Meeus series.
 
 ### Changed
 

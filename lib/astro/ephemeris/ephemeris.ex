@@ -259,6 +259,13 @@ defmodule Astro.Ephemeris do
 
   * `{:error, reason}` if a required ephemeris segment is not found.
 
+  ### Examples
+
+      iex> moment = Astro.Time.date_time_to_moment(~U[2024-06-21 12:00:00Z])
+      iex> {:ok, {longitude, latitude, distance}} = Astro.Ephemeris.sun_ecliptic_position(moment)
+      iex> {Float.round(longitude, 4), Float.round(latitude, 4), round(distance)}
+      {90.6022, -0.0002, 152026542}
+
   """
   @spec sun_ecliptic_position(Astro.Time.moment()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
@@ -315,6 +322,13 @@ defmodule Astro.Ephemeris do
 
   * `{:error, reason}` if a required ephemeris segment is not found.
 
+  ### Examples
+
+      iex> moment = Astro.Time.date_time_to_moment(~U[2024-06-21 12:00:00Z])
+      iex> {:ok, {longitude, latitude, distance}} = Astro.Ephemeris.moon_ecliptic_position(moment)
+      iex> {Float.round(longitude, 4), Float.round(latitude, 4), round(distance)}
+      {263.7436, -4.7566, 382267}
+
   """
   @spec moon_ecliptic_position(Astro.Time.moment()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
@@ -340,6 +354,13 @@ defmodule Astro.Ephemeris do
 
   * `{:error, reason}` if a required ephemeris segment is not found.
 
+  ### Examples
+
+      iex> moment = Astro.Time.date_time_to_moment(~U[2024-06-21 12:00:00Z])
+      iex> {:ok, {right_ascension, declination, distance}} = Astro.Ephemeris.sun_position_from_moment(moment)
+      iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
+      {90.6564, 23.4368, 152026542}
+
   """
   @spec sun_position_from_moment(Astro.Time.moment()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
@@ -363,6 +384,13 @@ defmodule Astro.Ephemeris do
 
   * `{:error, reason}` if a required ephemeris segment is not found.
 
+  ### Examples
+
+      iex> moment = Astro.Time.date_time_to_moment(~U[2024-06-21 12:00:00Z])
+      iex> {:ok, {right_ascension, declination, distance}} = Astro.Ephemeris.moon_position_from_moment(moment)
+      iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
+      {262.932, -28.0416, 382267}
+
   """
   @spec moon_position_from_moment(Astro.Time.moment()) ::
           {:ok, {float(), float(), float()}} | {:error, term()}
@@ -370,6 +398,55 @@ defmodule Astro.Ephemeris do
     moment
     |> Astro.Time.dynamical_time_from_moment()
     |> moon_position_dt()
+  end
+
+  # ── Coverage ────────────────────────────────────────────────────────────────
+
+  @doc """
+  Checks that the loaded ephemeris covers the Sun and the Moon over a
+  span of moments.
+
+  The loaded ephemeris covers one continuous span of years, so a span
+  is covered when both of its ends are.
+
+  ### Arguments
+
+  * `from` is the first moment (fractional days since epoch) of the span.
+
+  * `to` is the last moment of the span. The default is `from`, which
+    checks a single moment.
+
+  ### Returns
+
+  * `:ok` if the ephemeris covers the whole span.
+
+  * `{:error, :not_found}` if either end lies outside the ephemeris.
+
+  ### Examples
+
+      iex> Astro.Ephemeris.check_coverage(Astro.Time.date_time_to_moment(~D[2024-06-21]))
+      :ok
+
+      iex> Astro.Ephemeris.check_coverage(Astro.Time.date_time_to_moment(~D[1000-01-01]))
+      {:error, :not_found}
+
+  """
+  @doc since: "2.8.0"
+  @spec check_coverage(Astro.Time.moment(), Astro.Time.moment() | nil) ::
+          :ok | {:error, :not_found}
+  def check_coverage(from, to \\ nil) do
+    with :ok <- covered(from) do
+      covered(to || from)
+    end
+  end
+
+  defp covered(moment) do
+    dynamical_time = Astro.Time.dynamical_time_from_moment(moment)
+
+    with {:ok, _sun} <- sun_position_dt(dynamical_time),
+         {:ok, _moon} <- moon_position_dt(dynamical_time) do
+      :ok
+    end
   end
 
   # ── Parallax ────────────────────────────────────────────────────────────────
