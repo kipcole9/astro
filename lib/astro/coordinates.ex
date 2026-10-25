@@ -132,6 +132,19 @@ defmodule Astro.Coordinates do
           {float(), float(), float()}
   def icrf_to_true_equator({x, y, z}, dynamical_time) do
     t = julian_centuries_from_dynamical_time(dynamical_time)
+    icrf_to_true_equator({x, y, z}, dynamical_time, Earth.nutation(t))
+  end
+
+  @doc false
+  # As `icrf_to_true_equator/2`, with the nutation at `dynamical_time`
+  # already found, so a caller rotating on to the ecliptic computes it once.
+  @spec icrf_to_true_equator(
+          {float(), float(), float()},
+          float(),
+          {float(), float(), float()}
+        ) :: {float(), float(), float()}
+  def icrf_to_true_equator({x, y, z}, dynamical_time, nutation) do
+    t = julian_centuries_from_dynamical_time(dynamical_time)
 
     # Precession angles (Lieske 1977), arcseconds → radians
     zeta_a = arcsec_to_rad(2306.2181 * t + 1.39656 * t * t - 0.000139 * t * t * t)
@@ -145,7 +158,7 @@ defmodule Astro.Coordinates do
     {x3, y3, z3} = rot_z({x2, y2, z2}, z_a)
 
     # Nutation
-    {d_psi, d_eps, eps0} = Earth.nutation(t)
+    {d_psi, d_eps, eps0} = nutation
     # true obliquity (radians)
     eps = eps0 + d_eps
 
@@ -286,7 +299,18 @@ defmodule Astro.Coordinates do
           {float(), float(), float()}
   def true_equator_to_ecliptic({x, y, z}, dynamical_time) do
     t = julian_centuries_from_dynamical_time(dynamical_time)
-    {_d_psi, d_eps, eps0} = Earth.nutation(t)
+    true_equator_to_ecliptic({x, y, z}, dynamical_time, Earth.nutation(t))
+  end
+
+  @doc false
+  # As `true_equator_to_ecliptic/2`, with the nutation at `dynamical_time`
+  # already found.
+  @spec true_equator_to_ecliptic(
+          {float(), float(), float()},
+          float(),
+          {float(), float(), float()}
+        ) :: {float(), float(), float()}
+  def true_equator_to_ecliptic({x, y, z}, _dynamical_time, {_d_psi, d_eps, eps0}) do
     eps = eps0 + d_eps
     rot_x({x, y, z}, -eps)
   end

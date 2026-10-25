@@ -409,21 +409,26 @@ defmodule Astro.Lunar.MoonRiseSet do
   defp find_moon_event(dt_start, dt_end, direct_fn, event, interpolation, limb, date, context) do
     %{location: location, options: options} = context
 
+    # The scan is lazy: the samples are taken in order and stop at the first
+    # bracket whose event falls on `date`, the one an eager scan of the whole
+    # window would also have chosen, so the samples after it, half the
+    # window or more, are never computed.
     brackets =
       Stream.iterate(dt_start, &(&1 + @scan_step_s))
       |> Stream.take_while(&(&1 <= dt_end))
-      |> Enum.map(fn dynamical_time -> {dynamical_time, direct_fn.(dynamical_time)} end)
-      |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.filter(fn [{_dt1, f1}, {_dt2, f2}] -> crossing?(event, f1, f2) end)
+      |> Stream.map(fn dynamical_time -> {dynamical_time, direct_fn.(dynamical_time)} end)
+      |> Stream.chunk_every(2, 1, :discard)
+      |> Stream.filter(fn [{_dt1, f1}, {_dt2, f2}] -> crossing?(event, f1, f2) end)
 
     # The zone for a fixed location is the same for every candidate bracket, so
-    # it is resolved once rather than per bracket: a tz_world lookup can cost
-    # more than the astronomy. It is skipped when there is no bracket, exactly
-    # as before, so a location with no event still reports {:error, :no_time}.
-    time_zone = if brackets != [], do: requested_time_zone(location, options)
-
+    # it is resolved once, at the first bracket, rather than per bracket: a
+    # tz_world lookup can cost more than the astronomy. It is not resolved when
+    # there is no bracket, so a location with no event still reports
+    # {:error, :no_time}.
     result =
-      Enum.find_value(brackets, fn [{dt_lo, _f_lo}, {dt_hi, _f_hi}] ->
+      brackets
+      |> with_time_zone(location, options)
+      |> Enum.find_value(fn {[{dt_lo, _f_lo}, {dt_hi, _f_hi}], time_zone} ->
         alt_fn = refinement_fn(interpolation, dt_lo, dt_hi, direct_fn, limb, context)
 
         # Re-evaluate bracket endpoints with the chosen function
@@ -433,6 +438,20 @@ defmodule Astro.Lunar.MoonRiseSet do
       end)
 
     result || {:error, :no_time}
+  end
+
+  # Pairs each bracket with the requested zone, resolved when the first
+  # bracket is reached.
+  defp with_time_zone(brackets, location, options) do
+    Stream.transform(brackets, :unresolved, fn bracket, state ->
+      time_zone =
+        case state do
+          :unresolved -> requested_time_zone(location, options)
+          {:resolved, time_zone} -> time_zone
+        end
+
+      {[{bracket, time_zone}], {:resolved, time_zone}}
+    end)
   end
 
   defp crossing?(:rise, f1, f2), do: f1 < 0.0 and f2 >= 0.0

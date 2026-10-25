@@ -239,8 +239,9 @@ defmodule Astro.Ephemeris do
           {:ok, {float(), float(), float()}} | {:error, term()}
   def sun_ecliptic_position_dt(dynamical_time) do
     with {:ok, geo} <- sun_geocentric_cartesian(dynamical_time - sun_light_time(dynamical_time)) do
-      apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time)
-      ecliptic = Coordinates.true_equator_to_ecliptic(apparent, dynamical_time)
+      nutation = nutation_at(dynamical_time)
+      apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time, nutation)
+      ecliptic = Coordinates.true_equator_to_ecliptic(apparent, dynamical_time, nutation)
       {:ok, Coordinates.cartesian_to_ecliptic_spherical(ecliptic)}
     end
   end
@@ -302,8 +303,9 @@ defmodule Astro.Ephemeris do
           {:ok, {float(), float(), float()}} | {:error, term()}
   def moon_ecliptic_position_dt(dynamical_time) do
     with {:ok, geo} <- moon_geocentric_cartesian(dynamical_time - @moon_light_time_s) do
-      apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time)
-      ecliptic = Coordinates.true_equator_to_ecliptic(apparent, dynamical_time)
+      nutation = nutation_at(dynamical_time)
+      apparent = Coordinates.icrf_to_true_equator(geo, dynamical_time, nutation)
+      ecliptic = Coordinates.true_equator_to_ecliptic(apparent, dynamical_time, nutation)
       {:ok, Coordinates.cartesian_to_ecliptic_spherical(ecliptic)}
     end
   end
@@ -440,11 +442,16 @@ defmodule Astro.Ephemeris do
     end
   end
 
+  # A moment is covered when the segments the Sun's and the Moon's
+  # positions read are found, at the times they read them: the same
+  # lookups `sun_position_dt/1` and `moon_position_dt/1` make, without
+  # evaluating a position, which took two full apparent positions (about
+  # 23 µs) a moment.
   defp covered(moment) do
     dynamical_time = Astro.Time.dynamical_time_from_moment(moment)
 
-    with {:ok, _sun} <- sun_position_dt(dynamical_time),
-         {:ok, _moon} <- moon_position_dt(dynamical_time) do
+    with {:ok, _sun} <- sun_segments(dynamical_time - sun_light_time(dynamical_time)),
+         {:ok, _moon} <- moon_segments(dynamical_time - @moon_light_time_s) do
       :ok
     end
   end
@@ -494,8 +501,7 @@ defmodule Astro.Ephemeris do
   end
 
   defp moon_geocentric_cartesian(dynamical_time) do
-    with {:ok, seg_moon} <- Kernel.find_segment(@moon_id, @emb_id, dynamical_time),
-         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
+    with {:ok, {seg_moon, seg_earth}} <- moon_segments(dynamical_time) do
       {mx, my, mz} = Kernel.position(seg_moon, dynamical_time)
       {ex, ey, ez} = Kernel.position(seg_earth, dynamical_time)
       {:ok, {mx - ex, my - ey, mz - ez}}
@@ -503,13 +509,35 @@ defmodule Astro.Ephemeris do
   end
 
   defp sun_geocentric_cartesian(dynamical_time) do
-    with {:ok, seg_sun} <- Kernel.find_segment(@sun_id, @ssb_id, dynamical_time),
-         {:ok, seg_emb} <- Kernel.find_segment(@emb_id, @ssb_id, dynamical_time),
-         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
+    with {:ok, {seg_sun, seg_emb, seg_earth}} <- sun_segments(dynamical_time) do
       {sx, sy, sz} = Kernel.position(seg_sun, dynamical_time)
       {bx, by, bz} = Kernel.position(seg_emb, dynamical_time)
       {ex, ey, ez} = Kernel.position(seg_earth, dynamical_time)
       {:ok, {sx - bx - ex, sy - by - ey, sz - bz - ez}}
+    end
+  end
+
+  # The nutation at a dynamical time, found once for both rotations an
+  # ecliptic position makes: to the true equator, and on to the ecliptic.
+  defp nutation_at(dynamical_time) do
+    dynamical_time |> Coordinates.julian_centuries_from_dynamical_time() |> Astro.Earth.nutation()
+  end
+
+  # The segments the Moon's and the Sun's geocentric positions are chained
+  # from, found at the time they are read. A position and the coverage of a
+  # moment both ask here, so they cannot disagree on what is covered.
+  defp moon_segments(dynamical_time) do
+    with {:ok, seg_moon} <- Kernel.find_segment(@moon_id, @emb_id, dynamical_time),
+         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
+      {:ok, {seg_moon, seg_earth}}
+    end
+  end
+
+  defp sun_segments(dynamical_time) do
+    with {:ok, seg_sun} <- Kernel.find_segment(@sun_id, @ssb_id, dynamical_time),
+         {:ok, seg_emb} <- Kernel.find_segment(@emb_id, @ssb_id, dynamical_time),
+         {:ok, seg_earth} <- Kernel.find_segment(@earth_id, @emb_id, dynamical_time) do
+      {:ok, {seg_sun, seg_emb, seg_earth}}
     end
   end
 end

@@ -1,5 +1,19 @@
 # Changelog
 
+## Astro version 2.8.1
+
+This is the changelog for Astro version 2.8.1, not yet released. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Changed
+
+* JPL positions and the functions built on them are faster, with results unchanged to the last bit:
+
+  * `Astro.Ephemeris.check_coverage/1,2` looks up the ephemeris segments a moment needs, where it computed the Sun's and the Moon's apparent positions (47 µs to 4 µs for a span). Every function that checks coverage first gains: `Astro.solar_noon/2` 92 µs to 49 µs, `Astro.lunar_phase_at/1` 109 µs to 53 µs, `Astro.sun_position_at/1` 74 µs to 26 µs.
+
+  * An ecliptic position of the Sun or the Moon computes the nutation once, where it computed it twice (`Astro.Solar.solar_ecliptic_longitude/1` 19 µs to 14 µs).
+
+  * Sunrise, sunset, moonrise and moonset sample their search window only until the event is bracketed, where they sampled all of it (`Astro.new_visible_crescent/3` 6.0 ms to 4.1 ms).
+
 ## Astro version 2.8.0
 
 This is the changelog for Astro version 2.8.0, released on October 23rd, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
