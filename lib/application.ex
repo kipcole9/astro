@@ -3,52 +3,15 @@ defmodule Astro.Application do
 
   use Application
 
-  alias Astro.Ephemeris.{Downloader, Kernel}
-
+  # The application loads the ephemeris and runs no process of its own:
+  # tz_world's backend, which rise and set times use, is started by the
+  # application that wants it, directly or through `Astro.Supervisor`. An
+  # application that does not start `:astro` lists `Astro.Supervisor`, which
+  # loads the ephemeris too.
+  @impl true
   def start(_type, _args) do
-    with {:ok, kernel} <- load_ephemeris() do
-      :ok = :persistent_term.put(Kernel.ephemeris_key(), kernel)
+    with :ok <- Astro.Ephemeris.Loader.ensure_loaded() do
       Supervisor.start_link([], strategy: :one_for_one, name: __MODULE__)
     end
-  end
-
-  defp load_ephemeris do
-    case ephemeris_kernel() do
-      {:ok, kernel} -> {:ok, kernel}
-      {:error, reason} -> {:error, ephemeris_error(reason)}
-    end
-  end
-
-  defp ephemeris_kernel do
-    with {:ok, path} <- Downloader.ensure_ephemeris(Downloader.ephemeris_path()) do
-      Kernel.load(path)
-    end
-  end
-
-  defp ephemeris_error(reason) do
-    """
-    Astro could not load the JPL DE-series ephemeris file required for
-    astronomical calculations.
-
-    Reason: #{inspect(reason)}
-
-    Astro attempts to download the default ephemeris file (de440s.bsp,
-    ~32 MB) from NASA NAIF on first startup and cache it on disk. If
-    the download failed (e.g. no network access), you can:
-
-      1. Manually download the file from
-         https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp
-         and save it to:
-
-           #{Astro.Ephemeris.Downloader.ephemeris_path()}
-
-      2. Or configure an explicit path in your application config:
-
-           config :astro, ephemeris: "/path/to/de440s.bsp"
-
-      3. Or override the download URL (e.g. an internal mirror):
-
-           config :astro, ephemeris_url: "https://example.com/de440s.bsp"
-    """
   end
 end

@@ -1,7 +1,7 @@
 defmodule Astro.MixProject do
   use Mix.Project
 
-  @version "2.8.0"
+  @version "2.9.0"
 
   def project do
     [
@@ -90,7 +90,7 @@ defmodule Astro.MixProject do
 
   def application do
     [
-      mod: {Astro.Application, [strategy: :one_for_one]},
+      mod: {Astro.Application, []},
       extra_applications: extra_applications(Mix.env())
     ]
   end

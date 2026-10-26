@@ -126,8 +126,9 @@ defmodule Astro.Ephemeris.Kernel do
   @doc """
   Returns the loaded ephemeris kernel from `:persistent_term` storage.
 
-  The kernel is loaded at application start by Astro.Application
-  and stored under `ephemeris_key/0`.
+  The kernel is loaded when the `:astro` application starts, or by
+  `Astro.Supervisor` when an application supervises Astro itself, and
+  stored under `ephemeris_key/0`.
 
   ### Returns
 

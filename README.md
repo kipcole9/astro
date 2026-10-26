@@ -33,7 +33,7 @@ Add `astro` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:astro, "~> 2.8"}
+    {:astro, "~> 2.9"}
   ]
 end
 ```

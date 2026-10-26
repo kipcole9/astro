@@ -1,8 +1,12 @@
 # Changelog
 
-## Astro version 2.8.1
+## Astro version 2.9.0
 
-This is the changelog for Astro version 2.8.1, released on October 26th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+This is the changelog for Astro version 2.9.0, released on October 26th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Added
+
+* An application can supervise Astro itself: with the dependency marked `runtime: false`, so the `:astro` application is not started, listing `Astro.Supervisor` in the application's own tree loads the JPL ephemeris before the supervisor starts, where only the `:astro` application loaded it. Where the `:astro` application runs as well, the ephemeris it loaded is kept, so an application that lists `Astro.Supervisor` for tz_world's backend is unaffected. `Astro.Supervisor` describes the setup, and the `astro: :load` a release then needs.
 
 ### Changed
 

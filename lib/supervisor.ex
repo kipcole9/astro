@@ -16,6 +16,41 @@ defmodule Astro.Supervisor do
   An application can instead add `TzWorld.Backend.SpatialIndex` to its own
   tree, as the README describes.
 
+  ## Supervising Astro yourself
+
+  The `:astro` application loads the JPL ephemeris as it starts. An
+  application that prefers to start Astro alongside its own processes can
+  mark the dependency `runtime: false`, so that the `:astro` application is
+  not started, and list this supervisor in its own tree, which then loads
+  the ephemeris before it starts:
+
+      # mix.exs
+      def deps do
+        [
+          {:astro, "~> 2.9", runtime: false}
+        ]
+      end
+
+      # lib/my_app/application.ex
+      children = [
+        Astro.Supervisor,
+        MyApp.Worker
+      ]
+
+  List it before any process that asks Astro for a position as it starts.
+  A release must then include Astro's code, as `runtime: false` leaves it
+  out of the application's own:
+
+      # mix.exs
+      def project do
+        [
+          releases: [my_app: [applications: [astro: :load]]]
+        ]
+      end
+
+  Where the `:astro` application is started as well, the ephemeris it has
+  loaded is used and not loaded again.
+
   """
 
   if Code.ensure_loaded?(TzWorld.Backend.SpatialIndex) do
@@ -25,7 +60,8 @@ defmodule Astro.Supervisor do
   end
 
   @doc """
-  Starts the supervisor and, when `:tz_world` is a dependency, its
+  Loads the JPL ephemeris unless it is loaded already, and starts the
+  supervisor and, when `:tz_world` is a dependency, its
   `TzWorld.Backend.SpatialIndex` backend.
 
   `TzWorld.Backend.SpatialIndex` is tz_world's recommended and default
@@ -39,9 +75,12 @@ defmodule Astro.Supervisor do
 
   ### Returns
 
-  * `{:ok, pid}` once the supervisor and backend have started.
+  * `{:ok, pid}` once the ephemeris is loaded and the supervisor and
+    backend have started.
 
-  * `{:error, reason}` if either could not be started.
+  * `{:error, reason}` if the ephemeris could not be loaded, with a
+    message saying how to install it, or if the supervisor or backend
+    could not be started.
 
   ### Examples
 
@@ -51,8 +90,10 @@ defmodule Astro.Supervisor do
 
   """
   def start_link(_type \\ [], _args \\ []) do
-    options = [strategy: :one_for_one, name: Astro.Supervisor]
-    Supervisor.start_link(@tz_world_backend, options)
+    with :ok <- Astro.Ephemeris.Loader.ensure_loaded() do
+      options = [strategy: :one_for_one, name: Astro.Supervisor]
+      Supervisor.start_link(@tz_world_backend, options)
+    end
   end
 
   @doc """

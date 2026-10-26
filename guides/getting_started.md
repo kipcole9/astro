@@ -11,7 +11,7 @@ Add `astro` to your dependencies:
 ```elixir
 def deps do
   [
-    {:astro, "~> 2.8"},
+    {:astro, "~> 2.9"},
     {:tz, "~> 0.28"},
     {:tz_world, "~> 2.4"}
   ]
