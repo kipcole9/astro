@@ -18,8 +18,6 @@ This is the changelog for Astro version 2.9.0, released on October 26th, 2026. F
 
   * Sunrise, sunset, moonrise and moonset sample their search window only until the event is bracketed, where they sampled all of it (`Astro.new_visible_crescent/3` 6.0 ms to 4.1 ms).
 
-  * `Astro.Ephemeris.Kernel.position/2` reuses the Chebyshev record it decoded last for a segment while the time stays within it, kept in the calling process's dictionary, one small entry for each segment it reads. Decoding a record was about half the cost of a position, and searches and day-by-day scans ask for times close together (`Kernel.position/2` 2.8 µs to 1.6 µs within a record, `Astro.Solar.solar_ecliptic_longitude/1` 14 µs to 10 µs at times hours apart, `Astro.solar_noon/2` 49 µs to 40 µs). An entry names the kernel it was read from, so a kernel put in place of another is never answered from its records.
-
 ## Astro version 2.8.0
 
 This is the changelog for Astro version 2.8.0, released on October 23rd, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

@@ -63,10 +63,9 @@ defmodule Astro.Ephemeris.Kernel do
   # segment when it is absent; see `find_segment/3`.
   @emrat 81.3005682214972154
 
-  defstruct [:id, :path, :endian, :data, :segments, :index]
+  defstruct [:path, :endian, :data, :segments, :index]
 
   @type t :: %__MODULE__{
-          id: reference() | nil,
           path: String.t(),
           endian: :little | :big,
           data: binary(),
@@ -113,7 +112,6 @@ defmodule Astro.Ephemeris.Kernel do
 
       {:ok,
        %__MODULE__{
-         id: make_ref(),
          path: path,
          endian: endian,
          data: data,
@@ -255,53 +253,20 @@ defmodule Astro.Ephemeris.Kernel do
   """
   @spec position(map(), float()) :: {float(), float(), float()}
   def position(segment, dynamical_time) do
-    %{init_dt: init_dt, intlen: intlen, n_records: n_records} = segment
+    %__MODULE__{data: data, endian: endian} = ephemeris()
+
+    %{
+      start_addr: start_addr,
+      init_dt: init_dt,
+      intlen: intlen,
+      rsize: rsize,
+      n_records: n_records,
+      degree: degree
+    } = segment
 
     # Identify which Chebyshev record covers `dynamical_time` (0-based index).
     idx = trunc((dynamical_time - init_dt) / intlen)
     idx = max(0, min(idx, n_records - 1))
-
-    {t_mid, t_half, cx, cy, cz} = record(segment, idx)
-
-    # Normalise time to [-1, +1].
-    s = (dynamical_time - t_mid) / t_half
-
-    # Reconstructed segments carry a scale factor; real segments do not.
-    scale = Map.get(segment, :scale, 1.0)
-
-    {scale * Math.evaluate_chebyshev_reversed(cx, s),
-     scale * Math.evaluate_chebyshev_reversed(cy, s),
-     scale * Math.evaluate_chebyshev_reversed(cz, s)}
-  end
-
-  # The decoded Chebyshev record `idx` of a segment. Decoding a record's
-  # coefficients is about half the cost of a position, and a caller asks
-  # for nearby times again and again (a search converging on an instant, a
-  # scan of consecutive days), each record covering days. So the last record
-  # decoded for each segment is kept in the calling process's dictionary, a
-  # few small entries for each process that asks for positions, and reused
-  # while the time stays within it. An entry names the kernel it was read
-  # from, so a kernel loaded in its place is never answered from another's
-  # record. The reconstructed Earth segment shares the Moon's data, and so
-  # its decoded record. The floats are those a fresh decode would give, so
-  # positions are unchanged.
-  defp record(%{start_addr: start_addr} = segment, idx) do
-    %__MODULE__{id: id} = kernel = ephemeris()
-    key = {__MODULE__, :record, start_addr}
-
-    case Process.get(key) do
-      {^id, ^idx, record} ->
-        record
-
-      _other ->
-        record = decode_record(kernel, segment, idx)
-        Process.put(key, {id, idx, record})
-        record
-    end
-  end
-
-  defp decode_record(%__MODULE__{data: data, endian: endian}, segment, idx) do
-    %{start_addr: start_addr, rsize: rsize, degree: degree} = segment
 
     # Byte offset of this record in the file.
     # start_addr is a 1-based word index into the entire file.
@@ -314,13 +279,24 @@ defmodule Astro.Ephemeris.Kernel do
     # single pass, rather than matching the record once per coefficient.
     {t_mid, t_half, coefficients} = record_header(rec_bin, endian)
 
+    # Normalise time to [-1, +1].
+    s = (dynamical_time - t_mid) / t_half
+
     axis_bytes = (degree + 1) * @double_size
 
     <<x_bin::binary-size(^axis_bytes), y_bin::binary-size(^axis_bytes),
       z_bin::binary-size(^axis_bytes), _::binary>> = coefficients
 
-    {t_mid, t_half, read_reversed(x_bin, endian), read_reversed(y_bin, endian),
-     read_reversed(z_bin, endian)}
+    cx = read_reversed(x_bin, endian)
+    cy = read_reversed(y_bin, endian)
+    cz = read_reversed(z_bin, endian)
+
+    # Reconstructed segments carry a scale factor; real segments do not.
+    scale = Map.get(segment, :scale, 1.0)
+
+    {scale * Math.evaluate_chebyshev_reversed(cx, s),
+     scale * Math.evaluate_chebyshev_reversed(cy, s),
+     scale * Math.evaluate_chebyshev_reversed(cz, s)}
   end
 
   # ── Binary parsing ───────────────────────────────────────────────────────────
