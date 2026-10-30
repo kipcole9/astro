@@ -64,6 +64,7 @@ defmodule Astro.MixProject do
         Ephemeris: [
           Astro.Ephemeris,
           Astro.Ephemeris.Kernel,
+          Astro.Ephemeris.Meeus,
           Astro.Ephemeris.Downloader,
           Astro.Ephemeris.Subset
         ],
