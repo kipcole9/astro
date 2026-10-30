@@ -201,7 +201,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
-      {343.3188030033631, 77.86324225944439}
+      {343.3186660074121, 77.86323624455362}
 
   """
 
@@ -276,7 +276,7 @@ defmodule Astro do
       iex> %Geo.PointZ{coordinates: {right_ascension, declination, distance}, properties: properties} =
       ...>   Astro.sun_position_at(~D[1992-10-13])
       iex> {Float.round(right_ascension, 6), Float.round(declination, 6), round(distance)}
-      {-161.62124, -7.784069, 149240324715}
+      {-161.621245, -7.784069, 149240324715}
       iex> properties
       %{object: :sun, reference: :celestial}
 
@@ -339,7 +339,7 @@ defmodule Astro do
 
       iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
       %Geo.PointZ{
-        coordinates: {134.697256, 13.765116, 368404879.697206},
+        coordinates: {134.697251, 13.765115, 368404879.697206},
         properties: %{object: :moon, reference: :celestial},
         srid: nil
       }
@@ -500,7 +500,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:50:07.353761Z]}
+      {:ok, ~U[2021-08-08 13:50:07.348591Z]}
 
   """
   @doc since: "2.0.0"
@@ -596,7 +596,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.lunar_phase_at ~U[2021-08-22 12:02:02.816534Z]
-      180.00068292003178
+      180.00068383330358
 
       iex> Astro.lunar_phase_at(~U[2021-07-10 01:16:34.022607Z])
       3.6600909621461326e-6
@@ -705,7 +705,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
-      {:ok, ~U[2021-07-10 01:16:33.727105Z]}
+      {:ok, ~U[2021-07-10 01:16:33.730917Z]}
 
   """
 
@@ -755,7 +755,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
-      {:ok, ~U[2021-08-22 12:01:57.906773Z]}
+      {:ok, ~U[2021-08-22 12:01:57.910586Z]}
 
   """
 
@@ -876,7 +876,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
       iex> date_time
-      #DateTime<2019-12-04 05:37:06.211944+11:00 AEDT Australia/Sydney>
+      #DateTime<2019-12-04 05:37:06.206432+11:00 AEDT Australia/Sydney>
 
       iex> Astro.sunrise({-62.3481, 82.5018}, ~D[2019-12-04])
       {:error, :no_time}
@@ -978,7 +978,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
       iex> date_time
-      #DateTime<2019-12-04 19:53:18.161182+11:00 AEDT Australia/Sydney>
+      #DateTime<2019-12-04 19:53:18.155710+11:00 AEDT Australia/Sydney>
 
       iex> Astro.sunset({-62.3481, 82.5018}, ~D[2019-12-04])
       {:error, :no_time}
@@ -1083,7 +1083,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = Astro.moonrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
       iex> date_time
-      #DateTime<2019-12-04 12:20:54.394229+11:00 AEDT Australia/Sydney>
+      #DateTime<2019-12-04 12:20:54.388717+11:00 AEDT Australia/Sydney>
 
       iex> Astro.moonrise({-62.3481, 82.5018}, ~D[2024-01-01])
       {:error, :no_time}
@@ -1192,7 +1192,7 @@ defmodule Astro do
 
       iex> {:ok, date_time} = Astro.moonset({151.20666584, -33.8559799094}, ~D[2019-12-04])
       iex> date_time
-      #DateTime<2019-12-04 01:13:25.833583+11:00 AEDT Australia/Sydney>
+      #DateTime<2019-12-04 01:13:25.822599+11:00 AEDT Australia/Sydney>
 
       iex> Astro.moonset({-62.3481, 82.5018}, ~D[2024-01-01])
       {:error, :no_time}
@@ -1675,13 +1675,13 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.sun_apparent_longitude ~D[2019-03-21]
-      0.08388697548688041
+      0.0838600951350463
       iex> Astro.sun_apparent_longitude ~D[2019-06-22]
-      90.32184913672332
+      90.32182153965914
       iex> Astro.sun_apparent_longitude ~D[2019-09-23]
-      179.68056395276588
+      179.68053562968015
       iex> Astro.sun_apparent_longitude ~D[2019-12-23]
-      270.83530633318776
+      270.8352772904792
 
   ### Notes
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## Astro version 2.10.0 (unreleased)
+
+### Added
+
+* `Astro.Ephemeris.Meeus` computes the apparent Sun from analytical series for moments the loaded ephemeris does not cover. It agrees with JPL DE440s to about 1″ RMS over 1900–2100.
+
+### Bug Fixes
+
+* The precession applied to JPL positions took the epoch terms of Meeus 21.2 as its t² and t³ coefficients, misplacing the Sun and Moon by up to about 2″ at 1900 and 2100. Rise and set times near the present move by milliseconds.
+
 ## Astro version 2.9.0
 
 This is the changelog for Astro version 2.9.0, released on October 26th, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

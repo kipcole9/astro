@@ -146,10 +146,12 @@ defmodule Astro.Coordinates do
   def icrf_to_true_equator({x, y, z}, dynamical_time, nutation) do
     t = julian_centuries_from_dynamical_time(dynamical_time)
 
-    # Precession angles (Lieske 1977), arcseconds → radians
-    zeta_a = arcsec_to_rad(2306.2181 * t + 1.39656 * t * t - 0.000139 * t * t * t)
-    theta_a = arcsec_to_rad(2004.3109 * t - 0.85330 * t * t - 0.000217 * t * t * t)
-    z_a = arcsec_to_rad(2306.2181 * t + 3.04480 * t * t + 0.000510 * t * t * t)
+    # Precession angles from J2000.0 (Lieske 1977; Meeus 21.3), arcseconds
+    # to radians. Meeus 21.2's coefficients of the starting epoch T are not
+    # the t² and t³ terms; with T = 0 those are the ones below.
+    zeta_a = arcsec_to_rad(2306.2181 * t + 0.30188 * t * t + 0.017998 * t * t * t)
+    theta_a = arcsec_to_rad(2004.3109 * t - 0.42665 * t * t - 0.041833 * t * t * t)
+    z_a = arcsec_to_rad(2306.2181 * t + 1.09468 * t * t + 0.018203 * t * t * t)
 
     # Precession matrix P (Meeus Ch.21) in standard math convention:
     # P = Rz(zA) · Ry(-θA) · Rz(ζA)

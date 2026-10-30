@@ -175,7 +175,7 @@ defmodule Astro.Solar do
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2024-03-20])
       iex> Astro.Solar.solar_ecliptic_longitude(moment)
-      359.87145169401623
+      359.87140902027863
 
       iex> moment = Astro.Time.date_time_to_moment(~D[1000-06-01])
       iex> Astro.Solar.solar_ecliptic_longitude(moment) |> Float.round(4)
@@ -304,7 +304,7 @@ defmodule Astro.Solar do
   ### Examples
 
       iex> Astro.Solar.solar_noon_utc(0.0, 151.2093)
-      1328.2818354717708
+      1328.2818354717704
 
   """
   @spec solar_noon_utc(float, Astro.longitude()) :: float()

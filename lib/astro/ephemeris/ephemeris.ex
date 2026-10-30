@@ -93,7 +93,7 @@ defmodule Astro.Ephemeris do
       iex> {:ok, {right_ascension, declination, distance}} =
       ...>   Astro.Ephemeris.moon_position(~U[2024-06-21 12:00:00Z])
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
-      {262.932, -28.0416, 382267}
+      {262.9319, -28.0416, 382267}
 
   """
   @doc since: "2.0.0"
@@ -164,7 +164,7 @@ defmodule Astro.Ephemeris do
       iex> {:ok, {right_ascension, declination, distance}} =
       ...>   Astro.Ephemeris.sun_position(~U[2024-06-21 12:00:00Z])
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
-      {90.6564, 23.4368, 152026542}
+      {90.6563, 23.4368, 152026542}
 
   """
   @spec sun_position(DateTime.t()) ::
@@ -361,7 +361,7 @@ defmodule Astro.Ephemeris do
       iex> moment = Astro.Time.date_time_to_moment(~U[2024-06-21 12:00:00Z])
       iex> {:ok, {right_ascension, declination, distance}} = Astro.Ephemeris.sun_position_from_moment(moment)
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
-      {90.6564, 23.4368, 152026542}
+      {90.6563, 23.4368, 152026542}
 
   """
   @spec sun_position_from_moment(Astro.Time.moment()) ::
@@ -391,7 +391,7 @@ defmodule Astro.Ephemeris do
       iex> moment = Astro.Time.date_time_to_moment(~U[2024-06-21 12:00:00Z])
       iex> {:ok, {right_ascension, declination, distance}} = Astro.Ephemeris.moon_position_from_moment(moment)
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), round(distance)}
-      {262.932, -28.0416, 382267}
+      {262.9319, -28.0416, 382267}
 
   """
   @spec moon_position_from_moment(Astro.Time.moment()) ::
