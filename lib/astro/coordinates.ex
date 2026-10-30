@@ -349,6 +349,72 @@ defmodule Astro.Coordinates do
     {lng_deg, lat_deg, dist}
   end
 
+  # ── Ecliptic to equatorial ───────────────────────────────────────────────────
+
+  @doc """
+  Converts ecliptic longitude and latitude to right ascension and
+  declination.
+
+  The ecliptic is tilted against the equator by the obliquity, so the
+  conversion is a rotation about the line of the equinoxes (Meeus,
+  *Astronomical Algorithms*, equations 13.3 and 13.4). Use the true
+  obliquity, the mean obliquity plus the nutation in obliquity from
+  `Astro.Earth.nutation/1`, for apparent positions.
+
+  ### Arguments
+
+  * `longitude` is the ecliptic longitude in degrees.
+
+  * `latitude` is the ecliptic latitude in degrees.
+
+  * `obliquity` is the obliquity of the ecliptic in degrees.
+
+  ### Returns
+
+  * `{right_ascension, declination}` in degrees, with right ascension in
+    the range 0 to 360.
+
+  ### Examples
+
+  Meeus, *Astronomical Algorithms*, example 13.a (Pollux):
+
+      iex> {right_ascension, declination} =
+      ...>   Astro.Coordinates.ecliptic_to_equatorial(113.215630, 6.684170, 23.4392911)
+      iex> {Float.round(right_ascension, 6), Float.round(declination, 6)}
+      {116.328943, 28.026183}
+
+  """
+  @doc since: "2.10.0"
+  @spec ecliptic_to_equatorial(Astro.angle(), Astro.angle(), Astro.angle()) ::
+          {Astro.angle(), Astro.angle()}
+  def ecliptic_to_equatorial(longitude, latitude, obliquity) do
+    lambda = to_radians(longitude)
+    beta = to_radians(latitude)
+    epsilon = to_radians(obliquity)
+
+    right_ascension =
+      :math.atan2(
+        :math.sin(lambda) * :math.cos(epsilon) - :math.tan(beta) * :math.sin(epsilon),
+        :math.cos(lambda)
+      )
+
+    declination =
+      :math.asin(
+        :math.sin(beta) * :math.cos(epsilon) +
+          :math.cos(beta) * :math.sin(epsilon) * :math.sin(lambda)
+      )
+
+    {Astro.Math.mod(to_degrees(right_ascension), 360.0), to_degrees(declination)}
+  end
+
+  defp to_radians(degrees) do
+    degrees * :math.pi() / 180.0
+  end
+
+  defp to_degrees(radians) do
+    radians * 180.0 / :math.pi()
+  end
+
   # ── Rotation helpers ─────────────────────────────────────────────────────────
 
   # Right-handed rotation about the X axis by angle `a` (radians).

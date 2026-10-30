@@ -4,21 +4,12 @@ defmodule Astro.DeprecatedTest do
   # `apply/3` calls the deprecated functions without compile-time
   # deprecation warnings.
   # credo:disable-for-next-line Credo.Check.Refactor.Apply
-  defp call(module, name, julian_centuries), do: apply(module, name, [julian_centuries])
+  defp call(module, name, julian_centuries) do
+    apply(module, name, [julian_centuries])
+  end
 
-  describe "deprecated mean elements return their defining polynomials" do
-    for {module, name, expected} <- [
-          {Astro.Solar, :sun_geometric_mean_anomaly, 357.52911},
-          {Astro.Solar, :earth_orbit_eccentricity, 0.016708634},
-          {Astro.Solar, :sun_equation_of_center, -0.08430148943719645},
-          {Astro.Solar, :mean_obliquity_of_ecliptic, 23.43929111111111},
-          {Astro.Lunar, :mean_lunar_ecliptic_longitude, 218.3164477},
-          {Astro.Lunar, :lunar_elongation, 297.8501921}
-        ] do
-      test "#{inspect(module)}.#{name}/1 at J2000" do
-        assert_in_delta call(unquote(module), unquote(name), 0.0), unquote(expected), 1.0e-9
-      end
-    end
+  test "mean_obliquity_of_ecliptic/1 is the mean obliquity of Astro.Earth.nutation/1" do
+    assert_in_delta call(Astro.Solar, :mean_obliquity_of_ecliptic, 0.0), 23.43929111111111, 1.0e-9
   end
 
   describe "deprecated positions agree with the JPL-based functions" do

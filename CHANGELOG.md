@@ -4,7 +4,15 @@
 
 ### Added
 
-* `Astro.Ephemeris.Meeus` computes the apparent Sun from analytical series for moments the loaded ephemeris does not cover. It agrees with JPL DE440s to about 1″ RMS over 1900–2100.
+* `Astro.Solar.analytical_solar_position/1` and `analytical_solar_ecliptic_position/1` give the apparent Sun from analytical series for any date, within about 1″ RMS of JPL DE440s over 1900–2100.
+
+* `Astro.Lunar.analytical_lunar_position/1` and `analytical_lunar_ecliptic_position/1` give the apparent Moon from the Meeus chapter 47 series for any date, within about 3″ RMS of JPL DE440s over 1900–2100.
+
+* `Astro.Coordinates.ecliptic_to_equatorial/3` converts ecliptic longitude and latitude to right ascension and declination.
+
+### Changed
+
+* `Astro.Solar.sun_geometric_mean_anomaly/1`, `earth_orbit_eccentricity/1` and `sun_equation_of_center/1`, and `Astro.Lunar.mean_lunar_ecliptic_longitude/1` and `lunar_elongation/1` are no longer deprecated: the analytical series are built from them.
 
 ### Bug Fixes
 

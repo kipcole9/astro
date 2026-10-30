@@ -2,11 +2,23 @@ defmodule Astro.Solar do
   @moduledoc """
   Solar position, orbital mechanics, and equinox/solstice calculations.
 
-  The Sun's apparent position is evaluated from the JPL DE440s
-  ephemeris via `Astro.Ephemeris`. The Meeus *Astronomical Algorithms*
-  series are retained only for the geometric mean longitude used by
-  the equation of time and for the initial estimate that seeds the
-  equinox and solstice search.
+  ## Two sources of the Sun's position
+
+  The Sun's apparent position comes from one of two sources:
+
+  * **The JPL DE440s ephemeris**, read by `Astro.Ephemeris`. It is a
+    numerical integration of the solar system, accurate to well under
+    a milliarcsecond, but it covers a limited span of years (1900–2100
+    for the file bundled with Astro).
+
+  * **Analytical series**, computed in this module. They describe the
+    Earth's orbit with a mean motion, the equation of the centre and a
+    sum of periodic perturbations. They are less accurate (about 1″
+    near the present) but give a position for any date.
+
+  The analytical series work from the Earth's orbital elements:
+  `sun_geometric_mean_longitude/1`, `sun_geometric_mean_anomaly/1`,
+  `earth_orbit_eccentricity/1` and `sun_equation_of_center/1`.
 
   For sunrise and sunset calculations see `Astro.Solar.SunRiseSet`.
 
@@ -17,7 +29,16 @@ defmodule Astro.Solar do
   * `solar_position/1` — right ascension, declination and distance
   * `solar_ecliptic_longitude/1` — apparent ecliptic longitude at a moment
   * `solar_ecliptic_longitude_after/2`, `estimate_prior_solar_ecliptic_longitude/2`
-  * `sun_geometric_mean_longitude/1` — mean longitude from Julian centuries
+
+  ### Analytical series
+
+  * `analytical_solar_ecliptic_position/1` — apparent ecliptic longitude, latitude and distance
+  * `analytical_solar_position/1` — apparent right ascension, declination and distance
+
+  ### Orbital elements
+
+  * `sun_geometric_mean_longitude/1`, `sun_geometric_mean_anomaly/1`
+  * `earth_orbit_eccentricity/1`, `sun_equation_of_center/1`
 
   ### Time
 
@@ -59,6 +80,73 @@ defmodule Astro.Solar do
 
   # Annual aberration constant in degrees (20.4898″ at 1 AU).
   @aberration_constant 20.4898 / 3600.0
+
+  # Periodic terms of the Sun's longitude (Bretagnon and Simon, as given in
+  # Calendrical Calculations). Each row: coefficient, addend in degrees,
+  # multiplier in degrees per Julian century.
+  @sun_longitude_terms """
+                       403406  270.54861      0.9287892
+                       195207  340.19128  35999.1376958
+                       119433   63.91854  35999.4089666
+                       112392  331.26220  35998.7287385
+                         3891  317.843    71998.20261
+                         2819   86.631    71998.4403
+                         1721  240.052    36000.35726
+                          660  310.26     71997.4812
+                          350  247.23     32964.4678
+                          334  260.87       -19.4410
+                          314  297.82    445267.1117
+                          268  343.14     45036.8840
+                          242  166.79         3.1008
+                          234   81.53     22518.4434
+                          158    3.50       -19.9739
+                          132  132.75     65928.9345
+                          129  182.95      9038.0293
+                          114  162.03      3034.7684
+                           99   29.8      33718.148
+                           93  266.4       3034.448
+                           86  249.2      -2280.773
+                           78  157.6      29929.992
+                           72  257.8      31556.493
+                           68  185.1        149.588
+                           64   69.9       9037.750
+                           46    8.0     107997.405
+                           38  197.1      -4444.176
+                           37  250.4        151.771
+                           32   65.3      67555.316
+                           29  162.7      31556.080
+                           28  341.5      -4561.540
+                           27  291.6     107996.706
+                           27   98.5       1221.655
+                           25  146.7      62894.167
+                           24  110.0      31437.369
+                           21    5.2      14578.298
+                           21  342.6     -31931.757
+                           20  230.9      34777.243
+                           18  256.1       1221.999
+                           17   45.3      62894.511
+                           14  242.9      -4442.039
+                           13  115.2     107997.909
+                           13  151.8        119.066
+                           13  285.3      16859.071
+                           12   53.3         -4.578
+                           10  126.6      26895.292
+                           10  205.7        -39.127
+                           10   85.9      12297.536
+                           10  146.1      90073.778
+                       """
+                       |> String.split("\n", trim: true)
+                       |> Enum.map(fn line ->
+                         [coefficient, addend, multiplier] =
+                           line
+                           |> String.split()
+                           |> Enum.map(fn field ->
+                             {value, ""} = Float.parse(field)
+                             value
+                           end)
+
+                         {coefficient, addend, multiplier}
+                       end)
 
   # Equinox/solstice periodic terms from Meeus Table 27.C (24 terms).
   # Each row: amplitude, addend (degrees), multiplier (degrees per Julian century).
@@ -198,7 +286,7 @@ defmodule Astro.Solar do
   defp meeus_apparent_longitude(julian_centuries) do
     omega = 125.04 - 1934.136 * julian_centuries
 
-    (sun_geometric_mean_longitude(julian_centuries) + equation_of_center(julian_centuries) -
+    (sun_geometric_mean_longitude(julian_centuries) + sun_equation_of_center(julian_centuries) -
        0.00569 - 0.00478 * :math.sin(Math.to_radians(omega)))
     |> Math.mod(360.0)
   end
@@ -408,6 +496,220 @@ defmodule Astro.Solar do
     Math.mod(longitude, 360.0)
   end
 
+  @doc """
+  Returns the Sun's geometric mean anomaly in degrees.
+
+  ### Arguments
+
+  * `julian_centuries` is any moment in time expressed
+    as Julian centuries from J2000.0.
+
+  ### Returns
+
+  * the mean anomaly in degrees as a `float`,
+    in the range 0..360.
+
+  ### Notes
+
+  The mean anomaly is the angle the Earth would have moved through
+  since perihelion if it travelled its orbit at a constant speed
+  (Meeus, *Astronomical Algorithms*, equation 25.3). It grows
+  uniformly with time, which makes it the natural argument for the
+  equation of the centre.
+
+  ### Examples
+
+      iex> Astro.Solar.sun_geometric_mean_anomaly(0.0)
+      357.52911
+
+  """
+  @spec sun_geometric_mean_anomaly(Time.julian_centuries()) :: float()
+  def sun_geometric_mean_anomaly(julian_centuries) do
+    anomaly = 357.52911 + julian_centuries * (35_999.05029 - 0.0001537 * julian_centuries)
+    Math.mod(anomaly, 360.0)
+  end
+
+  @doc """
+  Returns the eccentricity of the Earth's orbit.
+
+  ### Arguments
+
+  * `julian_centuries` is any moment in time expressed
+    as Julian centuries from J2000.0.
+
+  ### Returns
+
+  * the eccentricity as a unitless `float`. Zero is a circle and values
+    between 0 and 1 are ellipses; the Earth's is about 0.0167 and slowly
+    decreasing (Meeus, *Astronomical Algorithms*, equation 25.4).
+
+  ### Examples
+
+      iex> Astro.Solar.earth_orbit_eccentricity(0.0)
+      0.016708634
+
+  """
+  @spec earth_orbit_eccentricity(Time.julian_centuries()) :: float()
+  def earth_orbit_eccentricity(julian_centuries) do
+    0.016708634 - julian_centuries * (0.000042037 + 0.0000001267 * julian_centuries)
+  end
+
+  @doc """
+  Returns the Sun's equation of the centre in degrees.
+
+  ### Arguments
+
+  * `julian_centuries` is any moment in time expressed
+    as Julian centuries from J2000.0.
+
+  ### Returns
+
+  * the equation of the centre in degrees as a `float`.
+
+  ### Notes
+
+  The equation of the centre is the difference between the true
+  anomaly, where the Earth actually is on its ellipse, and the mean
+  anomaly, where it would be at a constant speed. Adding it to the mean
+  longitude gives the true longitude. This is the series of Meeus,
+  *Astronomical Algorithms*, chapter 25, in the mean anomaly.
+
+  ### Examples
+
+      iex> Astro.Solar.sun_equation_of_center(0.0)
+      -0.08430148943719645
+
+  """
+  @spec sun_equation_of_center(Time.julian_centuries()) :: float()
+  def sun_equation_of_center(julian_centuries) do
+    anomaly = Math.to_radians(sun_geometric_mean_anomaly(julian_centuries))
+
+    :math.sin(anomaly) * (1.914602 - julian_centuries * (0.004817 + 0.000014 * julian_centuries)) +
+      :math.sin(2 * anomaly) * (0.019993 - 0.000101 * julian_centuries) +
+      :math.sin(3 * anomaly) * 0.000289
+  end
+
+  # ── Analytical series ─────────────────────────────────────────────────────────
+
+  @doc """
+  Returns the Sun's apparent geocentric ecliptic position from analytical
+  series.
+
+  The longitude is the Sun's true geometric longitude from the 49-term
+  series of Bretagnon and Simon (as given in *Calendrical Calculations*),
+  corrected for aberration and for the nutation in longitude of
+  `Astro.Earth.nutation/1`. Over 1900–2100 it agrees with the JPL DE440s
+  ephemeris to about 1″ RMS and 3.3″ at most. The latitude is taken as
+  zero, since the Sun's never exceeds about 1.2″, and the distance is the
+  radius vector of the Keplerian ellipse.
+
+  ### Arguments
+
+  * `t` is a moment (fractional days since the epoch).
+
+  ### Returns
+
+  * `{longitude, latitude, distance}` where `longitude` is in degrees in
+    the range 0 to 360, `latitude` is `0.0` and `distance` is in
+    astronomical units.
+
+  ### Examples
+
+      iex> {longitude, latitude, distance} =
+      ...>   Astro.Solar.analytical_solar_ecliptic_position(Astro.Time.j2000())
+      iex> {Float.round(longitude, 4), latitude, Float.round(distance, 6)}
+      {280.369, 0.0, 0.983308}
+
+  """
+  @doc since: "2.10.0"
+  @spec analytical_solar_ecliptic_position(Time.moment()) :: {float(), float(), float()}
+  def analytical_solar_ecliptic_position(t) do
+    {longitude, distance, _true_obliquity} = analytical_sun(t)
+    {longitude, 0.0, distance}
+  end
+
+  @doc """
+  Returns the Sun's apparent geocentric right ascension, declination and
+  distance from analytical series.
+
+  The ecliptic position of `analytical_solar_ecliptic_position/1` is
+  rotated to the equator with the true obliquity of the ecliptic by
+  `Astro.Coordinates.ecliptic_to_equatorial/3`.
+
+  ### Arguments
+
+  * `t` is a moment (fractional days since the epoch).
+
+  ### Returns
+
+  * `{right_ascension, declination, distance}` where `right_ascension`
+    is in degrees in the range 0 to 360, `declination` is in degrees and
+    `distance` is in astronomical units.
+
+  ### Examples
+
+      iex> {right_ascension, declination, distance} =
+      ...>   Astro.Solar.analytical_solar_position(Astro.Time.j2000())
+      iex> {Float.round(right_ascension, 4), Float.round(declination, 4), Float.round(distance, 6)}
+      {281.2785, -23.0327, 0.983308}
+
+  """
+  @doc since: "2.10.0"
+  @spec analytical_solar_position(Time.moment()) :: {float(), float(), float()}
+  def analytical_solar_position(t) do
+    {longitude, distance, true_obliquity} = analytical_sun(t)
+
+    {right_ascension, declination} =
+      Astro.Coordinates.ecliptic_to_equatorial(longitude, 0.0, true_obliquity)
+
+    {right_ascension, declination, distance}
+  end
+
+  # The Sun's apparent longitude in degrees, its distance in astronomical
+  # units and the true obliquity in degrees, sharing one evaluation of the
+  # nutation.
+  defp analytical_sun(t) do
+    julian_centuries = Time.julian_centuries_from_moment(t)
+    {delta_psi, delta_epsilon, mean_obliquity} = Earth.nutation(julian_centuries)
+
+    apparent_longitude =
+      sun_true_longitude_series(julian_centuries) + sun_aberration(julian_centuries) +
+        Math.to_degrees(delta_psi)
+
+    {Math.mod(apparent_longitude, 360.0), sun_radius_vector(julian_centuries),
+     Math.to_degrees(mean_obliquity + delta_epsilon)}
+  end
+
+  # The Sun's true geometric longitude referred to the mean equinox of
+  # date: a mean motion plus the periodic terms.
+  defp sun_true_longitude_series(julian_centuries) do
+    periodic =
+      Enum.reduce(@sun_longitude_terms, 0.0, fn {coefficient, addend, multiplier}, sum ->
+        sum + coefficient * Math.sin(addend + multiplier * julian_centuries)
+      end)
+
+    282.7771834 + 36_000.76953744 * julian_centuries + 0.000005729577951308232 * periodic
+  end
+
+  # Annual aberration, which displaces the Sun by about −20.5″ in longitude
+  # in the direction of the Earth's motion.
+  defp sun_aberration(julian_centuries) do
+    0.0000974 * Math.cos(177.63 + 35_999.01848 * julian_centuries) - 0.005575
+  end
+
+  # The radius vector of the Keplerian ellipse in astronomical units
+  # (Meeus, Astronomical Algorithms, equation 25.5), with the true anomaly
+  # as the mean anomaly plus the equation of the centre.
+  defp sun_radius_vector(julian_centuries) do
+    eccentricity = earth_orbit_eccentricity(julian_centuries)
+
+    true_anomaly =
+      sun_geometric_mean_anomaly(julian_centuries) + sun_equation_of_center(julian_centuries)
+
+    1.000001018 * (1.0 - eccentricity * eccentricity) /
+      (1.0 + eccentricity * Math.cos(true_anomaly))
+  end
+
   # ── Deprecated ────────────────────────────────────────────────────────────────
 
   @doc false
@@ -437,35 +739,6 @@ defmodule Astro.Solar do
   end
 
   @doc false
-  @deprecated "Astro.Solar.sun_equation_of_center/1 will be removed in Astro 3.0"
-  @spec sun_equation_of_center(Time.julian_centuries()) :: float()
-  def sun_equation_of_center(julian_centuries) do
-    equation_of_center(julian_centuries)
-  end
-
-  defp equation_of_center(julian_centuries) do
-    mrad = julian_centuries |> geometric_mean_anomaly() |> Math.to_radians()
-
-    :math.sin(mrad) * (1.914602 - julian_centuries * (0.004817 + 0.000014 * julian_centuries)) +
-      :math.sin(2 * mrad) * (0.019993 - 0.000101 * julian_centuries) +
-      :math.sin(3 * mrad) * 0.000289
-  end
-
-  @doc false
-  @deprecated "Astro.Solar.sun_geometric_mean_anomaly/1 will be removed in Astro 3.0"
-  @spec sun_geometric_mean_anomaly(Time.julian_centuries()) :: float()
-  def sun_geometric_mean_anomaly(julian_centuries) do
-    geometric_mean_anomaly(julian_centuries)
-  end
-
-  @doc false
-  @deprecated "Astro.Solar.earth_orbit_eccentricity/1 will be removed in Astro 3.0"
-  @spec earth_orbit_eccentricity(Time.julian_centuries()) :: float()
-  def earth_orbit_eccentricity(julian_centuries) do
-    0.016708634 - julian_centuries * (0.000042037 + 0.0000001267 * julian_centuries)
-  end
-
-  @doc false
   @deprecated "Use Astro.Earth.nutation/1, which returns the obliquity in radians, instead"
   @spec obliquity_correction(Time.julian_centuries()) :: float()
   def obliquity_correction(julian_centuries) do
@@ -479,11 +752,6 @@ defmodule Astro.Solar do
   def mean_obliquity_of_ecliptic(julian_centuries) do
     {_delta_psi, _delta_epsilon, mean_obliquity} = Earth.nutation(julian_centuries)
     Math.to_degrees(mean_obliquity)
-  end
-
-  defp geometric_mean_anomaly(julian_centuries) do
-    anomaly = 357.52911 + julian_centuries * (35_999.05029 - 0.0001537 * julian_centuries)
-    Math.mod(anomaly, 360.0)
   end
 
   defp apparent_longitude(julian_centuries) do

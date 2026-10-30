@@ -2,13 +2,29 @@ defmodule Astro.Lunar do
   @moduledoc """
   Calculates lunar position, phases, distance and related quantities.
 
-  Positions of the Moon (ecliptic longitude, latitude and distance,
-  and equatorial right ascension and declination) are evaluated from
-  the JPL DE440s ephemeris via `Astro.Ephemeris`. This module also
-  provides derived quantities such as illuminated fraction, parallax
-  and angular semi-diameter. These functions underpin the
-  higher-level lunar API in `Astro` and the topocentric
-  moonrise/moonset algorithm in `Astro.Lunar.MoonRiseSet`.
+  This module provides the Moon's position and derived quantities such as
+  the phase, the illuminated fraction, parallax and angular semi-diameter.
+  These functions underpin the higher-level lunar API in `Astro` and the
+  topocentric moonrise/moonset algorithm in `Astro.Lunar.MoonRiseSet`.
+
+  ## Two sources of the Moon's position
+
+  The Moon's apparent position comes from one of two sources:
+
+  * **The JPL DE440s ephemeris**, read by `Astro.Ephemeris`. It is a
+    numerical integration fitted to lunar laser ranging, accurate to well
+    under a milliarcsecond, but it covers a limited span of years
+    (1900–2100 for the file bundled with Astro).
+
+  * **Analytical series**, computed in this module: the periodic series
+    of Meeus, *Astronomical Algorithms*, chapter 47, abridged from the
+    ELP-2000/82 lunar theory. They are less accurate (about 3″ RMS in
+    longitude near the present) but give a position for any date.
+
+  The series are sums of sine and cosine terms whose arguments combine
+  five fundamental arguments: `mean_lunar_ecliptic_longitude/1`,
+  `lunar_elongation/1`, `solar_anomaly/1`, `lunar_anomaly/1` and
+  `moon_node/1`.
 
   ## Lunar phases
 
@@ -45,9 +61,15 @@ defmodule Astro.Lunar do
   * `date_time_lunar_phase_at_or_before/2`, `date_time_lunar_phase_at_or_after/2`
   * `nth_new_moon/1`
 
+  ### Analytical series
+
+  * `analytical_lunar_ecliptic_position/1` — apparent ecliptic longitude, latitude and distance
+  * `analytical_lunar_position/1` — apparent right ascension, declination and distance
+
   ### Fundamental arguments (Julian centuries)
 
-  * `solar_anomaly/1`, `lunar_anomaly/1`, `lunar_node/1`, `moon_node/1`
+  * `mean_lunar_ecliptic_longitude/1`, `lunar_elongation/1`
+  * `solar_anomaly/1`, `lunar_anomaly/1`, `moon_node/1`, `lunar_node/1`
 
   ## Time convention
 
@@ -94,6 +116,217 @@ defmodule Astro.Lunar do
 
   # Moon's mean radius / Earth's equatorial radius (Meeus Ch.47).
   @lunar_k @lunar_radius_m / Earth.earth_radius_m()
+
+  # Mean distance of the Moon (Meeus, Astronomical Algorithms, chapter 47),
+  # to which the periodic terms in 0.001 km are added.
+  @moon_mean_distance_km 385_000.56
+
+  # Meeus Ch.47 coefficient tables for lunar ecliptic longitude,
+  # latitude and distance.  Each row is one periodic term; columns
+  # are D (lunar elongation), M (solar anomaly), M' (lunar anomaly),
+  # F (moon node) multipliers and the sine/cosine coefficient.
+  #
+  # The tables are stored as heredoc strings and parsed at compile
+  # time into integer lists.
+  # -------------------------------------------------------------------
+
+  # -- Ecliptic longitude (Meeus Table 47.A) --------------------------
+
+  @moon_longitude_d ~w"""
+                       0  2  2  0  0  0  2  2  2  2
+                       0  1  0  2  0  0  4  0  4  2
+                       2  1  1  2  2  4  2  0  2  2
+                       1  2  0  0  2  2  2  4  0  3
+                       2  4  0  2  2  2  4  0  4  1
+                       2  0  1  3  4  2  0  1  2
+                    """
+                    |> Enum.map(&String.to_integer/1)
+
+  @moon_longitude_m ~w"""
+                       0  0  0  0  1  0  0 -1  0 -1
+                       1  0  1  0  0  0  0  0  0  1
+                       1  0  1 -1  0  0  0  1  0 -1
+                       0 -2  1  2 -2  0  0 -1  0  0
+                       1 -1  2  2  1 -1  0  0 -1  0
+                       1  0  1  0  0 -1  2  1  0
+                    """
+                    |> Enum.map(&String.to_integer/1)
+
+  @moon_longitude_m_prime ~w"""
+                             1 -1  0  2  0  0 -2 -1  1  0
+                            -1  0  1  0  1  1 -1  3 -2 -1
+                             0 -1  0  1  2  0 -3 -2 -1 -2
+                             1  0  2  0 -1  1  0 -1  2 -1
+                             1 -2 -1 -1 -2  0  1  4  0 -2
+                             0  2  1 -2 -3  2  1 -1  3
+                          """
+                          |> Enum.map(&String.to_integer/1)
+
+  @moon_longitude_f ~w"""
+                       0  0  0  0  0  2  0  0  0  0
+                       0  0  0 -2  2 -2  0  0  0  0
+                       0  0  0  0  0  0  0  0  2  0
+                       0  0  0  0  0 -2  2  0  2  0
+                       0  0  0  0  0 -2  0  0  0  0
+                      -2 -2  0  0  0  0  0  0  0
+                    """
+                    |> Enum.map(&String.to_integer/1)
+
+  @moon_longitude_coeff ~w"""
+                           6288774  1274027   658314   213618  -185116
+                           -114332    58793    57066    53322    45758
+                            -40923   -34720   -30383    15327   -12528
+                             10980    10675    10034     8548    -7888
+                             -6766    -5163     4987     4036     3994
+                              3861     3665    -2689    -2602     2390
+                             -2348     2236    -2120    -2069     2048
+                             -1773    -1595     1215    -1110     -892
+                              -810      759     -713     -700      691
+                               596      549      537      520     -487
+                              -399     -381      351     -340      330
+                               327     -323      299      294
+                        """
+                        |> Enum.map(&String.to_integer/1)
+
+  @moon_longitude_terms zip_terms([
+                          @moon_longitude_coeff,
+                          @moon_longitude_d,
+                          @moon_longitude_m,
+                          @moon_longitude_m_prime,
+                          @moon_longitude_f
+                        ])
+
+  # -- Latitude (Meeus Table 47.B) ------------------------------------
+
+  @moon_latitude_d ~w"""
+                      0  0  0  2  2  2  2  0  2  0
+                      2  2  2  2  2  2  2  0  4  0
+                      0  0  1  0  0  0  1  0  4  4
+                      0  4  2  2  2  2  0  2  2  2
+                      2  4  2  2  0  2  1  1  0  2
+                      1  2  0  4  4  1  4  1  4  2
+                   """
+                   |> Enum.map(&String.to_integer/1)
+
+  @moon_latitude_m ~w"""
+                      0  0  0  0  0  0  0  0  0  0
+                     -1  0  0  1 -1 -1 -1  1  0  1
+                      0  1  0  1  1  1  0  0  0  0
+                      0  0  0  0 -1  0  0  0  0  1
+                      1  0 -1 -2  0  1  1  1  1  1
+                      0 -1  1  0 -1  0  0  0 -1 -2
+                   """
+                   |> Enum.map(&String.to_integer/1)
+
+  @moon_latitude_m_prime ~w"""
+                            0  1  1  0 -1 -1  0  2  1  2
+                            0 -2  1  0 -1  0 -1 -1 -1  0
+                            0 -1  0  1  1  0  0  3  0 -1
+                            1 -2  0  2  1 -2  3  2 -3 -1
+                            0  0  1  0  1  1  0  0 -2 -1
+                            1 -2  2 -2 -1  1  1 -2  0  0
+                         """
+                         |> Enum.map(&String.to_integer/1)
+
+  @moon_latitude_f ~w"""
+                      1  1 -1 -1  1 -1  1  1 -1 -1
+                     -1 -1  1 -1  1  1 -1 -1 -1  1
+                      3  1  1  1 -1 -1 -1  1 -1  1
+                     -3  1 -3 -1 -1  1 -1  1 -1  1
+                      1  1  1 -1  3 -1 -1  1 -1 -1
+                      1 -1  1 -1 -1 -1 -1 -1 -1  1
+                   """
+                   |> Enum.map(&String.to_integer/1)
+
+  @moon_latitude_coeff ~w"""
+                          5128122   280602   277693   173237    55413
+                            46271    32573    17198     9266     8822
+                             8216     4324     4200    -3359     2463
+                             2211     2065    -1870     1828    -1794
+                            -1749    -1565    -1491    -1475    -1410
+                            -1344    -1335     1107     1021      833
+                              777      671      607      596      491
+                             -451      439      422      421     -366
+                             -351      331      315      302     -283
+                             -229      223      223     -220     -220
+                             -185      181     -177      176      166
+                             -164      132     -119      115      107
+                       """
+                       |> Enum.map(&String.to_integer/1)
+
+  @moon_latitude_terms zip_terms([
+                         @moon_latitude_coeff,
+                         @moon_latitude_d,
+                         @moon_latitude_m,
+                         @moon_latitude_m_prime,
+                         @moon_latitude_f
+                       ])
+
+  # -- Distance (Meeus Table 47.A cosine terms) -----------------------
+
+  @moon_distance_d ~w"""
+                      0  2  2  0  0  0  2  2  2  2
+                      0  1  0  2  0  0  4  0  4  2
+                      2  1  1  2  2  4  2  0  2  2
+                      1  2  0  0  2  2  2  4  0  3
+                      2  4  0  2  2  2  4  0  4  1
+                      2  0  1  3  4  2  0  1  2  2
+                   """
+                   |> Enum.map(&String.to_integer/1)
+
+  @moon_distance_m ~w"""
+                      0  0  0  0  1  0  0 -1  0 -1
+                      1  0  1  0  0  0  0  0  0  1
+                      1  0  1 -1  0  0  0  1  0 -1
+                      0 -2  1  2 -2  0  0 -1  0  0
+                      1 -1  2  2  1 -1  0  0 -1  0
+                      1  0  1  0  0 -1  2  1  0  0
+                   """
+                   |> Enum.map(&String.to_integer/1)
+
+  @moon_distance_m_prime ~w"""
+                            1 -1  0  2  0  0 -2 -1  1  0
+                           -1  0  1  0  1  1 -1  3 -2 -1
+                            0 -1  0  1  2  0 -3 -2 -1 -2
+                            1  0  2  0 -1  1  0 -1  2 -1
+                            1 -2 -1 -1 -2  0  1  4  0 -2
+                            0  2  1 -2 -3  2  1 -1  3 -1
+                         """
+                         |> Enum.map(&String.to_integer/1)
+
+  @moon_distance_f ~w"""
+                      0  0  0  0  0  2  0  0  0  0
+                      0  0  0 -2  2 -2  0  0  0  0
+                      0  0  0  0  0  0  0  0  2  0
+                      0  0  0  0  0 -2  2  0  2  0
+                      0  0  0  0  0 -2  0  0  0  0
+                     -2 -2  0  0  0  0  0  0  0 -2
+                   """
+                   |> Enum.map(&String.to_integer/1)
+
+  @moon_distance_coeff ~w"""
+                         -20905355 -3699111 -2955968  -569925    48888
+                             -3149   246158  -152138  -170733  -204586
+                           -129620   108743   104755    10321        0
+                             79661   -34782   -23210   -21636    24208
+                             30824    -8379   -16675   -12831   -10445
+                            -11650    14403    -7003        0    10056
+                              6322    -9884     5751        0    -4950
+                              4130        0    -3958        0     3258
+                              2616    -1897    -2117     2354        0
+                                 0    -1423    -1117    -1571    -1739
+                                 0    -4421        0        0        0
+                                 0     1165        0        0     8752
+                       """
+                       |> Enum.map(&String.to_integer/1)
+
+  @moon_distance_terms zip_terms([
+                         @moon_distance_coeff,
+                         @moon_distance_d,
+                         @moon_distance_m,
+                         @moon_distance_m_prime,
+                         @moon_distance_f
+                       ])
 
   # -- New moon (periodic and additional correction terms) ----------
 
@@ -957,24 +1190,6 @@ defmodule Astro.Lunar do
     |> to_degrees()
   end
 
-  @doc false
-  @deprecated "Astro.Lunar.mean_lunar_ecliptic_longitude/1 will be removed in Astro 3.0"
-  @spec mean_lunar_ecliptic_longitude(c :: Time.julian_centuries()) :: Astro.angle()
-  def mean_lunar_ecliptic_longitude(c) do
-    c
-    |> poly([218.3164477, 481_267.88123421, -0.0015786, 1 / 538_841.0, -1 / 65_194_000.0])
-    |> degrees()
-  end
-
-  @doc false
-  @deprecated "Astro.Lunar.lunar_elongation/1 will be removed in Astro 3.0"
-  @spec lunar_elongation(c :: Time.julian_centuries()) :: Astro.angle()
-  def lunar_elongation(c) do
-    c
-    |> poly([297.8501921, 445_267.1114034, -0.0018819, 1 / 545_868, -1 / 113_065_000.0])
-    |> degrees()
-  end
-
   @doc """
   Returns the Moon's angular semi-diameter in degrees for a given moment.
 
@@ -1025,6 +1240,67 @@ defmodule Astro.Lunar do
   @spec horizontal_dip(t :: Time.moment()) :: Astro.angle()
   def horizontal_dip(t) do
     -(Earth.refraction() + angular_semi_diameter(t) - equatorial_horizontal_parallax(t))
+  end
+
+  # ── Fundamental arguments ───────────────────────────────────────────────────
+
+  @doc """
+  Returns the Moon's mean longitude in degrees for a given number of
+  Julian centuries from J2000.0.
+
+  The mean longitude is where the Moon would be if it moved uniformly
+  along the ecliptic, measured from the equinox (Meeus, *Astronomical
+  Algorithms*, equation 47.1). It is the base to which the periodic terms
+  of the analytical series are added.
+
+  ### Arguments
+
+  * `c` is the number of Julian centuries from J2000.0.
+
+  ### Returns
+
+  * The mean longitude as a float in degrees, in the range 0 to 360.
+
+  ### Examples
+
+      iex> Astro.Lunar.mean_lunar_ecliptic_longitude(0.0)
+      218.3164477
+
+  """
+  @spec mean_lunar_ecliptic_longitude(c :: Time.julian_centuries()) :: Astro.angle()
+  def mean_lunar_ecliptic_longitude(c) do
+    c
+    |> poly([218.3164477, 481_267.88123421, -0.0015786, 1 / 538_841.0, -1 / 65_194_000.0])
+    |> degrees()
+  end
+
+  @doc """
+  Returns the Moon's mean elongation from the Sun in degrees for a given
+  number of Julian centuries from J2000.0.
+
+  The mean elongation is the angle between the mean Moon and the mean
+  Sun (Meeus, *Astronomical Algorithms*, equation 47.2): 0° at a mean new
+  moon and 180° at a mean full moon.
+
+  ### Arguments
+
+  * `c` is the number of Julian centuries from J2000.0.
+
+  ### Returns
+
+  * The mean elongation as a float in degrees, in the range 0 to 360.
+
+  ### Examples
+
+      iex> Astro.Lunar.lunar_elongation(0.0)
+      297.8501921
+
+  """
+  @spec lunar_elongation(c :: Time.julian_centuries()) :: Astro.angle()
+  def lunar_elongation(c) do
+    c
+    |> poly([297.8501921, 445_267.1114034, -0.0018819, 1 / 545_868, -1 / 113_065_000.0])
+    |> degrees()
   end
 
   @doc """
@@ -1140,5 +1416,175 @@ defmodule Astro.Lunar do
     c
     |> poly([93.2720950, 483_202.0175233, -0.0036539, -1 / 3_526_000.0, 1 / 863_310_000.0])
     |> degrees()
+  end
+
+  # ── Analytical series ─────────────────────────────────────────────────────────
+
+  @doc """
+  Returns the Moon's apparent geocentric ecliptic position from analytical
+  series.
+
+  The longitude, latitude and distance are the periodic series of Meeus,
+  *Astronomical Algorithms*, chapter 47, with the nutation in longitude of
+  `Astro.Earth.nutation/1` added to give the apparent longitude. Each
+  periodic term's argument combines the fundamental arguments; terms that
+  depend on the Sun's anomaly are scaled by the eccentricity factor of the
+  Earth's orbit. Over 1900–2100 the longitude agrees with the JPL DE440s
+  ephemeris to about 3″ RMS.
+
+  ### Arguments
+
+  * `t` is a moment (fractional days since the epoch).
+
+  ### Returns
+
+  * `{longitude, latitude, distance}` where `longitude` is in degrees in
+    the range 0 to 360, `latitude` is in degrees and `distance` is in
+    metres.
+
+  ### Examples
+
+  Meeus, *Astronomical Algorithms*, example 47.a, gives 133.167265°,
+  −3.229126° and 368,409.7 km for 1992 April 12 at 0h TD; the small
+  difference is Meeus's value of the nutation:
+
+      iex> moment = Astro.Time.dynamical_time_to_moment((2_448_724.5 - 2_451_545.0) * 86_400.0)
+      iex> {longitude, latitude, distance} = Astro.Lunar.analytical_lunar_ecliptic_position(moment)
+      iex> {Float.round(longitude, 6), Float.round(latitude, 6), Float.round(distance / 1000.0, 1)}
+      {133.167263, -3.229131, 368409.7}
+
+  """
+  @doc since: "2.10.0"
+  @spec analytical_lunar_ecliptic_position(Time.moment()) :: {float(), float(), float()}
+  def analytical_lunar_ecliptic_position(t) do
+    {longitude, latitude, distance, _true_obliquity} = analytical_moon(t)
+    {longitude, latitude, distance}
+  end
+
+  @doc """
+  Returns the Moon's apparent geocentric right ascension, declination and
+  distance from analytical series.
+
+  The ecliptic position of `analytical_lunar_ecliptic_position/1` is
+  rotated to the equator with the true obliquity of the ecliptic by
+  `Astro.Coordinates.ecliptic_to_equatorial/3`.
+
+  ### Arguments
+
+  * `t` is a moment (fractional days since the epoch).
+
+  ### Returns
+
+  * `{right_ascension, declination, distance}` where `right_ascension`
+    is in degrees in the range 0 to 360, `declination` is in degrees and
+    `distance` is in metres.
+
+  ### Examples
+
+  Meeus, *Astronomical Algorithms*, example 47.a, gives 134.688470° and
+  13.768368° for 1992 April 12 at 0h TD:
+
+      iex> moment = Astro.Time.dynamical_time_to_moment((2_448_724.5 - 2_451_545.0) * 86_400.0)
+      iex> {right_ascension, declination, _distance} = Astro.Lunar.analytical_lunar_position(moment)
+      iex> {Float.round(right_ascension, 6), Float.round(declination, 6)}
+      {134.688466, 13.768364}
+
+  """
+  @doc since: "2.10.0"
+  @spec analytical_lunar_position(Time.moment()) :: {float(), float(), float()}
+  def analytical_lunar_position(t) do
+    {longitude, latitude, distance, true_obliquity} = analytical_moon(t)
+
+    {right_ascension, declination} =
+      Astro.Coordinates.ecliptic_to_equatorial(longitude, latitude, true_obliquity)
+
+    {right_ascension, declination, distance}
+  end
+
+  # The Moon's apparent longitude and latitude in degrees, its distance in
+  # metres and the true obliquity in degrees, sharing one evaluation of the
+  # fundamental arguments and of the nutation.
+  defp analytical_moon(t) do
+    c = julian_centuries_from_moment(t)
+    {delta_psi, delta_epsilon, mean_obliquity} = Earth.nutation(c)
+    arguments = fundamental_arguments(c)
+
+    longitude = mod(lunar_longitude_series(c, arguments) + Math.to_degrees(delta_psi), 360.0)
+    distance = lunar_distance_series(arguments) * Earth.meters_per_kilometer()
+
+    {longitude, lunar_latitude_series(c, arguments), distance,
+     Math.to_degrees(mean_obliquity + delta_epsilon)}
+  end
+
+  # The five fundamental arguments of Meeus 47.1 to 47.5, in degrees, and
+  # the eccentricity factor E of Meeus 47.6, which scales the terms that
+  # depend on the Sun's anomaly as the Earth's orbit grows more circular.
+  defp fundamental_arguments(c) do
+    %{
+      mean_longitude: mean_lunar_ecliptic_longitude(c),
+      elongation: lunar_elongation(c),
+      sun_anomaly: solar_anomaly(c),
+      moon_anomaly: lunar_anomaly(c),
+      argument_of_latitude: moon_node(c),
+      eccentricity: poly(c, [1.0, -0.002516, -0.0000074])
+    }
+  end
+
+  # Sum of one table's periodic terms. Each term's argument is
+  # D·elongation + M·sun anomaly + M'·moon anomaly + F·argument of latitude,
+  # and a term with |M| of 1 or 2 is scaled by E or E².
+  defp periodic_terms(terms, arguments, trigonometric) do
+    %{
+      elongation: elongation,
+      sun_anomaly: sun_anomaly,
+      moon_anomaly: moon_anomaly,
+      argument_of_latitude: argument_of_latitude,
+      eccentricity: eccentricity
+    } = arguments
+
+    sigma(terms, fn {coefficient, d, m, m_prime, f} ->
+      argument =
+        d * elongation + m * sun_anomaly + m_prime * moon_anomaly + f * argument_of_latitude
+
+      coefficient * :math.pow(eccentricity, abs(m)) * trigonometric.(argument)
+    end)
+  end
+
+  # Meeus 47.7 and the additive terms for Venus (A1), Jupiter (A2) and the
+  # flattening of the Earth, in units of 0.000001°.
+  defp lunar_longitude_series(c, arguments) do
+    %{mean_longitude: mean_longitude, argument_of_latitude: argument_of_latitude} = arguments
+
+    additive =
+      3958 * sin(119.75 + 131.849 * c) + 1962 * sin(mean_longitude - argument_of_latitude) +
+        318 * sin(53.09 + 479_264.29 * c)
+
+    mean_longitude +
+      (periodic_terms(@moon_longitude_terms, arguments, &sin/1) + additive) / 1_000_000
+  end
+
+  # Meeus 47.8 and its additive terms, in units of 0.000001°.
+  defp lunar_latitude_series(c, arguments) do
+    %{
+      mean_longitude: mean_longitude,
+      moon_anomaly: moon_anomaly,
+      argument_of_latitude: argument_of_latitude
+    } = arguments
+
+    a1 = 119.75 + 131.849 * c
+    a3 = 313.45 + 481_266.484 * c
+
+    additive =
+      -2235 * sin(mean_longitude) + 382 * sin(a3) + 175 * sin(a1 - argument_of_latitude) +
+        175 * sin(a1 + argument_of_latitude) + 127 * sin(mean_longitude - moon_anomaly) -
+        115 * sin(mean_longitude + moon_anomaly)
+
+    (periodic_terms(@moon_latitude_terms, arguments, &sin/1) + additive) / 1_000_000
+  end
+
+  # Meeus 47.9: the mean distance in kilometres plus the cosine terms in
+  # units of 0.001 km.
+  defp lunar_distance_series(arguments) do
+    @moon_mean_distance_km + periodic_terms(@moon_distance_terms, arguments, &cos/1) / 1000
   end
 end

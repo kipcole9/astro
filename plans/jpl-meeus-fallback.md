@@ -20,15 +20,19 @@ Calendrical, Tempo and every other consumer deal only with Astro's API. They nev
 
 ## Design
 
-* **One source of positions.** `Astro.Ephemeris` stays the only place the Sun's and Moon's apparent positions come from. Each position function asks the loaded kernel first; when the kernel has no segment for the moment, it computes the same quantity from the Meeus series. The return shapes do not change, and `{:error, :not_found}` is no longer returned for a date outside the kernel.
+* **The code is a learning guide.** The implementation is meant to teach astronomical calculation to people new to it, so each body's algorithms live together in its own module, with the same layout, naming and documentation for the Sun and the Moon.
 
-* **A Meeus provider module.** A new internal module, `Astro.Ephemeris.Meeus`, returns the apparent geocentric Sun and Moon in the frame the JPL path uses (true equator and equinox of date, distances in km): right ascension, declination and distance, and ecliptic longitude, latitude and distance.
+* **Sun algorithms in `Astro.Solar`, Moon algorithms in `Astro.Lunar`.** Each module documents its two sources and holds the analytical series (`analytical_solar_position/1` and `analytical_solar_ecliptic_position/1`; `analytical_lunar_position/1` and `analytical_lunar_ecliptic_position/1`) beside the orbital elements and fundamental arguments they are built from. They take a moment and return the same shapes and units as `solar_position/1` (astronomical units) and `lunar_position/1` (metres), with right ascension in the range 0 to 360.
 
-* **The Sun.** Apparent longitude from the 49-term periodic series Astro carried until 2.8.0 as `sun_apparent_longitude_alt/1` (deleted in 8f61281), with the nutation in longitude converted from radians to degrees, which that function omitted; latitude zero; distance from the Keplerian ellipse; equatorial coordinates through the true obliquity of `Astro.Earth.nutation/1`. It replaces the Ch.25 series in `Astro.Solar.solar_ecliptic_longitude/1`'s fallback.
+* **`Astro.Ephemeris` stays JPL only.** It reads the kernel and returns `{:ok, position}` or `{:error, :not_found}`. `Astro.Solar` and `Astro.Lunar` choose: the JPL position where the kernel covers the moment, otherwise the analytical series. The rise and set searches and every other caller ask `Astro.Solar` and `Astro.Lunar` for positions, so none of them sees a coverage error.
+
+* **Shared conversions in `Astro.Coordinates`.** `ecliptic_to_equatorial/3` turns an ecliptic position into right ascension and declination for both bodies.
+
+* **The Sun.** Apparent longitude from the 49-term periodic series Astro carried until 2.8.0 as `sun_apparent_longitude_alt/1` (deleted in 8f61281), with the nutation in longitude converted from radians to degrees, which that function omitted; latitude zero; distance from the Keplerian ellipse; equatorial coordinates through the true obliquity of `Astro.Earth.nutation/1`. It replaces the private Ch.25 series in `Astro.Solar.solar_ecliptic_longitude/1`'s fallback.
 
 * **The Moon.** The Meeus Ch.47 series for longitude, latitude and distance, recovered from `8f61281^:lib/astro/lunar.ex`, with the nutation in longitude added, then to equatorial coordinates the same way.
 
-* **Callers become total.** With every position available, the `{:ok, _} =` matches in `Astro.Solar` and `Astro.Lunar` cannot fail, the coverage checks in the `Astro` functions and in the rise and set searches are removed, and equinoxes, solstices and new moons are found as crossings of the JPL-or-Meeus positions.
+* **Callers become total.** With the choice made in `Astro.Solar` and `Astro.Lunar`, their `{:ok, _} =` matches on the ephemeris go, the coverage checks in the `Astro` functions and in the rise and set searches are removed, and equinoxes, solstices and new moons are found as crossings of the JPL-or-Meeus positions.
 
 * **Equinoxes and solstices.** Seed with the Ch.27 estimate, then find the crossing with `Astro.Solar.solar_ecliptic_longitude_after/2`. Inside the ephemeris this matches published instants to about 5 seconds, against about 30 for the closed form, and the 1000–3000 refusal goes.
 
@@ -70,9 +74,9 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 ## Tasks
 
-* [ ] **Add the Moon to `Astro.Ephemeris.Meeus`** — the Ch.47 series recovered from git history, in the same shapes, with tests against JPL inside the ephemeris.
+* [ ] **Choose JPL or the series in `Astro.Solar` and `Astro.Lunar`** — `solar_position/1`, `solar_ecliptic_longitude/1`, `lunar_position/1`, the lunar ecliptic functions and the private solar longitude behind `lunar_phase_at/1` use the series where the kernel has no segment; the private Ch.25 Sun series goes.
 
-* [ ] **Fall back inside `Astro.Ephemeris`** — every position function uses the Meeus provider when the kernel has no segment; specs and docs say the functions always return `{:ok, _}`.
+* [ ] **Point the rise and set searches at `Astro.Solar` and `Astro.Lunar`** — `Astro.Solar.SunRiseSet` and `Astro.Lunar.MoonRiseSet` read positions from `Astro.Ephemeris` directly today.
 
 * [ ] **Remove the coverage checks** — from the `Astro` functions, sunrise and sunset, moonrise and moonset, solar noon and crescent visibility; update specs, docs, README and guides; tests for far past and far future dates.
 
@@ -90,6 +94,10 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 * [x] **Fix the precession coefficients** — `Astro.Coordinates.icrf_to_true_equator/2` now uses the J2000 coefficients of Meeus 21.3; the Sun's ecliptic latitude stays within 1.0″ over 1850–2149, where it reached 2.4″. 2026-10-31.
 
-* [x] **Add `Astro.Ephemeris.Meeus` for the Sun** — `sun_position_dt/1` and `sun_ecliptic_position_dt/1`; within 3.3″ of JPL in longitude, 3.6″ in right ascension and 2.0″ in declination over 1900–2100. 2026-10-31.
+* [x] **Move the series into `Astro.Solar` and `Astro.Lunar`** — `Astro.Ephemeris.Meeus` is gone; the orbital elements and fundamental arguments the series use are no longer deprecated; `Astro.Coordinates.ecliptic_to_equatorial/3` is shared. 2026-10-31.
+
+* [x] **Add the Moon's analytical series** — Meeus chapter 47 from git history; reproduces example 47.a to 0.02″, and over 1900–2100 is within 17.9″ of JPL in longitude (2.7″ RMS), 4.9″ in latitude and 12.7 km in distance. 2026-10-31.
+
+* [x] **Add the Sun's analytical series** — within 3.3″ of JPL in longitude, 3.6″ in right ascension and 2.0″ in declination over 1900–2100. 2026-10-31.
 
 * [x] **Measure the candidate Sun series** — the 49-term series with corrected nutation, about 1″ RMS against JPL over 1900–2100. 2026-10-31.
