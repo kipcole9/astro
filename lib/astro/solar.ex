@@ -207,15 +207,41 @@ defmodule Astro.Solar do
 
   @doc false
   def solar_position(t) do
-    {:ok, {right_ascension, declination, distance_km}} =
-      Astro.Ephemeris.sun_position_from_moment(t)
+    {right_ascension, declination, distance} = apparent_sun_position(t)
 
     # Callers expect right ascension in (-180, 180], the range of the
     # previous atan2-based result, so it can occupy a Geo.PointZ longitude.
     right_ascension =
       if right_ascension > 180.0, do: right_ascension - 360.0, else: right_ascension
 
-    {right_ascension, declination, Math.km_to_au(distance_km)}
+    {right_ascension, declination, distance}
+  end
+
+  # ── Choosing the source ───────────────────────────────────────────────────────
+  #
+  # The Sun's apparent position comes from the JPL ephemeris where the loaded
+  # kernel covers the moment, and from the analytical series everywhere
+  # else. Every position in this module goes through these two functions,
+  # so the choice is made in one place. Distances are in astronomical units.
+
+  defp apparent_sun_position(t) do
+    case Astro.Ephemeris.sun_position_from_moment(t) do
+      {:ok, {right_ascension, declination, distance_km}} ->
+        {right_ascension, declination, Math.km_to_au(distance_km)}
+
+      {:error, :not_found} ->
+        analytical_solar_position(t)
+    end
+  end
+
+  defp apparent_sun_ecliptic_position(t) do
+    case Astro.Ephemeris.sun_ecliptic_position(t) do
+      {:ok, {longitude, latitude, distance_km}} ->
+        {longitude, latitude, Math.km_to_au(distance_km)}
+
+      {:error, :not_found} ->
+        analytical_solar_ecliptic_position(t)
+    end
   end
 
   @doc false
@@ -253,11 +279,12 @@ defmodule Astro.Solar do
   of a calendar date which is perturbed by leap years and calendar
   imperfections.
 
-  For a moment the loaded ephemeris does not cover, the longitude is
-  computed from the Meeus series, accurate to about 0.01°, as Astro 2.7
-  computed it for every moment. Calendars that count months by the
-  Sun's longitude, such as the Chinese and Japanese lunisolar
-  calendars, find their solar terms for dates of any era this way.
+  The longitude comes from the JPL ephemeris where the loaded kernel
+  covers `t`, and from `analytical_solar_ecliptic_position/1`, accurate
+  to about 1″ near the present, everywhere else. Calendars that count
+  months by the Sun's longitude, such as the Chinese and Japanese
+  lunisolar calendars, find their solar terms for dates of any era this
+  way.
 
   ### Examples
 
@@ -267,28 +294,12 @@ defmodule Astro.Solar do
 
       iex> moment = Astro.Time.date_time_to_moment(~D[1000-06-01])
       iex> Astro.Solar.solar_ecliptic_longitude(moment) |> Float.round(4)
-      69.5887
+      69.5902
 
   """
   def solar_ecliptic_longitude(t) do
-    case Astro.Ephemeris.sun_ecliptic_position(t) do
-      {:ok, {longitude, _latitude, _distance}} -> longitude
-      {:error, :not_found} -> meeus_apparent_longitude(Time.julian_centuries_from_moment(t))
-    end
-  end
-
-  # The Sun's apparent longitude from the Meeus series, accurate to about
-  # 0.01°, for a moment the loaded ephemeris does not cover: the true
-  # longitude, the geometric mean longitude and the equation of the
-  # centre, corrected for aberration and the nutation in longitude. This
-  # is how Astro 2.7 computed `solar_ecliptic_longitude/1` for every
-  # moment, and the solar terms of calendars of any era are found with it.
-  defp meeus_apparent_longitude(julian_centuries) do
-    omega = 125.04 - 1934.136 * julian_centuries
-
-    (sun_geometric_mean_longitude(julian_centuries) + sun_equation_of_center(julian_centuries) -
-       0.00569 - 0.00478 * :math.sin(Math.to_radians(omega)))
-    |> Math.mod(360.0)
+    {longitude, _latitude, _distance} = apparent_sun_ecliptic_position(t)
+    longitude
   end
 
   @doc """
@@ -453,7 +464,7 @@ defmodule Astro.Solar do
   @spec equation_of_time(float) :: float()
   def equation_of_time(julian_centuries) when is_float(julian_centuries) do
     moment = Time.moment_from_julian_centuries(julian_centuries)
-    {:ok, {right_ascension, _dec, _dist}} = Astro.Ephemeris.sun_position_from_moment(moment)
+    {right_ascension, _declination, _distance} = apparent_sun_position(moment)
 
     mean_longitude = sun_geometric_mean_longitude(julian_centuries)
     diff = mean_longitude - right_ascension
@@ -724,10 +735,7 @@ defmodule Astro.Solar do
   @spec solar_declination(Time.julian_centuries()) :: float()
   def solar_declination(julian_centuries) do
     moment = Time.moment_from_julian_centuries(julian_centuries)
-
-    {:ok, {_right_ascension, declination, _distance}} =
-      Astro.Ephemeris.sun_position_from_moment(moment)
-
+    {_right_ascension, declination, _distance} = apparent_sun_position(moment)
     declination
   end
 
@@ -764,9 +772,9 @@ defmodule Astro.Solar do
   # apparent longitude without nutation and with aberration restored.
   defp true_longitude(julian_centuries) do
     moment = Time.moment_from_julian_centuries(julian_centuries)
-    {:ok, {longitude, _latitude, distance_km}} = Astro.Ephemeris.sun_ecliptic_position(moment)
+    {longitude, _latitude, distance} = apparent_sun_ecliptic_position(moment)
     {delta_psi, _delta_epsilon, _mean_obliquity} = Earth.nutation(julian_centuries)
-    aberration = @aberration_constant / Math.km_to_au(distance_km)
+    aberration = @aberration_constant / distance
     Math.mod(longitude - Math.to_degrees(delta_psi) + aberration, 360.0)
   end
 

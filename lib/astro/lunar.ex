@@ -708,7 +708,7 @@ defmodule Astro.Lunar do
   @spec lunar_phase_at(t :: Astro.Time.moment()) :: Astro.angle()
 
   def lunar_phase_at(t) when is_number(t) do
-    phi = mod(lunar_ecliptic_longitude(t) - solar_ecliptic_longitude(t), 360)
+    phi = mod(lunar_ecliptic_longitude(t) - Solar.solar_ecliptic_longitude(t), 360)
     n = round((t - @new_moon_zero) / mean_synodic_month())
     phi_prime = deg(360) * mod((t - nth_new_moon(n)) / mean_synodic_month(), 1)
 
@@ -818,15 +818,41 @@ defmodule Astro.Lunar do
           {Astro.angle(), Astro.angle(), Astro.meters()}
 
   def lunar_position(t) do
-    {:ok, {right_ascension, declination, distance_km}} =
-      Astro.Ephemeris.moon_position_from_moment(t)
+    {right_ascension, declination, distance} = apparent_moon_position(t)
 
     # Callers expect right ascension in (-180, 180], the range of the
     # previous atan2-based result, so it can occupy a Geo.PointZ longitude.
     right_ascension =
       if right_ascension > 180.0, do: right_ascension - 360.0, else: right_ascension
 
-    {right_ascension, declination, distance_km * Earth.meters_per_kilometer()}
+    {right_ascension, declination, distance}
+  end
+
+  # ── Choosing the source ───────────────────────────────────────────────────────
+  #
+  # The Moon's apparent position comes from the JPL ephemeris where the
+  # loaded kernel covers the moment, and from the analytical series
+  # everywhere else. Every position in this module goes through these two
+  # functions, so the choice is made in one place. Distances are in metres.
+
+  defp apparent_moon_position(t) do
+    case Astro.Ephemeris.moon_position_from_moment(t) do
+      {:ok, {right_ascension, declination, distance_km}} ->
+        {right_ascension, declination, distance_km * Earth.meters_per_kilometer()}
+
+      {:error, :not_found} ->
+        analytical_lunar_position(t)
+    end
+  end
+
+  defp apparent_moon_ecliptic_position(t) do
+    case Astro.Ephemeris.moon_ecliptic_position(t) do
+      {:ok, {longitude, latitude, distance_km}} ->
+        {longitude, latitude, distance_km * Earth.meters_per_kilometer()}
+
+      {:error, :not_found} ->
+        analytical_lunar_ecliptic_position(t)
+    end
   end
 
   @doc """
@@ -946,7 +972,7 @@ defmodule Astro.Lunar do
   @spec lunar_ecliptic_longitude(Time.moment()) :: Astro.phase()
 
   def lunar_ecliptic_longitude(t) do
-    {:ok, {longitude, _latitude, _distance}} = Astro.Ephemeris.moon_ecliptic_position(t)
+    {longitude, _latitude, _distance} = apparent_moon_ecliptic_position(t)
     longitude
   end
 
@@ -972,7 +998,7 @@ defmodule Astro.Lunar do
   @spec lunar_latitude(Time.moment()) :: Astro.angle()
 
   def lunar_latitude(t) do
-    {:ok, {_longitude, latitude, _distance}} = Astro.Ephemeris.moon_ecliptic_position(t)
+    {_longitude, latitude, _distance} = apparent_moon_ecliptic_position(t)
     latitude
   end
 
@@ -1003,7 +1029,7 @@ defmodule Astro.Lunar do
   @spec lunar_altitude(Time.moment(), Geo.PointZ.t()) :: Astro.angle()
 
   def lunar_altitude(t, %Geo.PointZ{coordinates: {psi, phi, _alt}}) do
-    {:ok, {alpha, delta, _distance}} = Astro.Ephemeris.moon_position_from_moment(t)
+    {alpha, delta, _distance} = apparent_moon_position(t)
     theta = Time.mean_sidereal_from_moment(t)
     h = mod(theta + psi - alpha, 360.0)
     altitude = asin(sin(phi) * sin(delta) + cos(phi) * cos(delta) * cos(h))
@@ -1041,8 +1067,8 @@ defmodule Astro.Lunar do
   @spec lunar_distance(t :: Time.moment()) :: Astro.meters()
 
   def lunar_distance(t) do
-    {:ok, {_longitude, _latitude, distance_km}} = Astro.Ephemeris.moon_ecliptic_position(t)
-    distance_km * Earth.meters_per_kilometer()
+    {_longitude, _latitude, distance} = apparent_moon_ecliptic_position(t)
+    distance
   end
 
   @doc false
@@ -1351,11 +1377,6 @@ defmodule Astro.Lunar do
     c
     |> poly([134.9633964, 477_198.8675055, 0.0087414, 1 / 69_699.0, -1 / 14_712_000.0])
     |> degrees()
-  end
-
-  defp solar_ecliptic_longitude(t) do
-    {:ok, {longitude, _latitude, _distance}} = Astro.Ephemeris.sun_ecliptic_position(t)
-    longitude
   end
 
   @doc """

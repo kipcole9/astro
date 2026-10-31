@@ -74,8 +74,6 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 ## Tasks
 
-* [ ] **Choose JPL or the series in `Astro.Solar` and `Astro.Lunar`** — `solar_position/1`, `solar_ecliptic_longitude/1`, `lunar_position/1`, the lunar ecliptic functions and the private solar longitude behind `lunar_phase_at/1` use the series where the kernel has no segment; the private Ch.25 Sun series goes.
-
 * [ ] **Point the rise and set searches at `Astro.Solar` and `Astro.Lunar`** — `Astro.Solar.SunRiseSet` and `Astro.Lunar.MoonRiseSet` read positions from `Astro.Ephemeris` directly today.
 
 * [ ] **Remove the coverage checks** — from the `Astro` functions, sunrise and sunset, moonrise and moonset, solar noon and crescent visibility; update specs, docs, README and guides; tests for far past and far future dates.
@@ -91,6 +89,8 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 * [ ] **Calendrical follow-up** — once released, remove `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error from `Calendrical.Islamic.Visibility`, and raise Calendrical's Astro requirement. In the Calendrical repository, by its maintainer.
 
 ### Done
+
+* [x] **Choose JPL or the series in `Astro.Solar` and `Astro.Lunar`** — each module chooses in two private functions that every position goes through; `lunar_phase_at/1` takes the Sun from `Astro.Solar`; the private Ch.25 Sun series is gone. 2026-10-31.
 
 * [x] **Fix the precession coefficients** — `Astro.Coordinates.icrf_to_true_equator/2` now uses the J2000 coefficients of Meeus 21.3; the Sun's ecliptic latitude stays within 1.0″ over 1850–2149, where it reached 2.4″. 2026-10-31.
 

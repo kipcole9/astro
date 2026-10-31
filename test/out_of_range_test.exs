@@ -26,9 +26,54 @@ defmodule Astro.OutOfRangeTest do
     end
   end
 
-  test "the solar ecliptic longitude falls back to the Meeus series outside the ephemeris" do
-    moment = Astro.Time.date_time_to_moment(@date)
-    assert_in_delta Astro.Solar.solar_ecliptic_longitude(moment), 69.58874839794431, 1.0e-9
+  # `solar_position/1` and `lunar_position/1` give right ascension in the
+  # range -180 to 180.
+  defp signed(right_ascension) do
+    if right_ascension > 180.0 do
+      right_ascension - 360.0
+    else
+      right_ascension
+    end
+  end
+
+  describe "Astro.Solar and Astro.Lunar answer outside the ephemeris from the analytical series" do
+    test "the Sun's position and ecliptic longitude" do
+      moment = Astro.Time.date_time_to_moment(@date)
+      {longitude, _latitude, _distance} = Astro.Solar.analytical_solar_ecliptic_position(moment)
+      {right_ascension, declination, distance} = Astro.Solar.analytical_solar_position(moment)
+
+      assert Astro.Solar.solar_ecliptic_longitude(moment) == longitude
+
+      assert Astro.Solar.solar_position(moment) ==
+               {signed(right_ascension), declination, distance}
+    end
+
+    test "the Moon's position, ecliptic coordinates and phase" do
+      moment = Astro.Time.date_time_to_moment(@date)
+
+      {longitude, latitude, distance} = Astro.Lunar.analytical_lunar_ecliptic_position(moment)
+      {right_ascension, declination, _distance} = Astro.Lunar.analytical_lunar_position(moment)
+
+      assert Astro.Lunar.lunar_ecliptic_longitude(moment) == longitude
+      assert Astro.Lunar.lunar_latitude(moment) == latitude
+      assert Astro.Lunar.lunar_distance(moment) == distance
+
+      assert Astro.Lunar.lunar_position(moment) ==
+               {signed(right_ascension), declination, distance}
+
+      solar_longitude = Astro.Solar.solar_ecliptic_longitude(moment)
+      expected_phase = Astro.Math.mod(longitude - solar_longitude, 360)
+      assert Astro.Lunar.lunar_phase_at(moment) == expected_phase
+    end
+  end
+
+  test "inside the ephemeris Astro.Solar and Astro.Lunar answer from JPL" do
+    moment = Astro.Time.date_time_to_moment(~D[2024-06-01])
+    {:ok, {sun_longitude, _, _}} = Astro.Ephemeris.sun_ecliptic_position(moment)
+    {:ok, {moon_longitude, _, _}} = Astro.Ephemeris.moon_ecliptic_position(moment)
+
+    assert Astro.Solar.solar_ecliptic_longitude(moment) == sun_longitude
+    assert Astro.Lunar.lunar_ecliptic_longitude(moment) == moon_longitude
   end
 
   test "the solar longitude searches find a solstice outside the ephemeris" do
