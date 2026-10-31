@@ -52,7 +52,7 @@ All four were accepted as recommended on 2026-10-31.
 
 2. **The Moon's radius for solar eclipses.** NASA uses `k1 = 0.272488` for the penumbra and `k2 = 0.272281`, a mean radius below the limb's peaks, for the umbra, so that a total phase is not overstated. **Decided:** NASA's two values, so that types and central durations compare with the catalogue.
 
-3. **Scope for 2.10.** **Decided:** global circumstances for both kinds (finding, type, greatest eclipse, gamma, magnitudes, lunar contacts and durations) and local circumstances of a solar eclipse at a place. Defer the geography of a solar eclipse (the central line, the northern and southern limits, path width as a map) and the Saros series number to a later release.
+3. **Scope for 2.10.** **Decided:** global circumstances for both kinds (finding, type, greatest eclipse, gamma, magnitudes, lunar contacts and durations) and local circumstances of a solar eclipse at a place. Defer the Saros series number to a later release. **Revised 2026-11-01:** the geography of a solar eclipse (the central line, the northern and southern limits, path width) is in 2.10 too, as `Astro.solar_eclipse_path/2`, for drawing the path on a map.
 
 4. **Where the code lives.** **Decided:** `Astro.Solar.Eclipse` and `Astro.Lunar.Eclipse`, beside `Astro.Lunar.MoonRiseSet` and `Astro.Lunar.CrescentVisibility`, taking moments as the other `Astro.Solar` and `Astro.Lunar` functions do, with the public functions in `Astro` taking dates and date-times.
 
@@ -64,13 +64,17 @@ In `Astro`, returning `{:ok, eclipse}` or `{:error, reason}`, with `{:error, :ye
 
 * `lunar_eclipse_at_or_after/2` and `lunar_eclipse_before/2` — an `Astro.Lunar.Eclipse` struct: `:type` (`:penumbral`, `:partial` or `:total`), `:greatest`, `:gamma`, `:penumbral_magnitude`, `:umbral_magnitude`, and the contacts `:penumbral_begins`, `:partial_begins`, `:total_begins`, `:total_ends`, `:partial_ends` and `:penumbral_ends`, `nil` for those the eclipse does not have.
 
-* `solar_eclipse_local/3` — the local circumstances of an eclipse at a location: the contacts, the instant of maximum, magnitude, obscuration, and the Sun's altitude at each, or `{:error, :not_visible}` where the eclipse is not seen there.
+* `solar_eclipse_at/3` — the local circumstances of a solar eclipse at a location, given an eclipse or a date: an `Astro.Solar.Eclipse.Local` struct with the type there, the contacts, the instant of maximum, magnitude, obscuration, and the Sun's altitude at each, or `{:error, :not_visible}` where the eclipse is not seen there.
 
-Instants are UTC `DateTime`s, as the new moon searches return them. The lunar functions take `:shadow`; the solar ones have no options, so they take none.
+* `solar_eclipse_path/2` — the path of a total, annular or hybrid solar eclipse, given an eclipse or a date: an `Astro.Solar.Eclipse.Path` struct with the type and the `:central_line`, `:northern_limit` and `:southern_limit` as lists of `%{time, location}` points, `location` a `Geo.Point` of `{longitude, latitude}`; central-line points also carry `:type`, `:width` (km), `:duration` (s) and `:sun_altitude`. Option `:interval` in seconds, default 60. `{:error, :no_path}` for a partial eclipse.
+
+* `lunar_eclipse_at/3` — the same for a lunar eclipse: an `Astro.Lunar.Eclipse.Local` struct with the eclipse's fields and the Moon's topocentric altitude at each contact, or `{:error, :not_visible}` where the Moon is below the horizon throughout.
+
+Instants are UTC `DateTime`s, as the new moon searches return them, except that the local functions return them in the location's time zone by default, taking `:time_zone`, `:time_zone_database` and `:time_zone_resolver` as `sunrise/3` does. The lunar functions take `:shadow`; the global solar ones have no options, so they take none.
 
 The Besselian `μ` is the Greenwich hour angle at the moment, not NASA's ephemeris hour angle (TD read as UT); the two differ by ΔT's worth of rotation, which local circumstances must not apply twice.
 
-For a total or annular eclipse whose axis misses the Earth, NASA's magnitude is the fraction of the Sun's diameter covered at the limb, as for a partial eclipse, not the diameter ratio.
+For a total or annular eclipse whose axis misses the Earth, NASA's magnitude is the fraction of the Sun's diameter covered at the limb, as for a partial eclipse, not the diameter ratio. The local magnitude NASA and the USNO give is that fraction everywhere, `(L1 − m)/(L1 + L2)`, exceeding 1 inside the umbra.
 
 ## Accuracy
 
@@ -78,11 +82,13 @@ Within the JPL ephemeris, instants of greatest eclipse should agree with NASA's 
 
 ## Tasks
 
-* [ ] **Local circumstances** — `solar_eclipse_local/3`, tested against NASA's local circumstances for a few places and eclipses.
-
 * [ ] **Documentation** — the `Astro` functions in the house format with Accuracy and Reference sections, and an eclipses section in `guides/accuracy.md`.
 
 ### Done
+
+* [x] **Path** — `Astro.solar_eclipse_path/2` (`Astro.Solar.Eclipse.Path`): the central line and the northern and southern limits as timed `{longitude, latitude}` points, the limits following the horizon where they are beyond it so the band closes; width, duration and Sun altitude on the central line. Against NASA's path tables for eight eclipses 1999–2027 (674 instants, NASA's ΔT removed): within 0.7 km across the path with the Sun 20° or more up, 2.6 km over Antarctica with it lower, 2 s along it; width within 1 km and 0.6%, duration 0.7 s. `test/solar_eclipse_path_test.exs`, `test/data/solar_eclipses/nasa_paths.csv`. 2026-11-01.
+
+* [x] **Local circumstances** — `Astro.solar_eclipse_at/3` (`Astro.Solar.Eclipse.Local`) and `Astro.lunar_eclipse_at/3` (`Astro.Lunar.Eclipse.Local`). Against the USNO's computer for 17 eclipses and places 1999–2026, with its ΔT removed by shifting the longitude: partial contacts within 1.1 s, totality and annularity contacts within 2 s (4 s near an annular path's edge; the USNO's Moon is a little larger than NASA's `k2`), magnitude 0.0005, obscuration 0.0012, altitudes 0.05°, types and visibility the same; the USNO's maximum is 1 s before its own C2–C3 midpoint. The Moon's altitude agrees with moonrise and moonset to 0.00001°. `test/solar_eclipse_local_test.exs`, `test/lunar_eclipse_local_test.exs`. 2026-11-01.
 
 * [x] **Solar eclipses** — `Astro.Solar.Eclipse` (Besselian elements, finding, greatest eclipse, type including hybrid, magnitude) and `Astro.solar_eclipse_at_or_after/1` / `solar_eclipse_before/1`. Against NASA in TD: 1901–2100 greatest within 0.6 s, gamma 0.00006, magnitude 0.00007, every type the same (hybrids included); elements for 2024-04-08 within 1e-4 radii; series centuries within 9 s (1801–1900), 32 s (2901–3000), 80 s (1–100) and 130 s (−999 to −900), magnitudes 0.0014. `test/solar_eclipse_test.exs`. 2026-11-01.
 

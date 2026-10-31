@@ -135,6 +135,23 @@ defmodule Astro do
   @emoji_phase_count 8
   @emoji_phase 360.0 / @emoji_phase_count
 
+  # The fields of an eclipse that are quantities rather than instants.
+  @eclipse_quantities [
+    :type,
+    :gamma,
+    :magnitude,
+    :obscuration,
+    :penumbral_magnitude,
+    :umbral_magnitude
+  ]
+
+  # The seconds between the points of a solar eclipse's path, by default
+  # and at least, and half a millisecond in days, to which the instants
+  # of a path are rounded.
+  @default_path_interval 60
+  @least_path_interval 1
+  @half_millisecond_days 0.0005 / 86_400
+
   # Selects the preferred time zone database at compile time based on
   # which implementation (`:tz` or `:tzdata`) is loaded — `:tz` is
   # preferred when both are (it is also what astro's own dev and test
@@ -1458,6 +1475,487 @@ defmodule Astro do
     end
   end
 
+  @doc """
+  Returns the local circumstances of a solar eclipse at a location: when
+  it begins and ends there, its maximum, how much of the Sun is covered,
+  and the Sun's altitude at each contact.
+
+  The observer is placed on the fundamental plane of the eclipse's
+  Besselian elements, from the observer's geodetic latitude, longitude
+  and height. Maximum eclipse is the moment the observer is nearest the
+  shadow axis, found by golden section search; the contacts are the
+  moments the observer enters and leaves the penumbra and, for a total
+  or annular eclipse there, the umbra or antumbra, found by bisection.
+  `Astro.Solar.Eclipse.Local` describes the geometry.
+
+  ### Arguments
+
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries a height in metres above the ellipsoid. Longitude
+    comes first.
+
+  * `eclipse` is an `t:Astro.Solar.Eclipse.t/0`, as
+    `solar_eclipse_at_or_after/1` returns it, or a `t:Date.t/0` or
+    `t:DateTime.t/0`, or any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`, for the first solar
+    eclipse whose greatest eclipse is at or after it.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:time_zone` is the time zone of the returned date times:
+    `:default`, the time zone of the location, which is the default;
+    `:utc`; or a time zone name.
+
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is the
+    configured Elixir time zone database.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{coordinates: {lng, lat}}` and returns
+    `{:ok, time_zone_name}` or `{:error, reason}`. The default is
+    `TzWorld.timezone_at/1` when `:tz_world` is a dependency.
+
+  ### Returns
+
+  * `{:ok, local}`, an `t:Astro.Solar.Eclipse.Local.t/0` with the type
+    there (`:partial`, `:annular` or `:total`), the contacts
+    `:partial_begins`, `:annular_begins` or `:total_begins`,
+    `:maximum`, `:total_ends` or `:annular_ends` and `:partial_ends` as
+    date times in the requested time zone (`nil` for those the eclipse
+    does not have there), the magnitude, the obscuration, and the Sun's
+    geometric altitude in degrees at each contact. A contact the Sun is
+    below the horizon for has a negative altitude.
+
+  * `{:error, :not_visible}` if the eclipse is not seen from the
+    location: the location is outside the Moon's penumbra throughout,
+    or the Sun is below the horizon from first contact to last.
+
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
+  * `{:error, :invalid_date}` if `eclipse` is neither an eclipse nor a
+    valid date or date time in its calendar.
+
+  * `{:error, :year_out_of_range}` if `eclipse` is a date more than
+    50,000 years from J2000.
+
+  * `{:error, :invalid_options}` if `options` is not a keyword list.
+
+  * The time zone errors of `sunrise/3`.
+
+  ### Accuracy
+
+  Against the USNO's eclipse computer for 17 eclipses and places from
+  1999 to 2026, with the USNO's ΔT, the contacts agree within 2 s,
+  except where the observer is near the edge of an annular path and
+  the contacts of annularity change quickly with position (4 s at
+  Singapore in 2019). The partial contacts agree within 1.1 s. Totality
+  is about 2 s shorter, and annularity about 2 s longer, than the
+  USNO's, which takes a larger radius for the Moon than NASA's
+  `k2 = 0.272281` used here. The magnitude agrees within 0.0005, the
+  obscuration within 0.0012, the Sun's altitudes within 0.05°, and the
+  type and visibility are the same. The USNO's maximum is 1 s earlier
+  than the midpoint of its own second and third contacts, where
+  Astro's is. In Universal Time every instant also carries ΔT's
+  uncertainty, which moves the shadow across the Earth: an error of a
+  second in ΔT moves every contact by about a second.
+
+  ### Examples
+
+      iex> dallas = {-96.80, 32.78}
+      iex> {:ok, local} = Astro.solar_eclipse_at(dallas, ~D[2024-04-01], time_zone: :utc)
+      iex> {local.type, DateTime.truncate(local.total_begins, :second)}
+      {:total, ~U[2024-04-08 18:40:43Z]}
+      iex> {Float.round(local.magnitude, 3), Float.round(local.sun_altitudes.maximum, 1)}
+      {1.015, 64.6}
+
+      iex> {:ok, eclipse} = Astro.solar_eclipse_at_or_after(~D[2024-04-01])
+      iex> {:ok, local} = Astro.solar_eclipse_at({-74.01, 40.71}, eclipse, time_zone: "America/New_York")
+      iex> {local.type, Float.round(local.obscuration, 3)}
+      {:partial, 0.899}
+      iex> DateTime.truncate(local.maximum, :second)
+      #DateTime<2024-04-08 15:25:35-04:00 EDT America/New_York>
+
+      iex> Astro.solar_eclipse_at({-0.13, 51.50}, ~D[2024-04-01], time_zone: :utc)
+      {:error, :not_visible}
+
+  ### Reference
+
+  * P. Kenneth Seidelmann (editor), *Explanatory Supplement to the
+    Astronomical Almanac* (1992), chapter 8 (eclipses of the Sun and
+    Moon).
+
+  * Jean Meeus, *Elements of Solar Eclipses 1951–2200* (1989), on
+    local circumstances from Besselian elements.
+
+  * United States Naval Observatory,
+    [Solar Eclipse Computer](https://aa.usno.navy.mil/data/SolarEclipses).
+
+  """
+  @doc since: "2.10.0"
+  @spec solar_eclipse_at(location(), Astro.Solar.Eclipse.t() | date(), options()) ::
+          {:ok, Astro.Solar.Eclipse.Local.t()}
+          | {:error,
+             :not_visible
+             | :invalid_location
+             | :invalid_date
+             | :year_out_of_range
+             | :invalid_options
+             | :time_zone_not_found
+             | :time_zone_not_resolved
+             | :tz_world_data_not_installed
+             | :tz_world_backend_not_running
+             | :invalid_time_zone_resolver
+             | :invalid_time_zone_database
+             | :utc_only_time_zone_database}
+
+  def solar_eclipse_at(location, eclipse, options \\ []) do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, options} <- validate_options(options),
+         {:ok, moment} <- eclipse_search_moment(eclipse, Astro.Solar.Eclipse),
+         {:ok, global} <- Astro.Solar.Eclipse.eclipse_at_or_after(moment),
+         {:ok, local} <- Astro.Solar.Eclipse.Local.circumstances(global.greatest, location),
+         {:ok, time_zone} <- eclipse_time_zone(location, options) do
+      local_eclipse(Astro.Solar.Eclipse.Local, local, time_zone, options)
+    end
+  end
+
+  @doc """
+  Returns the path of a solar eclipse: its central line and the
+  northern and southern limits of the band in which it is total or
+  annular.
+
+  The central line is where the shadow axis meets the Earth, and a
+  limit is where the edge of the umbra, or of the antumbra for an
+  annular eclipse, just grazes an observer. Each is computed from the
+  eclipse's Besselian elements at a sequence of moments while the
+  shadow is on the Earth. `Astro.Solar.Eclipse.Path` describes the
+  geometry.
+
+  The lines are drawn on a map by joining their points in order, and
+  the band by joining the northern limit to the southern limit taken
+  backwards. Where a limit lies beyond the horizon, near the ends of the
+  path and on the open side of an eclipse whose axis misses the Earth,
+  its points follow the horizon, the places having their greatest
+  eclipse at sunrise or sunset, so the two limits begin together where
+  the shadow first touches the Earth and end together where it leaves.
+  Every location is a `t:Geo.Point.t/0` with coordinates
+  `{longitude, latitude}` in degrees, as Astro takes locations, the
+  longitude from −180° to 180°, so a line that crosses the antimeridian
+  jumps from one end of that range to the other.
+
+  ### Arguments
+
+  * `eclipse` is an `t:Astro.Solar.Eclipse.t/0`, as
+    `solar_eclipse_at_or_after/1` returns it, or a `t:Date.t/0` or
+    `t:DateTime.t/0`, or any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`, for the first solar
+    eclipse whose greatest eclipse is at or after it.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:interval` is the time between points in seconds, at least 1. The
+    default is 60. Points are at whole multiples of the interval in
+    Universal Time, and at greatest eclipse.
+
+  ### Returns
+
+  * `{:ok, path}`, an `t:Astro.Solar.Eclipse.Path.t/0` with the
+    eclipse's type and its `:central_line`, `:northern_limit` and
+    `:southern_limit`, lists of points in time order. Every point has
+    its `:time`, a UTC `t:DateTime.t/0` to the millisecond, and its
+    `:location`, a `t:Geo.Point.t/0`. A point of the central line also
+    has the eclipse there (`:total` or `:annular`), the path's `:width`
+    in kilometres, the `:duration` of totality or annularity in
+    seconds, and the Sun's geometric altitude in degrees. The central
+    line is empty for an eclipse whose shadow axis misses the Earth.
+
+  * `{:error, :no_path}` for a partial eclipse, whose umbra and
+    antumbra miss the Earth.
+
+  * `{:error, :invalid_date}` if `eclipse` is neither an eclipse nor a
+    valid date or date time in its calendar.
+
+  * `{:error, :year_out_of_range}` if `eclipse` is a date more than
+    50,000 years from J2000.
+
+  * `{:error, :invalid_options}` if `options` is not a keyword list.
+
+  * `{:error, :invalid_interval}` if `:interval` is not a number of
+    seconds of at least 1.
+
+  ### Accuracy
+
+  Against NASA's path tables for eight eclipses from 1999 to 2027
+  (total, annular, hybrid, one over Antarctica and one whose axis misses
+  the Earth), 674 instants with NASA's ΔT, every point NASA gives is
+  found. Across the path the central line and the limits lie within
+  0.7 km of NASA's where the Sun is 20° or more above the horizon, and
+  within 2.6 km over Antarctica with the Sun lower, where the ground is
+  tilted to the shadow. Along the path they are within 2 s of the
+  shadow's motion. The differences follow those of the Besselian
+  elements, which come from different ephemerides. The path width
+  agrees within 1 km and 0.6% (a path 400 km wide curves with the Earth
+  across its width, where the two measure it differently), the duration
+  within 0.7 s, and the Sun's altitude within NASA's rounding to a
+  degree. NASA names a hybrid eclipse's limits by the sign of the
+  umbra's radius, so in the total part of its path NASA's northern limit
+  is the southern one here. In Universal Time the path also carries
+  ΔT's uncertainty: a second of ΔT moves it 0.46 km east or west at the
+  equator.
+
+  ### Examples
+
+      iex> {:ok, path} = Astro.solar_eclipse_path(~D[2024-04-01])
+      iex> path.type
+      :total
+      iex> {length(path.central_line), length(path.northern_limit)}
+      {197, 198}
+      iex> point = Enum.find(path.central_line, &(&1.time == ~U[2024-04-08 18:17:00.000Z]))
+      iex> {longitude, latitude} = point.location.coordinates
+      iex> {Float.round(longitude, 2), Float.round(latitude, 2), Float.round(point.width, 0)}
+      {-104.24, 25.19, 198.0}
+
+      iex> Astro.solar_eclipse_path(~D[2025-03-01])
+      {:error, :no_path}
+
+  ### Reference
+
+  * P. Kenneth Seidelmann (editor), *Explanatory Supplement to the
+    Astronomical Almanac* (1992), chapter 8 (eclipses of the Sun and
+    Moon).
+
+  * Jean Meeus, *Elements of Solar Eclipses 1951–2200* (1989), on the
+    central line and the limits from Besselian elements.
+
+  * Fred Espenak, path tables of
+    [Central Solar Eclipses: 1991–2050](https://eclipse.gsfc.nasa.gov/SEpath/SEpath.html),
+    NASA Goddard Space Flight Center.
+
+  """
+  @doc since: "2.10.0"
+  @spec solar_eclipse_path(Astro.Solar.Eclipse.t() | date(), options()) ::
+          {:ok, Astro.Solar.Eclipse.Path.t()}
+          | {:error,
+             :no_path
+             | :invalid_date
+             | :year_out_of_range
+             | :invalid_options
+             | :invalid_interval}
+
+  def solar_eclipse_path(eclipse, options \\ []) do
+    with {:ok, options} <- validate_options(options),
+         {:ok, interval} <- path_interval(options),
+         {:ok, moment} <- eclipse_search_moment(eclipse, Astro.Solar.Eclipse),
+         {:ok, global} <- Astro.Solar.Eclipse.eclipse_at_or_after(moment),
+         {:ok, path} <- Astro.Solar.Eclipse.Path.path(global, interval) do
+      {:ok,
+       %Astro.Solar.Eclipse.Path{
+         type: path.type,
+         central_line: path_points(path.central_line),
+         northern_limit: path_points(path.northern_limit),
+         southern_limit: path_points(path.southern_limit)
+       }}
+    end
+  end
+
+  @doc """
+  Returns the local circumstances of a lunar eclipse at a location:
+  the eclipse's contacts and greatest eclipse, and the Moon's altitude
+  at each.
+
+  A lunar eclipse is the Moon passing through the Earth's shadow, so
+  its contacts happen at the same instants for everyone who can see
+  the Moon; what depends on the place is whether the Moon is above the
+  horizon while it happens. The Moon's altitude is topocentric,
+  allowing for its parallax of up to about 1° from the observer's
+  position on the Earth, and geometric, without refraction.
+  `Astro.Lunar.Eclipse.Local` describes the calculation.
+
+  ### Arguments
+
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
+    also carries a height in metres above the ellipsoid. Longitude
+    comes first.
+
+  * `eclipse` is an `t:Astro.Lunar.Eclipse.t/0`, as
+    `lunar_eclipse_at_or_after/2` returns it, or a `t:Date.t/0` or
+    `t:DateTime.t/0`, or any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`, for the first lunar
+    eclipse whose greatest eclipse is at or after it.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:shadow` is the convention for enlarging the Earth's shadow for
+    its atmosphere, `:danjon` (the default) or `:chauvenet`, as for
+    `lunar_eclipse_at_or_after/2`. An eclipse given as `eclipse` is
+    found again with this convention.
+
+  * `:time_zone` is the time zone of the returned date times:
+    `:default`, the time zone of the location, which is the default;
+    `:utc`; or a time zone name.
+
+  * `:time_zone_database` is the module implementing the
+    `Calendar.TimeZoneDatabase` behaviour. The default is the
+    configured Elixir time zone database.
+
+  * `:time_zone_resolver` is a 1-arity function that receives a
+    `%Geo.Point{coordinates: {lng, lat}}` and returns
+    `{:ok, time_zone_name}` or `{:error, reason}`. The default is
+    `TzWorld.timezone_at/1` when `:tz_world` is a dependency.
+
+  ### Returns
+
+  * `{:ok, local}`, an `t:Astro.Lunar.Eclipse.Local.t/0` with the
+    fields of `t:Astro.Lunar.Eclipse.t/0`, its instants as date times
+    in the requested time zone, and the Moon's altitude in degrees at
+    greatest eclipse and at each contact the eclipse has. A contact the
+    Moon is below the horizon for has a negative altitude.
+
+  * `{:error, :not_visible}` if the Moon is below the horizon from the
+    first penumbral contact to the last. The Moon has risen when its
+    upper limb is above the horizon, allowing for standard refraction,
+    as for `moonrise/3`.
+
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
+  * `{:error, :invalid_date}` if `eclipse` is neither an eclipse nor a
+    valid date or date time in its calendar.
+
+  * `{:error, :year_out_of_range}` if `eclipse` is a date more than
+    50,000 years from J2000.
+
+  * `{:error, :invalid_shadow}` if `:shadow` is not `:danjon` or
+    `:chauvenet`.
+
+  * `{:error, :invalid_options}` if `options` is not a keyword list.
+
+  * The time zone errors of `sunrise/3`.
+
+  ### Accuracy
+
+  The instants are those of `lunar_eclipse_at_or_after/2`. The Moon's
+  altitude at the instants of `moonrise/3` and `moonset/3` is the
+  horizon they use to within 0.00001°, and it is as accurate as the
+  Moon's position otherwise. Refraction near the horizon departs from
+  the standard 34′ with the weather, so whether a Moon that rises or
+  sets during an eclipse is seen at a contact within a few minutes of
+  it is uncertain by that much.
+
+  ### Examples
+
+      iex> {:ok, local} = Astro.lunar_eclipse_at({-96.80, 32.78}, ~D[2025-03-01], time_zone: "America/Chicago")
+      iex> {local.type, Float.round(local.moon_altitudes.greatest, 1)}
+      {:total, 59.0}
+      iex> DateTime.truncate(local.greatest, :second)
+      #DateTime<2025-03-14 01:58:46-05:00 CDT America/Chicago>
+
+      iex> Astro.lunar_eclipse_at({77.21, 28.61}, ~D[2025-03-01], time_zone: :utc)
+      {:error, :not_visible}
+
+  ### Reference
+
+  * Fred Espenak and Jean Meeus, *Five Millennium Canon of Lunar
+    Eclipses: −1999 to +3000*, NASA/TP-2009-214172 (2009).
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 40 (correction for parallax).
+
+  """
+  @doc since: "2.10.0"
+  @spec lunar_eclipse_at(location(), Astro.Lunar.Eclipse.t() | date(), options()) ::
+          {:ok, Astro.Lunar.Eclipse.Local.t()}
+          | {:error,
+             :not_visible
+             | :invalid_location
+             | :invalid_date
+             | :year_out_of_range
+             | :invalid_shadow
+             | :invalid_options
+             | :time_zone_not_found
+             | :time_zone_not_resolved
+             | :tz_world_data_not_installed
+             | :tz_world_backend_not_running
+             | :invalid_time_zone_resolver
+             | :invalid_time_zone_database
+             | :utc_only_time_zone_database}
+
+  def lunar_eclipse_at(location, eclipse, options \\ []) do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, shadow} <- lunar_eclipse_shadow(options),
+         {:ok, moment} <- eclipse_search_moment(eclipse, Astro.Lunar.Eclipse),
+         {:ok, global} <- Astro.Lunar.Eclipse.eclipse_at_or_after(moment, shadow),
+         {:ok, local} <- Astro.Lunar.Eclipse.Local.circumstances(global, location),
+         {:ok, time_zone} <- eclipse_time_zone(location, options) do
+      local_eclipse(Astro.Lunar.Eclipse.Local, local, time_zone, options)
+    end
+  end
+
+  # An eclipse is found again from a day before its greatest eclipse:
+  # no other eclipse of its kind is that close to it.
+  defp eclipse_search_moment(%module{greatest: %DateTime{} = greatest}, module) do
+    {:ok, Time.date_time_to_moment(greatest) - 1.0}
+  end
+
+  defp eclipse_search_moment(date, _module) do
+    with {:ok, moment} <- Time.checked_moment(date) do
+      Lunar.checked_search_moment(moment)
+    end
+  end
+
+  # The time zone of a local eclipse's date times, resolved once for all
+  # of its contacts.
+  defp eclipse_time_zone(location, options) do
+    case Keyword.get(options, :time_zone, :default) do
+      :utc -> {:ok, "Etc/UTC"}
+      :default -> Time.timezone_at(location, Keyword.get(options, :time_zone_resolver))
+      time_zone when is_binary(time_zone) -> {:ok, time_zone}
+      _not_a_time_zone -> {:error, :time_zone_not_found}
+    end
+  end
+
+  defp local_eclipse(module, circumstances, time_zone, options) do
+    time_zone_database = Keyword.get(options, :time_zone_database, :configured)
+
+    with {:ok, fields} <-
+           local_values(Map.to_list(circumstances), time_zone, time_zone_database, []) do
+      {:ok, struct(module, fields)}
+    end
+  end
+
+  defp local_values([], _time_zone, _time_zone_database, fields) do
+    {:ok, fields}
+  end
+
+  defp local_values([{key, value} | rest], time_zone, time_zone_database, fields)
+       when is_float(value) and key not in @eclipse_quantities do
+    utc =
+      value
+      |> Time.date_time_from_moment()
+      |> utc_date_time()
+
+    case Time.shift_zone(utc, time_zone, time_zone_database) do
+      {:ok, date_time} ->
+        local_values(rest, time_zone, time_zone_database, [{key, date_time} | fields])
+
+      error ->
+        error
+    end
+  end
+
+  defp local_values([field | rest], time_zone, time_zone_database, fields) do
+    local_values(rest, time_zone, time_zone_database, [field | fields])
+  end
+
   defp lunar_eclipse_shadow(options) when is_list(options) do
     case Keyword.get(options, :shadow, :danjon) do
       shadow when shadow in [:danjon, :chauvenet] -> {:ok, shadow}
@@ -1469,6 +1967,32 @@ defmodule Astro do
     {:error, :invalid_options}
   end
 
+  # The interval between the points of a path, in days.
+  defp path_interval(options) do
+    case Keyword.get(options, :interval, @default_path_interval) do
+      seconds when is_number(seconds) and seconds >= @least_path_interval ->
+        {:ok, seconds / @seconds_per_day}
+
+      _other ->
+        {:error, :invalid_interval}
+    end
+  end
+
+  # The points of a path with their instants as UTC date times to the
+  # nearest millisecond, which the points at whole multiples of the
+  # interval fall on.
+  defp path_points(points) do
+    Enum.map(points, fn %{time: moment} = point ->
+      date_time =
+        (moment + @half_millisecond_days)
+        |> Time.date_time_from_moment()
+        |> utc_date_time()
+        |> DateTime.truncate(:millisecond)
+
+      %{point | time: date_time}
+    end)
+  end
+
   # The eclipse with its instants as UTC date times.
   defp eclipse(module, circumstances) do
     fields = Map.new(circumstances, fn {key, value} -> {key, eclipse_value(key, value)} end)
@@ -1476,7 +2000,7 @@ defmodule Astro do
   end
 
   defp eclipse_value(key, value)
-       when key in [:type, :gamma, :magnitude, :penumbral_magnitude, :umbral_magnitude] or
+       when key in @eclipse_quantities or
               is_nil(value) do
     value
   end

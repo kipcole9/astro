@@ -4,6 +4,10 @@
 
 ### Added
 
+* `Astro.solar_eclipse_path/2` returns a solar eclipse's central line and northern and southern limits as timed `Geo.Point`s, with path width, duration and Sun altitude on the central line, for drawing the path on a map. Within 0.7 km of NASA's path tables where the Sun is 20° or more up.
+
+* `Astro.solar_eclipse_at/3` and `lunar_eclipse_at/3` return an eclipse's local circumstances: contacts, maximum, magnitude and obscuration for the Sun, and the Sun's or the Moon's altitude at each contact, or `{:error, :not_visible}`. Solar contacts match the USNO's to 2 s.
+
 * `Astro.solar_eclipse_at_or_after/1` and `solar_eclipse_before/1` return a solar eclipse's type (partial, annular, total or hybrid), gamma, magnitude and greatest eclipse, from Besselian elements; they match NASA's catalogue to 0.6 s over 1901–2100.
 
 * `Astro.lunar_eclipse_at_or_after/2` and `lunar_eclipse_before/2` return a lunar eclipse's type, gamma, magnitudes, greatest eclipse and contacts, matching NASA's catalogue to seconds over 1901–2100. The `:shadow` option chooses Danjon's (default) or Chauvenet's shadow enlargement.

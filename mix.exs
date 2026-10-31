@@ -56,13 +56,16 @@ defmodule Astro.MixProject do
         Solar: [
           Astro.Solar,
           Astro.Solar.SunRiseSet,
-          Astro.Solar.Eclipse
+          Astro.Solar.Eclipse,
+          Astro.Solar.Eclipse.Local,
+          Astro.Solar.Eclipse.Path
         ],
         Lunar: [
           Astro.Lunar,
           Astro.Lunar.MoonRiseSet,
           Astro.Lunar.CrescentVisibility,
-          Astro.Lunar.Eclipse
+          Astro.Lunar.Eclipse,
+          Astro.Lunar.Eclipse.Local
         ],
         Ephemeris: [
           Astro.Ephemeris,

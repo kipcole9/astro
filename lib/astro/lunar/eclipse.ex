@@ -60,6 +60,10 @@ defmodule Astro.Lunar.Eclipse do
   Each is the instant `σ` equals a shadow's radius plus or minus `sm`,
   found by bisection either side of greatest eclipse.
 
+  The contacts happen at the same instants wherever the Moon is seen;
+  `Astro.Lunar.Eclipse.Local` gives the Moon's altitude at each from a
+  place, and whether the eclipse is seen there.
+
   ## Positions
 
   The Sun's and the Moon's apparent geocentric positions and distances

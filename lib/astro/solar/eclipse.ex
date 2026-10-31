@@ -74,6 +74,9 @@ defmodule Astro.Solar.Eclipse do
   where `Δ` is that point's distance from the axis; NASA's catalogues
   use it for a total or annular eclipse without a central line too.
 
+  How an eclipse is seen from a place, its local circumstances, is
+  computed from the same elements by `Astro.Solar.Eclipse.Local`.
+
   The Sun's and the Moon's apparent geocentric positions and distances
   come from `Astro.Solar.solar_position/1` and
   `Astro.Lunar.lunar_position/1`: from the JPL ephemeris where the
