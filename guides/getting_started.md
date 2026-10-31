@@ -24,7 +24,9 @@ Only `astro` is required. The other two are optional and cover two separate conc
 
 A compact ephemeris covering 1900 to 2100 ships inside the package, so Astro works immediately after `mix deps.get` with no download step.
 
-If you need dates outside that range, download the full JPL DE440s kernel, which covers 1849 to 2150:
+For dates outside the ephemeris, Astro computes the Sun and the Moon from analytical series, within a few seconds of arc of JPL near the present, so every function answers for any date. Far from the present the uncertainty of ΔT dominates the time of any event.
+
+For JPL accuracy over a wider span, download the full DE440s kernel, which covers 1849 to 2150:
 
 ```bash
 mix astro.download_ephemeris
@@ -129,8 +131,6 @@ Astro returns tagged tuples for the cases that are genuine astronomy, or a setti
   iex> Astro.sunset({-62.3481, 82.5018}, ~D[2019-07-01])
   {:error, :no_time}
   ```
-
-* `{:error, :not_found}` — the date lies outside the loaded ephemeris. Download the full kernel to widen the range.
 
 * `{:error, :time_zone_not_found}` — the coordinate is in no time zone, typically open ocean, or the requested zone is unknown to the time zone database.
 

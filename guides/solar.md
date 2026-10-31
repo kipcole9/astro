@@ -23,7 +23,7 @@ iex> Astro.sunset({-62.3481, 82.5018}, ~D[2019-07-01])
 {:error, :no_time}
 ```
 
-That is a real astronomical answer, not a failure. It is distinct from `{:error, :not_found}`, which means the date is outside the loaded ephemeris.
+That is a real astronomical answer, not a failure.
 
 ## Twilight
 

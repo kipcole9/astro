@@ -74,11 +74,9 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 ## Tasks
 
-* [ ] **Remove the coverage checks** — from the `Astro` functions, sunrise and sunset, moonrise and moonset, solar noon and crescent visibility; update specs, docs, README and guides; tests for far past and far future dates.
-
 * [ ] **Find equinoxes and solstices as longitude crossings** — seeded by the Ch.27 estimate, with the 1000–3000 refusal removed.
 
-* [ ] **Refine new moons to the zero-phase crossing** — seeded by `nth_new_moon/1`, so the before and after searches agree with `date_time_new_moon_nearest/1`.
+* [ ] **Refine new moons to the zero-phase crossing** — seeded by `nth_new_moon/1`. First fix `Astro.Lunar.lunar_phase_at/1`: its check that swaps the computed phase for the Ch.49-based estimate when they differ by more than 180° misfires across 0°/360°, so near every new moon the phase is the Ch.49 estimate, and every new moon search lands on the Ch.49 instant (about 3.5 s from the JPL zero crossing in 2024, 110 s at the year 1000).
 
 * [ ] **Test the ephemeris edges** — every public function across both edges of the bundled and the full kernel, with no error, no raise, and event times within the stated jump.
 
@@ -87,6 +85,8 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 * [ ] **Calendrical follow-up** — once released, remove `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error from `Calendrical.Islamic.Visibility`, and raise Calendrical's Astro requirement. In the Calendrical repository, by its maintainer.
 
 ### Done
+
+* [x] **Remove the coverage checks** — from the `Astro` functions, both rise and set searches and crescent visibility; `:not_found` is gone from their specs and docs, the README and the guides; tests show answers for the years 500 and 1000. 2026-10-31.
 
 * [x] **Point the rise and set searches at `Astro.Solar` and `Astro.Lunar`** — `Astro.Solar.SunRiseSet` and `Astro.Lunar.MoonRiseSet` read positions through `solar_position/1` and `lunar_position/1`; every result is unchanged to the microsecond and the searches cost the same. 2026-10-31.
 

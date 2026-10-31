@@ -12,6 +12,8 @@
 
 ### Changed
 
+* Dates outside the loaded ephemeris are answered from the analytical series: the `Astro` functions, sunrise and sunset, moonrise and moonset and crescent visibility no longer return `{:error, :not_found}`, and their specs no longer name it.
+
 * The positions, ecliptic coordinates, distance, altitude and phase in `Astro.Solar` and `Astro.Lunar` come from the analytical series where the loaded ephemeris does not cover the moment, where they raised `MatchError`. `Astro.Solar.solar_ecliptic_longitude/1`'s fallback is now accurate to about 1″ near the present rather than 0.01°.
 
 * `Astro.Solar.sun_geometric_mean_anomaly/1`, `earth_orbit_eccentricity/1` and `sun_equation_of_center/1`, and `Astro.Lunar.mean_lunar_ecliptic_longitude/1` and `lunar_elongation/1` are no longer deprecated: the analytical series are built from them.

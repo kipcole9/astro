@@ -153,7 +153,9 @@ The bundled file is extracted from JPL's DE440s kernel and contains only the Sun
 
 ### Dates outside 1900–2100
 
-For dates beyond the bundled range, download the full DE440s kernel, which covers **1849 to 2150**:
+Outside the loaded ephemeris, Astro computes the Sun and the Moon from analytical series instead: Bretagnon and Simon's series for the Sun, within about 1″ of JPL near the present, and the series of Meeus's *Astronomical Algorithms*, chapter 47, for the Moon, within about 3″. So every function answers for any date. Far from the present the uncertainty of ΔT, minutes by the year 1000 and hours by −2000, outweighs either and dominates the time of any event.
+
+For JPL accuracy over a wider span, download the full DE440s kernel, which covers **1849 to 2150**:
 
 ```bash
 mix astro.download_ephemeris
@@ -166,7 +168,7 @@ config :astro,
   ephemeris: "/path/to/de440s.bsp"
 ```
 
-Functions that need the ephemeris return `{:error, :not_found}` for dates outside the range of the loaded ephemeris. `Astro.equinox/3` and `Astro.solstice/3` (for the years 1000 to 3000), `Astro.date_time_new_moon_before/1` and `Astro.date_time_new_moon_at_or_after/1` do not use it and work outside that range.
+`Astro.equinox/3` and `Astro.solstice/3` cover the years 1000 to 3000.
 
 ### Using a different ephemeris
 

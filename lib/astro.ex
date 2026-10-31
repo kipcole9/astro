@@ -96,7 +96,7 @@ defmodule Astro do
 
   """
 
-  alias Astro.{Ephemeris, Guards, Location, Lunar, Math, Solar, Time}
+  alias Astro.{Guards, Location, Lunar, Math, Solar, Time}
 
   import Astro.Math,
     only: [
@@ -127,10 +127,6 @@ defmodule Astro do
   @type options :: keyword()
 
   @seconds_per_day 86_400
-
-  # A lunar phase search ranges up to a mean synodic month plus two days
-  # from its starting moment, so this many days either side must be covered.
-  @phase_search_days 32
 
   @emoji_base 0x1F310
   @emoji_phase_count 8
@@ -195,9 +191,6 @@ defmodule Astro do
   * `{azimuth, elevation}` in degrees. Azimuth is measured clockwise from
     north, and elevation above the horizon.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover
-    `date_time`.
-
   ### Examples
 
       iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
@@ -211,7 +204,7 @@ defmodule Astro do
 
   @doc since: "0.11.0"
   @spec sun_azimuth_elevation(location(), Calendar.datetime()) ::
-          {azimuth :: float, altitude :: float} | {:error, :not_found}
+          {azimuth :: float, altitude :: float}
 
   def sun_azimuth_elevation(location, unquote(Guards.datetime()) = date_time) do
     _ = calendar
@@ -268,9 +261,6 @@ defmodule Astro do
     `%{reference: :celestial, object: :sun}`.
     `distance` is in meters.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover
-    `date_time`.
-
   ### Examples
 
       iex> %Geo.PointZ{coordinates: {right_ascension, declination, distance}, properties: properties} =
@@ -282,7 +272,7 @@ defmodule Astro do
 
   """
   @doc since: "0.6.0"
-  @spec sun_position_at(date()) :: Geo.PointZ.t() | {:error, :not_found}
+  @spec sun_position_at(date()) :: Geo.PointZ.t()
 
   def sun_position_at(unquote(Guards.datetime()) = date_time) do
     _ = calendar
@@ -301,13 +291,11 @@ defmodule Astro do
   end
 
   defp sun_position_at_moment(moment) do
-    with :ok <- Ephemeris.check_coverage(moment) do
-      moment
-      |> Solar.solar_position()
-      |> convert_distance_to_m()
-      |> Location.normalize_location()
-      |> Map.put(:properties, %{reference: :celestial, object: :sun})
-    end
+    moment
+    |> Solar.solar_position()
+    |> convert_distance_to_m()
+    |> Location.normalize_location()
+    |> Map.put(:properties, %{reference: :celestial, object: :sun})
   end
 
   defp convert_distance_to_m({lng, lat, alt}) do
@@ -332,9 +320,6 @@ defmodule Astro do
     `%{reference: :celestial, object: :moon}`.
     `distance` is in meters.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover
-    `date_time`.
-
   ### Examples
 
       iex> Astro.moon_position_at(~D[1992-04-12]) |> Astro.Location.round(6)
@@ -346,7 +331,7 @@ defmodule Astro do
 
   """
   @doc since: "0.6.0"
-  @spec moon_position_at(date()) :: Geo.PointZ.t() | {:error, :not_found}
+  @spec moon_position_at(date()) :: Geo.PointZ.t()
 
   def moon_position_at(unquote(Guards.datetime()) = date_time) do
     _ = calendar
@@ -365,12 +350,10 @@ defmodule Astro do
   end
 
   defp moon_position_at_moment(moment) do
-    with :ok <- Ephemeris.check_coverage(moment) do
-      moment
-      |> Lunar.lunar_position()
-      |> Location.normalize_location()
-      |> Map.put(:properties, %{reference: :celestial, object: :moon})
-    end
+    moment
+    |> Lunar.lunar_position()
+    |> Location.normalize_location()
+    |> Map.put(:properties, %{reference: :celestial, object: :moon})
   end
 
   @doc """
@@ -389,9 +372,6 @@ defmodule Astro do
     representing the fractional illumination of
     the moon.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover
-    `date_time`.
-
   ### Examples
 
       iex> fraction = Astro.illuminated_fraction_of_moon_at(~D[2017-03-16])
@@ -404,14 +384,14 @@ defmodule Astro do
 
   """
   @doc since: "0.6.0"
-  @spec illuminated_fraction_of_moon_at(date()) :: number() | {:error, :not_found}
+  @spec illuminated_fraction_of_moon_at(date()) :: number()
 
   def illuminated_fraction_of_moon_at(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time
     |> Time.date_time_to_moment()
-    |> illuminated_fraction_at_moment()
+    |> Lunar.illuminated_fraction_of_moon()
   end
 
   def illuminated_fraction_of_moon_at(unquote(Guards.date()) = date) do
@@ -419,13 +399,7 @@ defmodule Astro do
 
     date
     |> Time.date_time_to_moment()
-    |> illuminated_fraction_at_moment()
-  end
-
-  defp illuminated_fraction_at_moment(moment) do
-    with :ok <- Ephemeris.check_coverage(moment) do
-      Lunar.illuminated_fraction_of_moon(moment)
-    end
+    |> Lunar.illuminated_fraction_of_moon()
   end
 
   @doc """
@@ -494,9 +468,6 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover the
-    month either side of `date_time`.
-
   ### Examples
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
@@ -504,14 +475,15 @@ defmodule Astro do
 
   """
   @doc since: "2.0.0"
-  @spec date_time_new_moon_nearest(date()) :: {:ok, DateTime.t()} | {:error, :not_found}
+  @spec date_time_new_moon_nearest(date()) :: {:ok, DateTime.t()}
 
   def date_time_new_moon_nearest(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time
     |> Time.date_time_to_moment()
-    |> new_moon_nearest_moment()
+    |> Lunar.date_time_new_moon_nearest()
+    |> Time.date_time_from_moment()
   end
 
   def date_time_new_moon_nearest(unquote(Guards.date()) = date) do
@@ -519,16 +491,8 @@ defmodule Astro do
 
     date
     |> Time.date_time_to_moment()
-    |> new_moon_nearest_moment()
-  end
-
-  defp new_moon_nearest_moment(moment) do
-    with :ok <-
-           Ephemeris.check_coverage(moment - @phase_search_days, moment + @phase_search_days) do
-      moment
-      |> Lunar.date_time_new_moon_nearest()
-      |> Time.date_time_from_moment()
-    end
+    |> Lunar.date_time_new_moon_nearest()
+    |> Time.date_time_from_moment()
   end
 
   @doc """
@@ -590,9 +554,6 @@ defmodule Astro do
   * the lunar phase as a float number of
     degrees.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover
-    `date_time`.
-
   ### Examples
 
       iex> Astro.lunar_phase_at ~U[2021-08-22 12:02:02.816534Z]
@@ -601,20 +562,23 @@ defmodule Astro do
       iex> Astro.lunar_phase_at(~U[2021-07-10 01:16:34.022607Z])
       3.6600909621461326e-6
 
-      iex> Astro.lunar_phase_at(~D[1000-01-01])
-      {:error, :not_found}
+  Outside the loaded ephemeris the phase comes from the analytical
+  series:
+
+      iex> Astro.lunar_phase_at(~D[1000-01-01]) |> Float.round(2)
+      202.55
 
   """
 
   @doc since: "0.5.0"
-  @spec lunar_phase_at(date()) :: phase() | {:error, :not_found}
+  @spec lunar_phase_at(date()) :: phase()
 
   def lunar_phase_at(unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
     date_time
     |> Time.date_time_to_moment()
-    |> lunar_phase_at_moment()
+    |> Lunar.lunar_phase_at()
   end
 
   def lunar_phase_at(unquote(Guards.date()) = date) do
@@ -622,13 +586,7 @@ defmodule Astro do
 
     date
     |> Time.date_time_to_moment()
-    |> lunar_phase_at_moment()
-  end
-
-  defp lunar_phase_at_moment(moment) do
-    with :ok <- Ephemeris.check_coverage(moment) do
-      Lunar.lunar_phase_at(moment)
-    end
+    |> Lunar.lunar_phase_at()
   end
 
   @doc """
@@ -699,9 +657,6 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the phase
     occurs.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover the
-    month searched.
-
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
@@ -711,14 +666,15 @@ defmodule Astro do
 
   @doc since: "0.5.0"
   @spec date_time_lunar_phase_at_or_before(date(), Astro.phase()) ::
-          {:ok, DateTime.t()} | {:error, :not_found}
+          {:ok, DateTime.t()}
 
   def date_time_lunar_phase_at_or_before(unquote(Guards.datetime()) = date_time, phase) do
     _ = calendar
 
     date_time
     |> Time.date_time_to_moment()
-    |> lunar_phase_at_or_before_moment(phase)
+    |> Lunar.date_time_lunar_phase_at_or_before(phase)
+    |> Time.date_time_from_moment()
   end
 
   def date_time_lunar_phase_at_or_before(unquote(Guards.date()) = date, phase) do
@@ -726,7 +682,8 @@ defmodule Astro do
 
     date
     |> Time.date_time_to_moment()
-    |> lunar_phase_at_or_before_moment(phase)
+    |> Lunar.date_time_lunar_phase_at_or_before(phase)
+    |> Time.date_time_from_moment()
   end
 
   @doc """
@@ -749,9 +706,6 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the phase
     occurs.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover the
-    month searched.
-
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
@@ -761,14 +715,15 @@ defmodule Astro do
 
   @doc since: "0.5.0"
   @spec date_time_lunar_phase_at_or_after(date(), Astro.phase()) ::
-          {:ok, DateTime.t()} | {:error, :not_found}
+          {:ok, DateTime.t()}
 
   def date_time_lunar_phase_at_or_after(unquote(Guards.datetime()) = date_time, phase) do
     _ = calendar
 
     date_time
     |> Time.date_time_to_moment()
-    |> lunar_phase_at_or_after_moment(phase)
+    |> Lunar.date_time_lunar_phase_at_or_after(phase)
+    |> Time.date_time_from_moment()
   end
 
   def date_time_lunar_phase_at_or_after(unquote(Guards.date()) = date, phase) do
@@ -776,23 +731,8 @@ defmodule Astro do
 
     date
     |> Time.date_time_to_moment()
-    |> lunar_phase_at_or_after_moment(phase)
-  end
-
-  defp lunar_phase_at_or_before_moment(moment, phase) do
-    with :ok <- Ephemeris.check_coverage(moment - @phase_search_days, moment) do
-      moment
-      |> Lunar.date_time_lunar_phase_at_or_before(phase)
-      |> Time.date_time_from_moment()
-    end
-  end
-
-  defp lunar_phase_at_or_after_moment(moment, phase) do
-    with :ok <- Ephemeris.check_coverage(moment, moment + @phase_search_days) do
-      moment
-      |> Lunar.date_time_lunar_phase_at_or_after(phase)
-      |> Time.date_time_from_moment()
-    end
+    |> Lunar.date_time_lunar_phase_at_or_after(phase)
+    |> Time.date_time_from_moment()
   end
 
   @doc """
@@ -870,8 +810,6 @@ defmodule Astro do
     in a time zone other than UTC and no time zone database is
     configured.
 
-  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
-
   ### Examples
 
       iex> {:ok, date_time} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -890,8 +828,7 @@ defmodule Astro do
              | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
-             | :utc_only_time_zone_database
-             | :not_found}
+             | :utc_only_time_zone_database}
 
   def sunrise(location, date, options \\ []) when is_list(options) do
     Solar.SunRiseSet.sunrise(location, date_to_moment(date), options)
@@ -972,8 +909,6 @@ defmodule Astro do
     in a time zone other than UTC and no time zone database is
     configured.
 
-  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
-
   ### Examples
 
       iex> {:ok, date_time} = Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -992,8 +927,7 @@ defmodule Astro do
              | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
-             | :utc_only_time_zone_database
-             | :not_found}
+             | :utc_only_time_zone_database}
 
   def sunset(location, date, options \\ []) when is_list(options) do
     Solar.SunRiseSet.sunset(location, date_to_moment(date), options)
@@ -1077,8 +1011,6 @@ defmodule Astro do
     in a time zone other than UTC and no time zone database is
     configured.
 
-  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
-
   ### Examples
 
       iex> {:ok, date_time} = Astro.moonrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -1099,8 +1031,7 @@ defmodule Astro do
              | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
-             | :utc_only_time_zone_database
-             | :not_found}
+             | :utc_only_time_zone_database}
 
   def moonrise(location, date, options \\ default_options())
 
@@ -1186,8 +1117,6 @@ defmodule Astro do
     in a time zone other than UTC and no time zone database is
     configured.
 
-  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
-
   ### Examples
 
       iex> {:ok, date_time} = Astro.moonset({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -1208,8 +1137,7 @@ defmodule Astro do
              | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
-             | :utc_only_time_zone_database
-             | :not_found}
+             | :utc_only_time_zone_database}
 
   def moonset(location, date, options \\ default_options())
 
@@ -1275,9 +1203,6 @@ defmodule Astro do
   * `{:error, :no_sunset}` if no sunset occurs on the given date at
     the given location (e.g. polar day).
 
-  * `{:error, :not_found}` if the date is outside the range covered
-    by the installed ephemeris.
-
   ### Method comparison
 
   | Aspect | Yallop (1997) | Odeh (2006) | Schaefer (1988/2000) |
@@ -1303,7 +1228,7 @@ defmodule Astro do
   @type method :: :odeh | :yallop | :schaefer
 
   @spec new_visible_crescent(location(), date(), method()) ::
-          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset | :not_found}
+          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset}
 
   def new_visible_crescent(location, date, method \\ :odeh)
 
@@ -1361,9 +1286,6 @@ defmodule Astro do
   * `{:error, :no_sunset}` if no sunset occurs on the given date at the
     given location.
 
-  * `{:error, :not_found}` if the date is outside the range covered by
-    the installed ephemeris.
-
   ### Examples
 
       iex> location = {39.8579, 21.3891}
@@ -1373,7 +1295,7 @@ defmodule Astro do
   """
   @doc since: "2.1.0"
   @spec new_visible_crescent(location(), date(), :schaefer, keyword()) ::
-          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset | :not_found}
+          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset}
 
   def new_visible_crescent(location, date, method, options)
 
@@ -1617,8 +1539,6 @@ defmodule Astro do
   * `{:error, :incompatible_calendars}` if its calendar cannot be
     converted to `Calendar.ISO`.
 
-  * `{:error, :not_found}` if the loaded ephemeris does not cover `date`.
-
   ### Examples
 
       iex> Astro.solar_noon {151.20666584, -33.8559799094}, ~D[2019-12-06]
@@ -1637,15 +1557,13 @@ defmodule Astro do
   """
   @spec solar_noon(Astro.location(), Calendar.date()) ::
           {:ok, DateTime.t()}
-          | {:error, :invalid_date | :incompatible_calendars | :invalid_time | :not_found}
+          | {:error, :invalid_date | :incompatible_calendars | :invalid_time}
   def solar_noon(location, date) do
     %Geo.PointZ{coordinates: {longitude, _, _}} = Location.normalize_location(location)
 
     # Both the Julian day and the date time are taken from the ISO date, so a
     # date in another calendar gives the solar noon of that same day.
-    with {:ok, iso_date} <- Time.iso_date(date),
-         moment = Time.date_time_to_moment(iso_date),
-         :ok <- Ephemeris.check_coverage(moment - 1, moment + 1) do
+    with {:ok, iso_date} <- Time.iso_date(date) do
       iso_date
       |> Time.julian_day_from_date()
       |> Time.julian_centuries_from_julian_day()
@@ -1669,8 +1587,6 @@ defmodule Astro do
   * a `float` number of degrees between 0 and
     360 representing the solar longitude
     on `date`.
-
-  * `{:error, :not_found}` if the loaded ephemeris does not cover `date`.
 
   ### Examples
 
@@ -1698,13 +1614,11 @@ defmodule Astro do
   imperfections.
 
   """
-  @spec sun_apparent_longitude(Calendar.date()) :: degrees() | {:error, :not_found}
+  @spec sun_apparent_longitude(Calendar.date()) :: degrees()
   def sun_apparent_longitude(date) do
-    moment = Time.date_time_to_moment(date)
-
-    with :ok <- Ephemeris.check_coverage(moment) do
-      Solar.solar_ecliptic_longitude(moment)
-    end
+    date
+    |> Time.date_time_to_moment()
+    |> Solar.solar_ecliptic_longitude()
   end
 
   @doc """

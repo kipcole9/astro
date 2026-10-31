@@ -6,23 +6,67 @@ defmodule Astro.OutOfRangeTest do
   @date_time ~U[1000-06-01 12:00:00Z]
   @sydney {151.20666584, -33.8559799094}
 
-  for {name, call} <- [
-        {"lunar_phase_at/1", quote(do: Astro.lunar_phase_at(@date))},
-        {"illuminated_fraction_of_moon_at/1",
-         quote(do: Astro.illuminated_fraction_of_moon_at(@date))},
-        {"date_time_new_moon_nearest/1", quote(do: Astro.date_time_new_moon_nearest(@date))},
-        {"date_time_lunar_phase_at_or_before/2",
-         quote(do: Astro.date_time_lunar_phase_at_or_before(@date, 180.0))},
-        {"date_time_lunar_phase_at_or_after/2",
-         quote(do: Astro.date_time_lunar_phase_at_or_after(@date, 180.0))},
-        {"sun_position_at/1", quote(do: Astro.sun_position_at(@date))},
-        {"moon_position_at/1", quote(do: Astro.moon_position_at(@date_time))},
-        {"sun_apparent_longitude/1", quote(do: Astro.sun_apparent_longitude(@date))},
-        {"sun_azimuth_elevation/2", quote(do: Astro.sun_azimuth_elevation(@sydney, @date_time))},
-        {"solar_noon/2", quote(do: Astro.solar_noon(@sydney, @date))}
-      ] do
-    test "#{name} returns {:error, :not_found} outside the ephemeris" do
-      assert {:error, :not_found} = unquote(call)
+  describe "the Astro functions answer outside the ephemeris" do
+    test "lunar phase searches find the phase they were asked for" do
+      for {search, phase} <- [
+            {&Astro.date_time_lunar_phase_at_or_before/2, 180.0},
+            {&Astro.date_time_lunar_phase_at_or_after/2, 90.0}
+          ] do
+        assert {:ok, date_time} = search.(@date, phase)
+        assert_in_delta Astro.lunar_phase_at(date_time), phase, 0.001
+      end
+
+      # The nearest new moon is one of the new moons either side of the date.
+      assert {:ok, nearest} = Astro.date_time_new_moon_nearest(@date)
+      assert {:ok, before} = Astro.date_time_new_moon_before(@date)
+      assert {:ok, at_or_after} = Astro.date_time_new_moon_at_or_after(@date)
+
+      assert Enum.any?([before, at_or_after], fn new_moon ->
+               abs(DateTime.diff(nearest, new_moon, :millisecond)) < 1_000
+             end)
+    end
+
+    test "the phase, illumination and the Sun's longitude are numbers in range" do
+      phase = Astro.lunar_phase_at(@date)
+      assert phase >= 0.0 and phase < 360.0
+
+      fraction = Astro.illuminated_fraction_of_moon_at(@date)
+      assert fraction >= 0.0 and fraction <= 1.0
+
+      # Early June, about 70° along the ecliptic.
+      assert_in_delta Astro.sun_apparent_longitude(@date), 70.0, 2.0
+    end
+
+    test "the Sun and the Moon have positions" do
+      assert %Geo.PointZ{coordinates: {_right_ascension, declination, distance}} =
+               Astro.sun_position_at(@date)
+
+      assert_in_delta declination, 22.0, 1.0
+      assert distance > 1.5e11 and distance < 1.53e11
+
+      assert %Geo.PointZ{coordinates: {_, moon_declination, moon_distance}} =
+               Astro.moon_position_at(@date_time)
+
+      assert abs(moon_declination) <= 30.0
+      assert moon_distance > 3.5e8 and moon_distance < 4.1e8
+
+      assert {azimuth, elevation} = Astro.sun_azimuth_elevation(@sydney, @date_time)
+      assert azimuth >= 0.0 and azimuth < 360.0
+      assert elevation >= -90.0 and elevation <= 90.0
+    end
+
+    test "solar noon, sunrise, sunset, moonrise and moonset" do
+      # Sydney is about 10 hours east of Greenwich, so its noon is near 02:00 UTC.
+      assert {:ok, %DateTime{hour: hour}} = Astro.solar_noon(@sydney, @date)
+      assert hour in 1..2
+
+      for event <- [&Astro.sunrise/3, &Astro.sunset/3, &Astro.moonrise/3, &Astro.moonset/3] do
+        assert {:ok, %DateTime{}} = event.(@sydney, @date, time_zone: :utc)
+      end
+
+      # A June day in Sydney is short.
+      assert {:ok, %Time{hour: hours}} = Astro.hours_of_daylight(@sydney, @date)
+      assert hours in 9..10
     end
   end
 
@@ -91,7 +135,7 @@ defmodule Astro.OutOfRangeTest do
              |> Astro.Time.date_time_from_moment()
   end
 
-  test "the new moon searches that do not use the ephemeris still succeed" do
+  test "the new moon searches succeed outside the ephemeris" do
     assert {:ok, %DateTime{}} = Astro.date_time_new_moon_before(@date)
     assert {:ok, %DateTime{}} = Astro.date_time_new_moon_at_or_after(@date)
   end

@@ -128,7 +128,7 @@ iex> Astro.new_visible_crescent({-0.1275, 51.5072}, ~D[2025-03-31], :yallop)
 {:ok, :A}
 ```
 
-Two error cases are worth distinguishing: `{:error, :no_sunset}` means a polar day with no sunset to compute from, a genuine astronomical condition, while `{:error, :not_found}` means the date is outside the loaded ephemeris.
+`{:error, :no_sunset}` means a polar day with no sunset to compute from: a genuine astronomical condition, not a failure.
 
 ## Position of the moon
 

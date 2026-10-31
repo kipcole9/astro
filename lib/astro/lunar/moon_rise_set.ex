@@ -235,8 +235,6 @@ defmodule Astro.Lunar.MoonRiseSet do
     in a time zone other than UTC and no time zone database is
     configured.
 
-  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
-
   ### Examples
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2026-03-01])
@@ -336,8 +334,6 @@ defmodule Astro.Lunar.MoonRiseSet do
     in a time zone other than UTC and no time zone database is
     configured.
 
-  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
-
   ### Examples
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2026-03-01])
@@ -383,18 +379,8 @@ defmodule Astro.Lunar.MoonRiseSet do
     dt_start = dt_midnight - @scan_pre_window_s
     dt_end = dt_start + @scan_window_s
 
-    # `topocentric_f/6` reads the Moon's position from the ephemeris, which
-    # covers a bounded span of years. Confirm the search span lies inside that
-    # coverage up front, so a date beyond the ephemeris returns a clean
-    # `{:error, reason}` rather than crashing on an unmatched
-    # `{:error, :not_found}` deep inside the scan or the bisection. The span is
-    # padded by one Lagrange interval because `build_lagrange_interpolator/1`
-    # samples up to @lagrange_interval_s beyond a bracket midpoint; covering
-    # both padded endpoints covers every intermediate read.
     with :ok <- validate_interpolation(interpolation),
-         :ok <- validate_limb(limb),
-         :ok <- ephemeris_available(dt_start - @lagrange_interval_s),
-         :ok <- ephemeris_available(dt_end + @lagrange_interval_s) do
+         :ok <- validate_limb(limb) do
       find_moon_event(dt_start, dt_end, direct_fn, event, interpolation, limb, date, %{
         lat: lat,
         lng: lng,
@@ -497,15 +483,6 @@ defmodule Astro.Lunar.MoonRiseSet do
   #
   # Positive f: Moon is above the horizon.
   # Negative f: Moon is below the horizon.
-  # The ephemeris covers a bounded span of years; report an out-of-range time
-  # as a clean error rather than letting the unmatched result crash the caller.
-  defp ephemeris_available(dynamical_time) do
-    case Ephemeris.moon_position_dt(dynamical_time) do
-      {:ok, _position} -> :ok
-      {:error, _reason} = error -> error
-    end
-  end
-
   # The scan matches on these values, so anything else is reported to the
   # caller rather than raising a `CaseClauseError` mid-scan.
   defp validate_interpolation(interpolation) when interpolation in [:direct, :lagrange], do: :ok

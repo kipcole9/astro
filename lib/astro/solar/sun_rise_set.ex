@@ -110,7 +110,7 @@ defmodule Astro.Solar.SunRiseSet do
 
   """
 
-  alias Astro.{Coordinates, Ephemeris, Solar, Time}
+  alias Astro.{Coordinates, Solar, Time}
 
   # Coarse scan step (seconds). The Sun is always visible for at least a few
   # minutes when it rises, so 24-minute steps bracket the event reliably.
@@ -218,8 +218,6 @@ defmodule Astro.Solar.SunRiseSet do
     in a time zone other than UTC and no time zone database is
     configured.
 
-  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
-
   ### Examples
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2019-12-04])
@@ -315,8 +313,6 @@ defmodule Astro.Solar.SunRiseSet do
     in a time zone other than UTC and no time zone database is
     configured.
 
-  * `{:error, :not_found}` if the date is outside the loaded ephemeris.
-
   ### Examples
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2019-12-04])
@@ -400,15 +396,7 @@ defmodule Astro.Solar.SunRiseSet do
     dt_start = dt_midnight - @scan_pre_window_s
     dt_end = dt_start + @scan_window_s
 
-    # `altitude_f/4` reads the Sun's position from the ephemeris, which covers
-    # a bounded span of years. Confirm the scan window lies inside that span up
-    # front, so a date beyond the ephemeris returns a clean `{:error, reason}`
-    # rather than crashing on an unmatched `{:error, :not_found}` deep inside
-    # the scan or the bisection (every intermediate time is bracketed by these
-    # two endpoints, so covering them covers the whole search).
-    with {:ok, h0} <- h0_from_options(options),
-         :ok <- ephemeris_available(dt_start),
-         :ok <- ephemeris_available(dt_end) do
+    with {:ok, h0} <- h0_from_options(options) do
       site = %{lat: lat, lng: lng, h0: h0}
       find_sun_event(dt_start, dt_end, event, date, location, site, options)
     end
@@ -481,15 +469,6 @@ defmodule Astro.Solar.SunRiseSet do
        do: {:ok, local_dt}
 
   defp on_date(_local_dt, _date), do: nil
-
-  # The ephemeris covers a bounded span of years; report an out-of-range time
-  # as a clean error rather than letting the unmatched result crash the caller.
-  defp ephemeris_available(dynamical_time) do
-    case Ephemeris.sun_position_dt(dynamical_time) do
-      {:ok, _position} -> :ok
-      {:error, _reason} = error -> error
-    end
-  end
 
   # Convert the :solar_elevation option to an altitude threshold in degrees.
   #
