@@ -245,6 +245,13 @@ defmodule Astro.Time do
   @type zone_name() :: binary()
 
   @julian_day_jan_1_2000 2_451_545
+  # tz_world's backends, in its own order of precedence.
+  @tz_world_backends [
+    TzWorld.Backend.SpatialIndex,
+    TzWorld.Backend.EtsWithIndexCache,
+    TzWorld.Backend.DetsWithIndexCache
+  ]
+
   @julian_days_per_century 36_525.0
   @julian_epoch_days 1_721_425.5
 
@@ -1476,12 +1483,33 @@ defmodule Astro.Time do
 
       :default ->
         with {:ok, time_zone} <- timezone_at(location, options[:time_zone_resolver]) do
-          DateTime.shift_zone(utc_event_time, time_zone, time_zone_database)
+          shift_zone(utc_event_time, time_zone, time_zone_database)
         end
 
       time_zone when is_binary(time_zone) ->
-        DateTime.shift_zone(utc_event_time, time_zone, time_zone_database)
+        shift_zone(utc_event_time, time_zone, time_zone_database)
     end
+  end
+
+  @doc false
+  # Shifts a UTC date time to a time zone found in a time zone database,
+  # `:configured` meaning the configured one. A database that is not a
+  # `Calendar.TimeZoneDatabase` is an error rather than an exception.
+  def shift_zone(utc_date_time, time_zone, :configured) do
+    shift_zone(utc_date_time, time_zone, Calendar.get_time_zone_database())
+  end
+
+  def shift_zone(utc_date_time, time_zone, time_zone_database) do
+    if time_zone_database?(time_zone_database) do
+      DateTime.shift_zone(utc_date_time, time_zone, time_zone_database)
+    else
+      {:error, :invalid_time_zone_database}
+    end
+  end
+
+  defp time_zone_database?(module) do
+    is_atom(module) and Code.ensure_loaded?(module) and
+      function_exported?(module, :time_zone_period_from_utc_iso_days, 2)
   end
 
   @doc false
@@ -1490,9 +1518,31 @@ defmodule Astro.Time do
     tz_world_timezone_at(location)
   end
 
-  def timezone_at(%Geo.PointZ{} = location, time_zone_resolver) do
+  def timezone_at(%Geo.PointZ{} = location, time_zone_resolver)
+      when is_function(time_zone_resolver, 1) do
     location = %Geo.Point{coordinates: Tuple.delete_at(location.coordinates, 2)}
-    time_zone_resolver.(location)
+
+    location
+    |> time_zone_resolver.()
+    |> resolved_time_zone()
+  end
+
+  def timezone_at(%Geo.PointZ{} = _location, _time_zone_resolver) do
+    {:error, :invalid_time_zone_resolver}
+  end
+
+  # A resolver returns `{:ok, time_zone_name}` or `{:error, reason}`;
+  # anything else means it could not resolve the location.
+  defp resolved_time_zone({:ok, time_zone} = result) when is_binary(time_zone) do
+    result
+  end
+
+  defp resolved_time_zone({:error, reason} = result) when is_atom(reason) do
+    result
+  end
+
+  defp resolved_time_zone(_other) do
+    {:error, :time_zone_not_resolved}
   end
 
   # Resolves a time zone name for a point via `TzWorld`, translating
@@ -1500,9 +1550,24 @@ defmodule Astro.Time do
   @doc false
   if Code.ensure_loaded?(TzWorld) do
     def tz_world_timezone_at(%Geo.Point{} = point) do
-      point
-      |> TzWorld.timezone_at()
-      |> map_tz_world_result()
+      case running_tz_world_backend() do
+        nil ->
+          {:error, :tz_world_backend_not_running}
+
+        backend ->
+          point
+          |> TzWorld.timezone_at(backend)
+          |> map_tz_world_result()
+      end
+    end
+
+    # The backend `TzWorld.timezone_at/1` would choose: the configured
+    # default, then tz_world's own order of precedence. It is found here
+    # because `TzWorld.timezone_at/1` raises when none is running.
+    defp running_tz_world_backend do
+      [Application.get_env(:tz_world, :default_backend) | @tz_world_backends]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.find(&Process.whereis/1)
     end
   else
     def tz_world_timezone_at(%Geo.Point{} = _point) do
@@ -1845,6 +1910,66 @@ defmodule Astro.Time do
       calendar.naive_datetime_to_iso_days(date.year, date.month, date.day, 0, 0, 0, {0, 0})
 
     days
+  end
+
+  @doc false
+  # The moment of a date, naive date time or date time, or
+  # `{:error, :invalid_date}` when the value is not one that is valid in
+  # its own calendar.
+  @spec checked_moment(term()) :: {:ok, moment()} | {:error, :invalid_date}
+  def checked_moment(date_or_date_time) do
+    if valid_date_or_date_time?(date_or_date_time) do
+      {:ok, date_time_to_moment(date_or_date_time)}
+    else
+      {:error, :invalid_date}
+    end
+  end
+
+  defp valid_date_or_date_time?(%{year: year, month: month, day: day, calendar: calendar} = value)
+       when is_integer(year) and is_integer(month) and is_integer(day) and is_atom(calendar) do
+    calendar_module?(calendar) and calendar.valid_date?(year, month, day) and
+      valid_time_of_day?(value, calendar) and valid_zone?(value)
+  end
+
+  defp valid_date_or_date_time?(_value) do
+    false
+  end
+
+  defp calendar_module?(calendar) do
+    Code.ensure_loaded?(calendar) and function_exported?(calendar, :valid_date?, 3) and
+      function_exported?(calendar, :valid_time?, 4) and
+      function_exported?(calendar, :naive_datetime_to_iso_days, 7)
+  end
+
+  defp valid_time_of_day?(
+         %{hour: hour, minute: minute, second: second, microsecond: {microsecond, precision}},
+         calendar
+       )
+       when is_integer(hour) and is_integer(minute) and is_integer(second) and
+              is_integer(microsecond) and is_integer(precision) do
+    calendar.valid_time?(hour, minute, second, {microsecond, precision})
+  end
+
+  defp valid_time_of_day?(%{hour: _hour}, _calendar) do
+    false
+  end
+
+  defp valid_time_of_day?(_date, _calendar) do
+    true
+  end
+
+  # A value carrying a time zone is shifted to UTC with `DateTime`, so it
+  # must be a `DateTime`.
+  defp valid_zone?(%DateTime{}) do
+    true
+  end
+
+  defp valid_zone?(%{time_zone: _time_zone}) do
+    false
+  end
+
+  defp valid_zone?(_value) do
+    true
   end
 
   defp periods_for_time(time_zone, gregorian_seconds, time_zone_database) do

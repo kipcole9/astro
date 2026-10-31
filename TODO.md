@@ -4,7 +4,7 @@ Work planned for Astro. The detail of anything shipped is in the CHANGELOG.
 
 ## Open
 
-* [ ] **Return errors rather than raise on invalid input** — every public `Astro` function raises `FunctionClauseError` for some invalid arguments; equinox and solstice are fixed. Seven functions return bare values, so fixing them changes their return type. Survey and options in [plans/invalid-input.md](plans/invalid-input.md).
+* [ ] **Return errors rather than raise on invalid input** — the functions returning tagged tuples are fixed; seven return bare values, so fixing them changes their return type, and the new moon searches raise beyond 50,000 years. Survey and options in [plans/invalid-input.md](plans/invalid-input.md).
 
 * [ ] **Review the ΔT model** — `Astro.Time.delta_t/1` extrapolates in a straight line at 0.15 s a year after 2025, where long-term models follow a parabola: 216 s against Espenak and Meeus's 4,436 s at 3000, outside NASA's 1,885 s uncertainty. Before 1000 its Meeus chapter 10 polynomials differ from Espenak and Meeus by 700–1,100 s around 0–500 CE, against an uncertainty of 140–265 s. Consider adopting the Espenak and Meeus polynomials; the figures are in `guides/accuracy.md`.
 

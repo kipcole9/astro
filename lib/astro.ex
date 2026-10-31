@@ -499,6 +499,9 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
 
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
   Raises `ArgumentError` for a date more than 50,000 years from J2000,
   where the new moons can no longer be told apart reliably.
 
@@ -509,31 +512,21 @@ defmodule Astro do
 
   """
   @doc since: "0.5.0"
-  @spec date_time_new_moon_before(date()) :: {:ok, DateTime.t()}
+  @spec date_time_new_moon_before(date()) :: {:ok, DateTime.t()} | {:error, :invalid_date}
 
-  def date_time_new_moon_before(unquote(Guards.datetime()) = date_time) do
-    _ = calendar
-
-    date_time
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_new_moon_before()
-    |> Time.date_time_from_moment()
-  end
-
-  def date_time_new_moon_before(unquote(Guards.date()) = date) do
-    _ = calendar
-
-    date
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_new_moon_before()
-    |> Time.date_time_from_moment()
+  def date_time_new_moon_before(date) do
+    with {:ok, moment} <- Time.checked_moment(date) do
+      moment
+      |> Lunar.date_time_new_moon_before()
+      |> Time.date_time_from_moment()
+    end
   end
 
   # The date-time clause of `date_time_new_moon_before/1` was once defined
   # under this name, which then carried that function's documentation.
   @doc false
   @deprecated "Use Astro.date_time_new_moon_before/1 instead"
-  @spec date_time_new_moon_at_or_before(date()) :: {:ok, DateTime.t()}
+  @spec date_time_new_moon_at_or_before(date()) :: {:ok, DateTime.t()} | {:error, :invalid_date}
   def date_time_new_moon_at_or_before(date_time) do
     date_time_new_moon_before(date_time)
   end
@@ -553,6 +546,9 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
 
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
   ### Examples
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
@@ -560,24 +556,14 @@ defmodule Astro do
 
   """
   @doc since: "2.0.0"
-  @spec date_time_new_moon_nearest(date()) :: {:ok, DateTime.t()}
+  @spec date_time_new_moon_nearest(date()) :: {:ok, DateTime.t()} | {:error, :invalid_date}
 
-  def date_time_new_moon_nearest(unquote(Guards.datetime()) = date_time) do
-    _ = calendar
-
-    date_time
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_new_moon_nearest()
-    |> Time.date_time_from_moment()
-  end
-
-  def date_time_new_moon_nearest(unquote(Guards.date()) = date) do
-    _ = calendar
-
-    date
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_new_moon_nearest()
-    |> Time.date_time_from_moment()
+  def date_time_new_moon_nearest(date) do
+    with {:ok, moment} <- Time.checked_moment(date) do
+      moment
+      |> Lunar.date_time_new_moon_nearest()
+      |> Time.date_time_from_moment()
+    end
   end
 
   @doc """
@@ -596,6 +582,9 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
 
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
   Raises `ArgumentError` for a date more than 50,000 years from J2000,
   where the new moons can no longer be told apart reliably.
 
@@ -606,24 +595,14 @@ defmodule Astro do
 
   """
   @doc since: "0.5.0"
-  @spec date_time_new_moon_at_or_after(date()) :: {:ok, DateTime.t()}
+  @spec date_time_new_moon_at_or_after(date()) :: {:ok, DateTime.t()} | {:error, :invalid_date}
 
-  def date_time_new_moon_at_or_after(unquote(Guards.datetime()) = datetime) do
-    _ = calendar
-
-    datetime
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_new_moon_at_or_after()
-    |> Time.date_time_from_moment()
-  end
-
-  def date_time_new_moon_at_or_after(unquote(Guards.date()) = date) do
-    _ = calendar
-
-    date
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_new_moon_at_or_after()
-    |> Time.date_time_from_moment()
+  def date_time_new_moon_at_or_after(date) do
+    with {:ok, moment} <- Time.checked_moment(date) do
+      moment
+      |> Lunar.date_time_new_moon_at_or_after()
+      |> Time.date_time_from_moment()
+    end
   end
 
   @doc """
@@ -745,6 +724,12 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the phase
     occurs.
 
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
+  * `{:error, :invalid_phase}` if `phase` is not a number from 0 to
+    360.
+
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
@@ -754,24 +739,18 @@ defmodule Astro do
 
   @doc since: "0.5.0"
   @spec date_time_lunar_phase_at_or_before(date(), Astro.phase()) ::
-          {:ok, DateTime.t()}
+          {:ok, DateTime.t()} | {:error, :invalid_date | :invalid_phase}
 
-  def date_time_lunar_phase_at_or_before(unquote(Guards.datetime()) = date_time, phase) do
-    _ = calendar
-
-    date_time
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_lunar_phase_at_or_before(phase)
-    |> Time.date_time_from_moment()
+  def date_time_lunar_phase_at_or_before(date, phase) when is_lunar_phase(phase) do
+    with {:ok, moment} <- Time.checked_moment(date) do
+      moment
+      |> Lunar.date_time_lunar_phase_at_or_before(phase)
+      |> Time.date_time_from_moment()
+    end
   end
 
-  def date_time_lunar_phase_at_or_before(unquote(Guards.date()) = date, phase) do
-    _ = calendar
-
-    date
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_lunar_phase_at_or_before(phase)
-    |> Time.date_time_from_moment()
+  def date_time_lunar_phase_at_or_before(_date, _phase) do
+    {:error, :invalid_phase}
   end
 
   @doc """
@@ -794,6 +773,12 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the phase
     occurs.
 
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
+  * `{:error, :invalid_phase}` if `phase` is not a number from 0 to
+    360.
+
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
@@ -803,24 +788,18 @@ defmodule Astro do
 
   @doc since: "0.5.0"
   @spec date_time_lunar_phase_at_or_after(date(), Astro.phase()) ::
-          {:ok, DateTime.t()}
+          {:ok, DateTime.t()} | {:error, :invalid_date | :invalid_phase}
 
-  def date_time_lunar_phase_at_or_after(unquote(Guards.datetime()) = date_time, phase) do
-    _ = calendar
-
-    date_time
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_lunar_phase_at_or_after(phase)
-    |> Time.date_time_from_moment()
+  def date_time_lunar_phase_at_or_after(date, phase) when is_lunar_phase(phase) do
+    with {:ok, moment} <- Time.checked_moment(date) do
+      moment
+      |> Lunar.date_time_lunar_phase_at_or_after(phase)
+      |> Time.date_time_from_moment()
+    end
   end
 
-  def date_time_lunar_phase_at_or_after(unquote(Guards.date()) = date, phase) do
-    _ = calendar
-
-    date
-    |> Time.date_time_to_moment()
-    |> Lunar.date_time_lunar_phase_at_or_after(phase)
-    |> Time.date_time_from_moment()
+  def date_time_lunar_phase_at_or_after(_date, _phase) do
+    {:error, :invalid_phase}
   end
 
   @doc """
@@ -890,6 +869,14 @@ defmodule Astro do
   * `{:ok, date_time}` where `date_time` is the sunrise in the requested
     time zone.
 
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
+  * `{:error, :invalid_date}` if `date` is not a valid date in its
+    calendar.
+
+  * `{:error, :invalid_options}` if `options` is not a list.
+
   * `{:error, :no_time}` if there is no sunrise on that date at that
     location, as happens at very high latitudes in summer and winter.
 
@@ -901,11 +888,22 @@ defmodule Astro do
 
   * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
     for the location, which happens when `:tz_world` is not a dependency
-    and no `:time_zone_resolver` is given.
+    and no `:time_zone_resolver` is given, or when the resolver returns
+    neither `{:ok, time_zone}` nor `{:error, reason}`.
 
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
     dependency but its data has not been installed. Run
     `mix tz_world.update` to install it.
+
+  * `{:error, :tz_world_backend_not_running}` if `:tz_world` is a
+    dependency but none of its backends is running; see
+    `Astro.Supervisor`.
+
+  * `{:error, :invalid_time_zone_resolver}` if `:time_zone_resolver` is
+    not a 1-arity function.
+
+  * `{:error, :invalid_time_zone_database}` if `:time_zone_database` is
+    not a time zone database.
 
   * `{:error, :utc_only_time_zone_database}` if the sunrise is requested
     in a time zone other than UTC and no time zone database is
@@ -950,14 +948,24 @@ defmodule Astro do
           {:ok, DateTime.t()}
           | {:error,
              :no_time
+             | :invalid_location
+             | :invalid_date
+             | :invalid_options
              | :invalid_solar_elevation
              | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
+             | :tz_world_backend_not_running
+             | :invalid_time_zone_resolver
+             | :invalid_time_zone_database
              | :utc_only_time_zone_database}
 
-  def sunrise(location, date, options \\ []) when is_list(options) do
-    Solar.SunRiseSet.sunrise(location, date_to_moment(date), options)
+  def sunrise(location, date, options \\ []) do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, moment} <- Time.checked_moment(date),
+         {:ok, options} <- validate_options(options) do
+      Solar.SunRiseSet.sunrise(location, moment, options)
+    end
   end
 
   @doc """
@@ -1027,6 +1035,14 @@ defmodule Astro do
   * `{:ok, date_time}` where `date_time` is the sunset in the requested
     time zone.
 
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
+  * `{:error, :invalid_date}` if `date` is not a valid date in its
+    calendar.
+
+  * `{:error, :invalid_options}` if `options` is not a list.
+
   * `{:error, :no_time}` if there is no sunset on that date at that
     location, as happens at very high latitudes in summer and winter.
 
@@ -1038,11 +1054,22 @@ defmodule Astro do
 
   * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
     for the location, which happens when `:tz_world` is not a dependency
-    and no `:time_zone_resolver` is given.
+    and no `:time_zone_resolver` is given, or when the resolver returns
+    neither `{:ok, time_zone}` nor `{:error, reason}`.
 
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
     dependency but its data has not been installed. Run
     `mix tz_world.update` to install it.
+
+  * `{:error, :tz_world_backend_not_running}` if `:tz_world` is a
+    dependency but none of its backends is running; see
+    `Astro.Supervisor`.
+
+  * `{:error, :invalid_time_zone_resolver}` if `:time_zone_resolver` is
+    not a 1-arity function.
+
+  * `{:error, :invalid_time_zone_database}` if `:time_zone_database` is
+    not a time zone database.
 
   * `{:error, :utc_only_time_zone_database}` if the sunset is requested
     in a time zone other than UTC and no time zone database is
@@ -1087,14 +1114,24 @@ defmodule Astro do
           {:ok, DateTime.t()}
           | {:error,
              :no_time
+             | :invalid_location
+             | :invalid_date
+             | :invalid_options
              | :invalid_solar_elevation
              | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
+             | :tz_world_backend_not_running
+             | :invalid_time_zone_resolver
+             | :invalid_time_zone_database
              | :utc_only_time_zone_database}
 
-  def sunset(location, date, options \\ []) when is_list(options) do
-    Solar.SunRiseSet.sunset(location, date_to_moment(date), options)
+  def sunset(location, date, options \\ []) do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, moment} <- Time.checked_moment(date),
+         {:ok, options} <- validate_options(options) do
+      Solar.SunRiseSet.sunset(location, moment, options)
+    end
   end
 
   @doc """
@@ -1152,6 +1189,14 @@ defmodule Astro do
   * `{:ok, date_time}` where `date_time` is the moonrise in the requested
     time zone.
 
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
+  * `{:error, :invalid_date}` if `date` is not a valid date in its
+    calendar.
+
+  * `{:error, :invalid_options}` if `options` is not a list.
+
   * `{:error, :no_time}` if the Moon does not rise on that date at that
     location, as it can stay below the horizon for a whole day.
 
@@ -1165,11 +1210,22 @@ defmodule Astro do
 
   * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
     for the location, which happens when `:tz_world` is not a dependency
-    and no `:time_zone_resolver` is given.
+    and no `:time_zone_resolver` is given, or when the resolver returns
+    neither `{:ok, time_zone}` nor `{:error, reason}`.
 
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
     dependency but its data has not been installed. Run
     `mix tz_world.update` to install it.
+
+  * `{:error, :tz_world_backend_not_running}` if `:tz_world` is a
+    dependency but none of its backends is running; see
+    `Astro.Supervisor`.
+
+  * `{:error, :invalid_time_zone_resolver}` if `:time_zone_resolver` is
+    not a 1-arity function.
+
+  * `{:error, :invalid_time_zone_database}` if `:time_zone_database` is
+    not a time zone database.
 
   * `{:error, :utc_only_time_zone_database}` if the moonrise is requested
     in a time zone other than UTC and no time zone database is
@@ -1190,17 +1246,27 @@ defmodule Astro do
           {:ok, DateTime.t()}
           | {:error,
              :no_time
+             | :invalid_location
+             | :invalid_date
+             | :invalid_options
              | :invalid_limb
              | :invalid_interpolation
              | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
+             | :tz_world_backend_not_running
+             | :invalid_time_zone_resolver
+             | :invalid_time_zone_database
              | :utc_only_time_zone_database}
 
   def moonrise(location, date, options \\ default_options())
 
-  def moonrise(location, date, options) when is_list(options) do
-    Lunar.MoonRiseSet.moonrise(location, date_to_moment(date), options)
+  def moonrise(location, date, options) do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, moment} <- Time.checked_moment(date),
+         {:ok, options} <- validate_options(options) do
+      Lunar.MoonRiseSet.moonrise(location, moment, options)
+    end
   end
 
   @doc """
@@ -1258,6 +1324,14 @@ defmodule Astro do
   * `{:ok, date_time}` where `date_time` is the moonset in the requested
     time zone.
 
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
+  * `{:error, :invalid_date}` if `date` is not a valid date in its
+    calendar.
+
+  * `{:error, :invalid_options}` if `options` is not a list.
+
   * `{:error, :no_time}` if the Moon does not set on that date at that
     location, as it can stay above the horizon for a whole day.
 
@@ -1271,11 +1345,22 @@ defmodule Astro do
 
   * `{:error, :time_zone_not_resolved}` if no time zone can be resolved
     for the location, which happens when `:tz_world` is not a dependency
-    and no `:time_zone_resolver` is given.
+    and no `:time_zone_resolver` is given, or when the resolver returns
+    neither `{:ok, time_zone}` nor `{:error, reason}`.
 
   * `{:error, :tz_world_data_not_installed}` if `:tz_world` is a
     dependency but its data has not been installed. Run
     `mix tz_world.update` to install it.
+
+  * `{:error, :tz_world_backend_not_running}` if `:tz_world` is a
+    dependency but none of its backends is running; see
+    `Astro.Supervisor`.
+
+  * `{:error, :invalid_time_zone_resolver}` if `:time_zone_resolver` is
+    not a 1-arity function.
+
+  * `{:error, :invalid_time_zone_database}` if `:time_zone_database` is
+    not a time zone database.
 
   * `{:error, :utc_only_time_zone_database}` if the moonset is requested
     in a time zone other than UTC and no time zone database is
@@ -1296,17 +1381,27 @@ defmodule Astro do
           {:ok, DateTime.t()}
           | {:error,
              :no_time
+             | :invalid_location
+             | :invalid_date
+             | :invalid_options
              | :invalid_limb
              | :invalid_interpolation
              | :time_zone_not_found
              | :time_zone_not_resolved
              | :tz_world_data_not_installed
+             | :tz_world_backend_not_running
+             | :invalid_time_zone_resolver
+             | :invalid_time_zone_database
              | :utc_only_time_zone_database}
 
   def moonset(location, date, options \\ default_options())
 
-  def moonset(location, date, options) when is_list(options) do
-    Lunar.MoonRiseSet.moonset(location, date_to_moment(date), options)
+  def moonset(location, date, options) do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, moment} <- Time.checked_moment(date),
+         {:ok, options} <- validate_options(options) do
+      Lunar.MoonRiseSet.moonset(location, moment, options)
+    end
   end
 
   @doc """
@@ -1367,6 +1462,15 @@ defmodule Astro do
   * `{:error, :no_sunset}` if no sunset occurs on the given date at
     the given location (e.g. polar day).
 
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
+  * `{:error, :invalid_date}` if `date` is not a valid date in its
+    calendar.
+
+  * `{:error, :invalid_method}` if `method` is not `:yallop`, `:odeh`
+    or `:schaefer`.
+
   ### Method comparison
 
   | Aspect | Yallop (1997) | Odeh (2006) | Schaefer (1988/2000) |
@@ -1392,26 +1496,32 @@ defmodule Astro do
   @type method :: :odeh | :yallop | :schaefer
 
   @spec new_visible_crescent(location(), date(), method()) ::
-          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset}
+          {:ok, Lunar.CrescentVisibility.visibility()}
+          | {:error, :no_sunset | :invalid_location | :invalid_date | :invalid_method}
 
   def new_visible_crescent(location, date, method \\ :odeh)
 
-  def new_visible_crescent(location, date, :yallop) do
-    moment = Time.date_time_to_moment(date)
-    normalized = Location.normalize_location(location)
-    Lunar.CrescentVisibility.yallop_new_visible_crescent(normalized, moment)
+  def new_visible_crescent(location, date, method) when method in [:yallop, :odeh, :schaefer] do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, moment} <- Time.checked_moment(date) do
+      crescent_visibility(location, moment, method)
+    end
   end
 
-  def new_visible_crescent(location, date, :odeh) do
-    moment = Time.date_time_to_moment(date)
-    normalized = Location.normalize_location(location)
-    Lunar.CrescentVisibility.odeh_new_visible_crescent(normalized, moment)
+  def new_visible_crescent(_location, _date, _method) do
+    {:error, :invalid_method}
   end
 
-  def new_visible_crescent(location, date, :schaefer) do
-    moment = Time.date_time_to_moment(date)
-    normalized = Location.normalize_location(location)
-    Lunar.CrescentVisibility.schaefer_new_visible_crescent(normalized, moment)
+  defp crescent_visibility(location, moment, :yallop) do
+    Lunar.CrescentVisibility.yallop_new_visible_crescent(location, moment)
+  end
+
+  defp crescent_visibility(location, moment, :odeh) do
+    Lunar.CrescentVisibility.odeh_new_visible_crescent(location, moment)
+  end
+
+  defp crescent_visibility(location, moment, :schaefer) do
+    Lunar.CrescentVisibility.schaefer_new_visible_crescent(location, moment)
   end
 
   @doc """
@@ -1450,6 +1560,17 @@ defmodule Astro do
   * `{:error, :no_sunset}` if no sunset occurs on the given date at the
     given location.
 
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
+  * `{:error, :invalid_date}` if `date` is not a valid date in its
+    calendar.
+
+  * `{:error, :invalid_method}` if `method` is not `:schaefer`, the only
+    method that takes options.
+
+  * `{:error, :invalid_options}` if `options` is not a list.
+
   ### Examples
 
       iex> location = {39.8579, 21.3891}
@@ -1459,14 +1580,22 @@ defmodule Astro do
   """
   @doc since: "2.1.0"
   @spec new_visible_crescent(location(), date(), :schaefer, keyword()) ::
-          {:ok, Lunar.CrescentVisibility.visibility()} | {:error, :no_sunset}
+          {:ok, Lunar.CrescentVisibility.visibility()}
+          | {:error,
+             :no_sunset | :invalid_location | :invalid_date | :invalid_method | :invalid_options}
 
   def new_visible_crescent(location, date, method, options)
 
-  def new_visible_crescent(location, date, :schaefer, options) when is_list(options) do
-    moment = Time.date_time_to_moment(date)
-    normalized = Location.normalize_location(location)
-    Lunar.CrescentVisibility.schaefer_new_visible_crescent(normalized, moment, options)
+  def new_visible_crescent(location, date, :schaefer, options) do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, moment} <- Time.checked_moment(date),
+         {:ok, options} <- validate_options(options) do
+      Lunar.CrescentVisibility.schaefer_new_visible_crescent(location, moment, options)
+    end
+  end
+
+  def new_visible_crescent(_location, _date, _method, _options) do
+    {:error, :invalid_method}
   end
 
   @doc """
@@ -1764,6 +1893,9 @@ defmodule Astro do
   * `{:ok, datetime}`, the UTC date time of solar noon at the given
     location on the given UTC date.
 
+  * `{:error, :invalid_location}` if `location` is not a valid
+    location.
+
   * `{:error, :invalid_date}` if `date` is not a valid date in its
     calendar.
 
@@ -1799,13 +1931,13 @@ defmodule Astro do
   """
   @spec solar_noon(Astro.location(), Calendar.date()) ::
           {:ok, DateTime.t()}
-          | {:error, :invalid_date | :incompatible_calendars}
+          | {:error, :invalid_location | :invalid_date | :incompatible_calendars}
   def solar_noon(location, date) do
-    %Geo.PointZ{coordinates: {longitude, _, _}} = Location.normalize_location(location)
-
-    # Both the Julian day and the date time are taken from the ISO date, so a
-    # date in another calendar gives the solar noon of that same day.
-    with {:ok, iso_date} <- Time.iso_date(date) do
+    # The date time is taken from the ISO date, so a date in another
+    # calendar gives the solar noon of that same day.
+    with {:ok, %Geo.PointZ{coordinates: {longitude, _, _}}} <-
+           Location.validate_location(location),
+         {:ok, iso_date} <- Time.iso_date(date) do
       iso_date
       |> Time.date_time_to_moment()
       |> Solar.solar_noon(longitude)
@@ -1910,8 +2042,9 @@ defmodule Astro do
     `~T[23:59:59]`, representing 24 hours of daylight (a `Time.t()`
     cannot hold `24:00:00`).
 
-  * `{:error, reason}` if the time zone for the location cannot be
-    resolved.
+  * `{:error, reason}` for an invalid location or date, or if the
+    time zone for the location cannot be resolved, as for
+    `sunrise/3`.
 
   ### Accuracy
 
@@ -1987,8 +2120,9 @@ defmodule Astro do
     between `%Duration{}` (no daylight) and `%Duration{hour: 24}`
     (24 hours of daylight).
 
-  * `{:error, reason}` if the time zone for the location cannot
-    be resolved.
+  * `{:error, reason}` for an invalid location or date, or if the
+    time zone for the location cannot be resolved, as for
+    `sunrise/3`.
 
   ### Accuracy
 
@@ -2124,19 +2258,8 @@ defmodule Astro do
   defp in_time_zone(_utc_date_time, _options), do: {:error, :time_zone_not_found}
 
   defp shift_to_time_zone(utc_date_time, time_zone, options) do
-    time_zone_database =
-      Keyword.get(options, :time_zone_database, Calendar.get_time_zone_database())
-
-    if time_zone_database?(time_zone_database) do
-      DateTime.shift_zone(utc_date_time, time_zone, time_zone_database)
-    else
-      {:error, :invalid_time_zone_database}
-    end
-  end
-
-  defp time_zone_database?(module) do
-    is_atom(module) and Code.ensure_loaded?(module) and
-      function_exported?(module, :time_zone_period_from_utc_iso_days, 2)
+    time_zone_database = Keyword.get(options, :time_zone_database, :configured)
+    Time.shift_zone(utc_date_time, time_zone, time_zone_database)
   end
 
   @doc false
@@ -2155,5 +2278,13 @@ defmodule Astro do
   # (integer Gregorian days representing UTC midnight).
   defp date_to_moment(date) do
     Time.date_time_to_moment(date)
+  end
+
+  defp validate_options(options) when is_list(options) do
+    {:ok, options}
+  end
+
+  defp validate_options(_options) do
+    {:error, :invalid_options}
   end
 end

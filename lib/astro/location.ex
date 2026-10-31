@@ -28,6 +28,37 @@ defmodule Astro.Location do
     location
   end
 
+  @doc """
+  Validates a location and normalizes it into a `t:Geo.PointZ.t/0`.
+
+  Returns `{:ok, point}` for a `{longitude, latitude}` or
+  `{longitude, latitude, elevation}` tuple, a `t:Geo.Point.t/0` or a
+  `t:Geo.PointZ.t/0` whose longitude is within ±180° and latitude
+  within ±90°, and `{:error, :invalid_location}` for anything else.
+  """
+  def validate_location({lng, lat, alt} = location)
+      when is_lat(lat) and is_lng(lng) and is_alt(alt) do
+    {:ok, normalize_location(location)}
+  end
+
+  def validate_location({lng, lat} = location) when is_lat(lat) and is_lng(lng) do
+    {:ok, normalize_location(location)}
+  end
+
+  def validate_location(%Geo.Point{coordinates: {lng, lat}} = location)
+      when is_lat(lat) and is_lng(lng) do
+    {:ok, normalize_location(location)}
+  end
+
+  def validate_location(%Geo.PointZ{coordinates: {lng, lat, alt}} = location)
+      when is_lat(lat) and is_lng(lng) and is_alt(alt) do
+    {:ok, location}
+  end
+
+  def validate_location(_location) do
+    {:error, :invalid_location}
+  end
+
   def round(%Geo.PointZ{coordinates: {lng, lat, alt}} = location, precision \\ 5) do
     coordinates =
       {Float.round(lng, precision), Float.round(lat, precision), Float.round(alt, precision)}

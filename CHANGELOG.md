@@ -30,6 +30,10 @@
 
 * `Astro.solar_noon/2` evaluated the equation of time twelve hours early, so it was up to 18 s from the meridian transit. It is now the transit itself, to the microsecond rather than the second.
 
+* The `Astro` functions that return `{:ok, _}` or `{:error, _}` raised for an invalid location, date, options, phase, method, time zone resolver or database, or when no tz_world backend was running. They return an error such as `{:error, :invalid_location}` or `{:error, :tz_world_backend_not_running}`.
+
+* `Astro.date_time_lunar_phase_at_or_before/2` and `_at_or_after/2` return `{:error, :invalid_phase}` for a phase outside 0° to 360°, which was taken modulo 360°.
+
 * `Astro.equinox/3` and `Astro.solstice/3` raised `FunctionClauseError` for a non-integer year or an unknown event; they return `{:error, :invalid_year}` or `{:error, :invalid_event}`.
 
 * `Astro.sun_azimuth_elevation/2` used mean rather than apparent sidereal time, so its azimuth was about 0.3′ from NREL's solar position algorithm; it now agrees to 0.05″.

@@ -544,20 +544,17 @@ defmodule Astro.Solar.SunRiseSet do
   end
 
   defp to_requested_zone(utc_dt, {:ok, tz}, options),
-    do: shift_zone(utc_dt, tz, Keyword.get(options, :time_zone_database, :configured))
+    do: Time.shift_zone(utc_dt, tz, Keyword.get(options, :time_zone_database, :configured))
 
   defp to_requested_zone(_utc_dt, error, _options), do: error
 
+  # `Astro.Time.timezone_at/2` uses tz_world when no resolver is given,
+  # and checks a resolver and what it returns.
   defp resolve_time_zone(location, options) do
-    resolver = Keyword.get(options, :time_zone_resolver, &default_resolver/1)
-    %Geo.PointZ{coordinates: {lng, lat, _}} = Astro.Location.normalize_location(location)
-    resolver.(%Geo.Point{coordinates: {lng, lat}})
+    location
+    |> Astro.Location.normalize_location()
+    |> Time.timezone_at(Keyword.get(options, :time_zone_resolver))
   end
-
-  defp default_resolver(point), do: Time.tz_world_timezone_at(point)
-
-  defp shift_zone(utc_dt, tz, :configured), do: DateTime.shift_zone(utc_dt, tz)
-  defp shift_zone(utc_dt, tz, tz_db), do: DateTime.shift_zone(utc_dt, tz, tz_db)
 
   # ── Math helpers ─────────────────────────────────────────────────────────────
 
