@@ -1,6 +1,6 @@
 # Lunar events
 
-Moonrise and moonset, the phase cycle, illumination, and whether the new crescent can actually be seen.
+Moonrise and moonset, the phase cycle, illumination, whether the new crescent can actually be seen, and lunar eclipses.
 
 Examples use Sydney, `{151.20666584, -33.8559799094}`, and assume `:tz_world` is running so times come back in the zone at the location. See [Getting started](getting_started.html) if that is not set up.
 
@@ -129,6 +129,40 @@ iex> Astro.new_visible_crescent({-0.1275, 51.5072}, ~D[2025-03-31], :yallop)
 ```
 
 `{:error, :no_sunset}` means a polar day with no sunset to compute from: a genuine astronomical condition, not a failure.
+
+## Lunar eclipses
+
+A lunar eclipse is the Moon passing through the Earth's shadow. `lunar_eclipse_at_or_after/2` and `lunar_eclipse_before/2` find one and return an `Astro.Lunar.Eclipse`: its type (`:penumbral`, `:partial` or `:total`), greatest eclipse, gamma, the penumbral and umbral magnitudes, and the contacts as the Moon enters and leaves the penumbra and the umbra, `nil` for those it does not have. They are the same instants everywhere, so they are in UTC.
+
+```elixir
+iex> {:ok, eclipse} = Astro.lunar_eclipse_at_or_after(~D[2025-01-01])
+iex> {eclipse.type, DateTime.truncate(eclipse.total_begins, :second)}
+{:total, ~U[2025-03-14 06:26:04Z]}
+iex> DateTime.truncate(eclipse.total_ends, :second)
+~U[2025-03-14 07:31:28Z]
+```
+
+The Earth's atmosphere makes its shadow a little larger than geometry alone. By default the shadow is enlarged as Danjon proposed, as NASA's catalogue does; `shadow: :chauvenet` gives the larger shadow of the older almanacs, which adds about 0.005 to the umbral magnitude.
+
+```elixir
+iex> {:ok, eclipse} = Astro.lunar_eclipse_at_or_after(~D[2025-01-01], shadow: :chauvenet)
+iex> Float.round(eclipse.umbral_magnitude, 3)
+1.183
+```
+
+`lunar_eclipse_at/3` gives the same eclipse in the location's time zone with the Moon's altitude at greatest eclipse and at each contact, or `{:error, :not_visible}` where the Moon is below the horizon throughout:
+
+```elixir
+iex> dallas = {-96.80, 32.78}
+iex> {:ok, local} = Astro.lunar_eclipse_at(dallas, ~D[2025-01-01], time_zone: "America/Chicago")
+iex> DateTime.truncate(local.total_begins, :second)
+#DateTime<2025-03-14 01:26:04-05:00 CDT America/Chicago>
+iex> Float.round(local.moon_altitudes.greatest, 1)
+59.0
+
+iex> Astro.lunar_eclipse_at({77.21, 28.61}, ~D[2025-01-01])
+{:error, :not_visible}
+```
 
 ## Position of the moon
 

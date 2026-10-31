@@ -1,6 +1,8 @@
 # Changelog
 
-## Astro version 2.10.0 (unreleased)
+## Astro version 2.10.0
+
+This is the changelog for Astro version 2.10.0, released on November 1st, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
 
 ### Added
 

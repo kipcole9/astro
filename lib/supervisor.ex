@@ -27,7 +27,7 @@ defmodule Astro.Supervisor do
       # mix.exs
       def deps do
         [
-          {:astro, "~> 2.9", runtime: false}
+          {:astro, "~> 2.10", runtime: false}
         ]
       end
 

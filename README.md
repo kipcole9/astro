@@ -16,6 +16,8 @@ Astro is a library of accurate astronomical functions, with a focus on those tha
 
 * **Crescent visibility** — `Astro.new_visible_crescent/3` predicts the first visibility of the new crescent with the Odeh, Yallop or Schaefer criteria.
 
+* **Eclipses** — `Astro.solar_eclipse_at_or_after/1` and `Astro.lunar_eclipse_at_or_after/2` find solar and lunar eclipses with their type, greatest eclipse and magnitudes; `Astro.solar_eclipse_at/3` and `Astro.lunar_eclipse_at/3` describe one as seen from a place; and `Astro.solar_eclipse_path/2` gives the central line and limits of a total or annular eclipse for drawing on a map.
+
 * **Positions of the sun and moon** — right ascension, declination and distance, and the sun's azimuth and elevation from any location.
 
 * **Length of the day** — `Astro.hours_of_daylight/2` and `Astro.duration_of_daylight/2`, including the 24-hour days of polar summer.
@@ -33,7 +35,7 @@ Add `astro` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:astro, "~> 2.9"}
+    {:astro, "~> 2.10"}
   ]
 end
 ```
@@ -218,11 +220,11 @@ A [comparison document](https://hexdocs.pm/astro/rise_and_set_comparisons.html) 
 
 * **[Getting started](https://hexdocs.pm/astro/getting_started.html)** — installation, the ephemeris, time zones, locations, options and errors.
 
-* **[Solar events](https://hexdocs.pm/astro/solar.html)** — sunrise, sunset, twilight, solar noon, the length of the day, and the equinoxes and solstices.
+* **[Solar events](https://hexdocs.pm/astro/solar.html)** — sunrise, sunset, twilight, solar noon, the length of the day, the equinoxes and solstices, and solar eclipses and their paths.
 
-* **[Lunar events](https://hexdocs.pm/astro/lunar.html)** — moonrise, moonset, phases, new moons and crescent visibility.
+* **[Lunar events](https://hexdocs.pm/astro/lunar.html)** — moonrise, moonset, phases, new moons, crescent visibility and lunar eclipses.
 
-* **[Accuracy](https://hexdocs.pm/astro/accuracy.html)** — where the positions come from, how accurate results are near and far from the present, and the uncertainty of ΔT.
+* **[Accuracy](https://hexdocs.pm/astro/accuracy.html)** — where the positions come from, how accurate results are near and far from the present, the uncertainty of ΔT, and eclipses against NASA and the USNO.
 
 * **[Rise and set comparisons](https://hexdocs.pm/astro/rise_and_set_comparisons.html)** — Astro's results against Skyfield, the USNO and timeanddate.com.
 
@@ -238,4 +240,4 @@ MIX_ENV=test mix tz_world.update --force
 
 ## License
 
-Astro is released under the [Apache License 2.0](https://hexdocs.pm/astro/license.html).
+Astro is released under the [Apache License 2.0](https://github.com/kipcole9/astro/blob/v2.10.0/LICENSE.md).

@@ -1,6 +1,6 @@
 # Accuracy
 
-Every result Astro returns rests on two things: where the Sun and the Moon are, and what time it is. This guide explains where Astro's positions come from, how accurate they are near the present and far from it, and how the uncertainty of the Earth's rotation, ΔT, comes to dominate far from the present. The figures here were measured against independent sources and are repeated, briefly, in the `### Accuracy` section of each function's documentation.
+Every result Astro returns rests on two things: where the Sun and the Moon are, and what time it is. This guide explains where Astro's positions come from, how accurate they are near the present and far from it, how the uncertainty of the Earth's rotation, ΔT, comes to dominate far from the present, and how Astro's eclipses compare with NASA's catalogues and path tables and the USNO's eclipse computer. The figures here were measured against independent sources and are repeated, briefly, in the `### Accuracy` section of each function's documentation.
 
 ## Where the positions come from
 
@@ -90,6 +90,66 @@ Before about 1600 and after about 2100, an uncertainty of minutes to hours in Δ
 The parabola reflects tidal friction, which lengthens the day: Stephenson, Morrison and Hohenkerk ([2016](https://doi.org/10.1098/rspa.2016.0404)) measure an average lengthening of 1.8 ms a century since 720 BC, which corresponds to ΔT growing by about 33 s per century². The Earth's rotation also fluctuates over decades, which no model predicts: it has sped up since 2016, so ΔT barely changed between 2020 and 2025, and the join keeps that for the next few years before it turns toward the long-term trend.
 
 Earlier versions of Astro used the older formulas of Meeus, *Astronomical Algorithms*, chapter 10, and a straight line after 2025. They differed from the model above by up to 20 minutes around 250 CE and 70 minutes at 3000, and jumped 41 s at 1620.
+
+## Eclipses
+
+Eclipses are tested against NASA's [Five Millennium Catalog of Solar Eclipses](https://eclipse.gsfc.nasa.gov/SEcat5/SEcatalog.html) and [Five Millennium Catalog of Lunar Eclipses](https://eclipse.gsfc.nasa.gov/LEcat5/LEcatalog.html) by Espenak and Meeus, NASA's path tables of [central solar eclipses](https://eclipse.gsfc.nasa.gov/SEpath/SEpath.html), and the USNO's [Solar Eclipse Computer](https://aa.usno.navy.mil/data/SolarEclipses). NASA computes from the VSOP87 and ELP-2000/82 theories and each source has its own ΔT, so instants are compared in Terrestrial Time, and places and local times with the source's ΔT taken out: a larger ΔT turns the Earth further under the shadow, the same as moving the observer west by the Earth's rotation in the difference. What remains is the difference between the positions.
+
+### Global circumstances
+
+Every eclipse NASA lists from 1901 to 2100, 452 solar and 457 lunar, is found, of the same type, hybrid solar eclipses included:
+
+| Result | Solar | Lunar |
+|---|---|---|
+| Greatest eclipse | within 0.6 s | within 2.7 s, 0.5 s mean |
+| Gamma | within 0.00006 | within 0.00014 |
+| Magnitudes | within 0.00007 | within 0.0004 |
+| Durations of the partial and total phases | — | within 4 s |
+
+NASA gives durations to 0.1 minute; a phase the Moon only grazes, entering it by less than 0.05 of its diameter, lasts a time that changes quickly with how far it enters, and is only required to happen. Lunar eclipses use Danjon's enlargement of the Earth's shadow, as NASA's catalogue does; the `:shadow` option gives Chauvenet's, the older almanac convention, whose larger shadow adds about 0.005 to the umbral magnitude and 0.025 to the penumbral.
+
+Outside the ephemeris the positions come from the series. Against every fourth eclipse of four other centuries, greatest eclipse agrees within:
+
+| Century | Solar | Lunar |
+|---|---|---|
+| 1801–1900 | 9 s | 15 s |
+| 2901–3000 | 32 s | 40 s |
+| 1–100 | 80 s | 78 s |
+| −999 to −900 | 130 s | 141 s |
+
+with magnitudes within 0.0014 for the Sun and 0.002 for the Moon. These differences are much smaller than ΔT's uncertainty at those dates, so in Universal Time it is ΔT that limits them.
+
+### Local circumstances
+
+Against the USNO's computer for 17 eclipses and places from 1999 to 2026, including eclipses in progress at sunrise and sunset, a place 1,600 m high and two places that see none, `Astro.solar_eclipse_at/3` agrees on the type and visibility every time:
+
+| Result | Agreement |
+|---|---|
+| Beginning and end of the partial eclipse | within 1.1 s |
+| Beginning and end of totality or annularity | within 2 s; 4 s near the edge of an annular path |
+| Magnitude | within 0.0005 |
+| Obscuration | within 0.0012 |
+| The Sun's altitude at each contact | within 0.05° |
+
+Totality is about 2 s shorter, and annularity about 2 s longer, than the USNO's, which takes a larger radius for the Moon than NASA's mean limb used here. The mountains and valleys of the real lunar limb, which neither source includes, change the duration of totality by 1 to 3 s and move the limits of a path by 1 to 3 km.
+
+The USNO has no lunar eclipse computer. A lunar eclipse happens at the same instants everywhere, so `Astro.lunar_eclipse_at/3` adds only the Moon's altitude; at the instants of moonrise and moonset it is the rise and set horizon to within 0.00001°.
+
+### The path of a solar eclipse
+
+Against NASA's path tables for eight eclipses from 1999 to 2027 (total, annular, hybrid, one over Antarctica and one whose shadow axis misses the Earth), at 674 instants, `Astro.solar_eclipse_path/2` finds every point NASA gives:
+
+| Result | Agreement |
+|---|---|
+| The central line and the limits, across the path, with the Sun 20° or more up | within 0.7 km |
+| The same over Antarctica, with the Sun lower | within 2.6 km |
+| The same along the path | within 2 s of the shadow's motion |
+| Path width | within 1 km and 0.6% |
+| Duration on the central line | within 0.7 s |
+
+The differences follow those of the shadow's position, up to about 0.7 km between the two ephemerides, and grow where the Sun is low because the ground is tilted to the shadow. Near sunrise and sunset the shadow crosses the ground at hundreds of kilometres a second, so a point at a given instant can differ by tens of kilometres along the path while the path itself is the same; the comparison therefore separates the distance across the path from the time along it.
+
+In Universal Time an eclipse's places carry ΔT's uncertainty: a second of ΔT moves the path 0.46 km east or west at the equator and every local contact by about a second. In 1900 that is 0.05 km; at the year 0, where ΔT is uncertain by 265 s, it is about 1.1° of longitude, and in −2000 more than 15°, so the path of an ancient eclipse is known in shape and latitude far better than in longitude.
 
 ## Speed
 

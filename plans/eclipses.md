@@ -1,6 +1,6 @@
 # Eclipses
 
-**Status:** in progress, 2026-11-01
+**Status:** implemented (v2.10.0), 2026-11-01
 
 Astro 2.10 adds solar and lunar eclipses: finding them, classifying them, and giving their circumstances, globally and for a solar eclipse at a place. Like the rest of Astro they are computed from the Sun's and the Moon's apparent positions (the JPL ephemeris where it covers a date, the analytical series beyond it), so an eclipse is answered for any date within 50,000 years of 2000, and the implementation is written to be read as a guide to how eclipses are calculated.
 
@@ -82,9 +82,9 @@ Within the JPL ephemeris, instants of greatest eclipse should agree with NASA's 
 
 ## Tasks
 
-* [ ] **Documentation** — the `Astro` functions in the house format with Accuracy and Reference sections, and an eclipses section in `guides/accuracy.md`.
-
 ### Done
+
+* [x] **Documentation** — the `Astro` eclipse functions in the house format with Accuracy and Reference sections, and an eclipses section in `guides/accuracy.md` (global, local and path accuracy against NASA and the USNO, and ΔT's effect on paths). 2026-11-01.
 
 * [x] **Path** — `Astro.solar_eclipse_path/2` (`Astro.Solar.Eclipse.Path`): the central line and the northern and southern limits as timed `{longitude, latitude}` points, the limits following the horizon where they are beyond it so the band closes; width, duration and Sun altitude on the central line. Against NASA's path tables for eight eclipses 1999–2027 (674 instants, NASA's ΔT removed): within 0.7 km across the path with the Sun 20° or more up, 2.6 km over Antarctica with it lower, 2 s along it; width within 1 km and 0.6%, duration 0.7 s. `test/solar_eclipse_path_test.exs`, `test/data/solar_eclipses/nasa_paths.csv`. 2026-11-01.
 

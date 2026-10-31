@@ -1,6 +1,6 @@
 # Solar events
 
-Everything Astro derives from the position of the sun: rise and set, the twilights, solar noon, the length of the day, and the equinoxes and solstices.
+Everything Astro derives from the position of the sun: rise and set, the twilights, solar noon, the length of the day, the equinoxes and solstices, and solar eclipses.
 
 Examples use Sydney, `{151.20666584, -33.8559799094}`, and assume `:tz_world` is running so times come back in the zone at the location. See [Getting started](getting_started.html) if that is not set up.
 
@@ -122,6 +122,63 @@ iex> DateTime.to_date(equinox)
 A named time zone is looked up in `:time_zone_database`, which defaults to the configured database (`Calendar.get_time_zone_database/0`). With none configured only UTC is known, and a named zone returns `{:error, :utc_only_time_zone_database}`.
 
 Both are the moments the Sun's apparent longitude reaches a multiple of 90°, and work for any year: from the JPL ephemeris where it covers the year, within a second of the full VSOP87 theory, and from the analytical series otherwise.
+
+## Solar eclipses
+
+A solar eclipse is the Moon's shadow falling on the Earth. `solar_eclipse_at_or_after/1` and `solar_eclipse_before/1` find one and return an `Astro.Solar.Eclipse`: its type (`:partial`, `:annular`, `:total` or `:hybrid`), the instant of greatest eclipse in UTC, gamma (how far the shadow's axis passes from the Earth's centre, in Earth radii) and the magnitude.
+
+```elixir
+iex> {:ok, eclipse} = Astro.solar_eclipse_at_or_after(~D[2024-04-01])
+iex> {eclipse.type, DateTime.truncate(eclipse.greatest, :second)}
+{:total, ~U[2024-04-08 18:17:20Z]}
+
+iex> {:ok, eclipse} = Astro.solar_eclipse_before(~D[2024-04-01])
+iex> {eclipse.type, DateTime.to_date(eclipse.greatest)}
+{:annular, ~D[2023-10-14]}
+```
+
+`solar_eclipse_at/3` describes an eclipse as seen from a place: the type there, the contacts and the moment of maximum in the location's time zone, the magnitude, the fraction of the Sun covered, and the Sun's altitude at each contact. It takes the eclipse, or a date for the next one, and returns `{:error, :not_visible}` where nothing of it is seen.
+
+```elixir
+iex> dallas = {-96.80, 32.78}
+iex> {:ok, local} = Astro.solar_eclipse_at(dallas, ~D[2024-04-01], time_zone: "America/Chicago")
+iex> local.type
+:total
+iex> DateTime.truncate(local.total_begins, :second)
+#DateTime<2024-04-08 13:40:43-05:00 CDT America/Chicago>
+iex> Float.round(local.magnitude, 3)
+1.015
+
+iex> Astro.solar_eclipse_at({151.20666584, -33.8559799094}, ~D[2024-04-01])
+{:error, :not_visible}
+```
+
+`solar_eclipse_path/2` gives the band in which the eclipse is total or annular: the central line and the northern and southern limits, each a list of points a minute apart (the `:interval` option changes that), with the time in UTC and the place as a `Geo.Point` of `{longitude, latitude}`. Points on the central line also carry the path's width in kilometres, the duration of totality or annularity in seconds and the Sun's altitude.
+
+```elixir
+iex> {:ok, path} = Astro.solar_eclipse_path(~D[2024-04-01])
+iex> length(path.central_line)
+197
+iex> longest = Enum.max_by(path.central_line, & &1.duration)
+iex> {longest.time, Float.round(longest.duration, 1), Float.round(longest.width, 1)}
+{~U[2024-04-08 18:20:00.000Z], 268.0, 196.9}
+```
+
+To draw the path, make each line a `Geo.LineString` and the band a polygon from the northern limit and the southern limit taken backwards. Near the ends of the path the limits follow the horizon, so they begin and end together and the polygon closes:
+
+```elixir
+iex> {:ok, path} = Astro.solar_eclipse_path(~D[2024-04-01])
+iex> central_line = %Geo.LineString{coordinates: Enum.map(path.central_line, & &1.location.coordinates)}
+iex> length(central_line.coordinates)
+197
+iex> north = Enum.map(path.northern_limit, & &1.location.coordinates)
+iex> south = Enum.map(path.southern_limit, & &1.location.coordinates)
+iex> band = %Geo.Polygon{coordinates: [north ++ Enum.reverse(south) ++ [hd(north)]]}
+iex> length(hd(band.coordinates))
+397
+```
+
+Longitudes run from −180° to 180°, so a path that crosses the antimeridian jumps from one end of the range to the other, and a map that draws it may need to split the line there. A partial eclipse has no path and returns `{:error, :no_path}`.
 
 ## Position of the sun
 

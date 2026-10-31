@@ -4,13 +4,13 @@ Work planned for Astro. The detail of anything shipped is in the CHANGELOG.
 
 ## Open
 
-* [ ] **Eclipses** — find and classify solar and lunar eclipses, with their global circumstances and a solar eclipse's local circumstances, tested against NASA's catalogues. Design and decisions in [plans/eclipses.md](plans/eclipses.md).
-
 * [ ] **Answer every date from JPL or Meeus** — positions come from the JPL ephemeris where it covers the moment and from the Meeus series where it does not, so no consumer checks coverage or sees `{:error, :not_found}`. Design and tasks in [plans/jpl-meeus-fallback.md](plans/jpl-meeus-fallback.md).
 
 * [ ] **Remove `Astro.date_time_new_moon_at_or_before/1`** — deprecated in 2.6.2 in favour of `Astro.date_time_new_moon_before/1`; remove it in the next major release.
 
 ## Done
+
+* [x] **Eclipses** — solar and lunar eclipses with global and local circumstances and the path of a solar eclipse, tested against NASA's catalogues and path tables and the USNO; see [plans/eclipses.md](plans/eclipses.md). 2026-11-01, v2.10.0 (unreleased).
 
 * [x] **Calendar support** — day-level new moon and solar longitude searches, `:utc_offset` and `limb: :center` for rise and set, and first-visible-crescent searches; Calendrical computes no astronomy of its own. 2026-10-31, v2.10.0 (unreleased).
 

@@ -67,9 +67,9 @@ defmodule Astro.Lunar.Eclipse do
   ## Positions
 
   The Sun's and the Moon's apparent geocentric positions and distances
-  come from `Astro.Solar.solar_position/1` and
-  `Astro.Lunar.lunar_position/1`: from the JPL ephemeris where the loaded
-  kernel covers the moment, and from the analytical series elsewhere.
+  are those of `Astro.sun_position_at/1` and `Astro.moon_position_at/1`:
+  from the JPL ephemeris where the loaded kernel covers the moment, and
+  from the analytical series elsewhere.
 
   """
 

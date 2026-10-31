@@ -1774,8 +1774,8 @@ defmodule Astro.Time do
 
   ### Arguments
 
-  * `moment` is a moment (float Gregorian days since 0000-01-01)
-    in UTC.
+  * `moment` is a `t:moment/0` in UTC: Gregorian days since
+    0000-01-01, an integer for midnight.
 
   ### Returns
 
@@ -1789,7 +1789,7 @@ defmodule Astro.Time do
       63.8
 
   """
-  @spec dynamical_time_from_moment(float()) :: float()
+  @spec dynamical_time_from_moment(moment()) :: float()
   def dynamical_time_from_moment(moment) do
     jd_utc = moment + @jd_gregorian_epoch
     year = jd_to_decimal_year(jd_utc)
