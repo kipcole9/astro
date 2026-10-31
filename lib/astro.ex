@@ -1537,7 +1537,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.solar_noon {151.20666584, -33.8559799094}, ~D[2019-12-06]
-      {:ok, ~U[2019-12-06 01:45:37Z]}
+      {:ok, ~U[2019-12-06 01:45:52.977018Z]}
 
   ### Notes
 
@@ -1552,7 +1552,7 @@ defmodule Astro do
   """
   @spec solar_noon(Astro.location(), Calendar.date()) ::
           {:ok, DateTime.t()}
-          | {:error, :invalid_date | :incompatible_calendars | :invalid_time}
+          | {:error, :invalid_date | :incompatible_calendars}
   def solar_noon(location, date) do
     %Geo.PointZ{coordinates: {longitude, _, _}} = Location.normalize_location(location)
 
@@ -1560,10 +1560,9 @@ defmodule Astro do
     # date in another calendar gives the solar noon of that same day.
     with {:ok, iso_date} <- Time.iso_date(date) do
       iso_date
-      |> Time.julian_day_from_date()
-      |> Time.julian_centuries_from_julian_day()
-      |> Solar.solar_noon_utc(-longitude)
-      |> Time.date_time_from_date_and_minutes(iso_date)
+      |> Time.date_time_to_moment()
+      |> Solar.solar_noon(longitude)
+      |> Time.date_time_from_moment()
     end
   end
 

@@ -36,7 +36,7 @@ The analytical series were measured against JPL by answering every date in 1900â
 |---|---|---|
 | Sunrise, sunset | 0.07 s | 0.21 s |
 | Moonrise, moonset | 0.22 s | 0.93 s |
-| Solar noon | 0.23 s | 1.0 s |
+| Solar noon | 0.06 s | 0.15 s |
 | Equinoxes and solstices | 18 s | 50 s |
 | New moons | 6.0 s | 20 s |
 | Full moons | 6.2 s | 30 s |

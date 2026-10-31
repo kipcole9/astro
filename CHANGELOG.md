@@ -10,6 +10,8 @@
 
 * `Astro.Coordinates.ecliptic_to_equatorial/3` converts ecliptic longitude and latitude to right ascension and declination.
 
+* `Astro.Solar.solar_noon/2` returns the moment the Sun's local hour angle is zero, found by Newton's method from 12:00 local mean time.
+
 ### Changed
 
 * `Astro.date_time_new_moon_before/1` and `date_time_new_moon_at_or_after/1`, and their `Astro.Lunar` forms, raise `ArgumentError` more than 50,000 years from J2000, where 2.9.0 answered from chapter 49 alone to about ±300,000 years. Beyond that range the chapter 49 estimates cannot reliably identify each new moon.
@@ -25,6 +27,10 @@
 * `Astro.Solar.sun_geometric_mean_anomaly/1`, `earth_orbit_eccentricity/1` and `sun_equation_of_center/1`, and `Astro.Lunar.mean_lunar_ecliptic_longitude/1` and `lunar_elongation/1` are no longer deprecated: the analytical series are built from them.
 
 ### Bug Fixes
+
+* `Astro.solar_noon/2` evaluated the equation of time twelve hours early, so it was up to 18 s from the meridian transit. It is now the transit itself, to the microsecond rather than the second.
+
+* `Astro.Solar.solar_noon_utc/2` took west longitudes as positive, against its documentation, and `equation_of_time/1` omitted Meeus chapter 28's aberration and nutation terms.
 
 * `Astro.Lunar.lunar_phase_at/1` returned the chapter 49 estimate instead of the computed phase near every new moon, because its check for a large difference compared 359.9° with 0.1° as 359.8° apart.
 

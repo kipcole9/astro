@@ -45,7 +45,8 @@ defmodule Astro.Solar do
   ### Time
 
   * `equation_of_time/1` — difference between apparent and mean solar time
-  * `solar_noon_utc/2` — UTC solar noon for a given longitude
+  * `solar_noon/2` — the moment the Sun crosses a meridian
+  * `solar_noon_utc/2` — the same, as minutes since midnight UTC
 
   ### Equinoxes and solstices
 
@@ -75,13 +76,18 @@ defmodule Astro.Solar do
   import Math,
     only: [
       deg: 1,
-      mod: 2
+      mod: 2,
+      to_degrees: 1
     ]
 
   @minutes_per_degree 4.0
 
   # Annual aberration constant in degrees (20.4898″ at 1 AU).
   @aberration_constant 20.4898 / 3600.0
+
+  # The constant of aberration as it enters the equation of time, in
+  # degrees (Meeus, Astronomical Algorithms, chapter 28).
+  @equation_of_time_aberration 0.0057183
 
   # Periodic terms of the Sun's longitude (Bretagnon and Simon, as given in
   # Calendrical Calculations). Each row: coefficient, addend in degrees,
@@ -162,6 +168,10 @@ defmodule Astro.Solar do
   }
 
   @days_before_search 20
+
+  # Solar noon is refined until a step is under a millisecond.
+  @meridian_transit_tolerance_days 1.0e-8
+  @meridian_transit_steps 8
 
   @solar_elevation %{
     geometric: 90.0,
@@ -345,12 +355,78 @@ defmodule Astro.Solar do
   end
 
   @doc """
-  Returns solar noon as minutes since midnight UTC.
+  Returns the moment of solar noon on a day at a longitude.
+
+  Solar noon is the moment the Sun crosses a location's meridian,
+  when its local hour angle (the local apparent sidereal time less
+  the Sun's apparent right ascension) is zero. The search starts at
+  12:00 local mean time, `longitude / 360` of a day before 12:00 UT,
+  which is within about 16 minutes of the answer (the equation of
+  time, `equation_of_time/1`). Each step then moves the moment by the
+  hour angle divided by the 360° a day at which it grows, until the
+  step is under a millisecond; three steps are usually enough.
 
   ### Arguments
 
-  * `julian_centuries` is any moment in time expressed
-    as Julian centuries from J2000.0.
+  * `t` is the moment of 0h UT on the day of solar noon.
+
+  * `longitude` is the longitude in degrees of the location from
+    which solar noon is to be measured. West is negative.
+
+  ### Returns
+
+  * the moment of solar noon.
+
+  ### Examples
+
+      iex> midnight = Astro.Time.date_time_to_moment(~D[2019-12-06])
+      iex> noon = Astro.Solar.solar_noon(midnight, 151.20666584)
+      iex> {:ok, date_time} = Astro.Time.date_time_from_moment(noon)
+      iex> DateTime.truncate(date_time, :second)
+      ~U[2019-12-06 01:45:52Z]
+
+  """
+  @doc since: "2.10.0"
+  @spec solar_noon(Time.moment(), Astro.longitude()) :: Time.moment()
+  def solar_noon(t, longitude) do
+    mean_noon = t + 0.5 - longitude / 360.0
+    meridian_transit(mean_noon, longitude, @meridian_transit_steps)
+  end
+
+  # Newton's method on the Sun's local hour angle, which grows by about 360°
+  # a day. Stops when a step is under the tolerance or the steps run out.
+  defp meridian_transit(moment, longitude, steps_left) do
+    correction = local_hour_angle(moment, longitude) / 360.0
+    transit = moment - correction
+
+    if abs(correction) < @meridian_transit_tolerance_days or steps_left <= 1 do
+      transit
+    else
+      meridian_transit(transit, longitude, steps_left - 1)
+    end
+  end
+
+  # The Sun's local hour angle in degrees, from −180° to 180°: negative
+  # before the Sun crosses the meridian and positive after.
+  defp local_hour_angle(moment, longitude) do
+    {right_ascension, _declination, _distance} = apparent_sun_position(moment)
+    local_sidereal_time = Time.apparent_sidereal_from_moment(moment) + longitude
+
+    mod(local_sidereal_time - right_ascension + 180.0, 360.0) - 180.0
+  end
+
+  @doc """
+  Returns solar noon as minutes since midnight UTC.
+
+  This is `solar_noon/2` measured in minutes from the start of the
+  day.
+
+  ### Arguments
+
+  * `julian_centuries` is 0h UT on the day of solar noon, as
+    Julian centuries from J2000.0 (for example, from
+    `Astro.Time.julian_day_from_date/1` and
+    `Astro.Time.julian_centuries_from_julian_day/1`).
 
   * `longitude` is the longitude in degrees of the
     location from which solar noon is to be measured.
@@ -361,35 +437,20 @@ defmodule Astro.Solar do
   * solar noon as a `float` number of minutes since
     midnight UTC.
 
-  ### Notes
-
-  Solar noon is the moment when the Sun passes a location's
-  meridian and reaches its highest position in the sky.
-  In most cases it does not occur at 12:00 local time.
-
   ### Examples
 
-      iex> Astro.Solar.solar_noon_utc(0.0, 151.2093)
-      1328.2818354717704
+      iex> julian_day = Astro.Time.julian_day_from_date(~D[2000-01-01])
+      iex> julian_centuries = Astro.Time.julian_centuries_from_julian_day(julian_day)
+      iex> Astro.Solar.solar_noon_utc(julian_centuries, 151.2093) |> Float.round(2)
+      118.25
 
   """
   @spec solar_noon_utc(float, Astro.longitude()) :: float()
   def solar_noon_utc(julian_centuries, longitude) do
-    century_start = Time.julian_day_from_julian_centuries(julian_centuries)
+    midnight = Time.j2000() + julian_centuries * Time.julian_days_per_century()
+    noon = solar_noon(midnight, longitude)
 
-    # first pass to yield approximate solar noon
-    approx_tnoon = Time.julian_centuries_from_julian_day(century_start + longitude / 360.0)
-    approx_eq_time = equation_of_time(approx_tnoon)
-    approx_sol_noon = 720.0 + longitude * @minutes_per_degree - approx_eq_time
-
-    # refinement using output of first pass
-    tnoon =
-      Time.julian_centuries_from_julian_day(
-        century_start - 0.5 + approx_sol_noon / minutes_per_day()
-      )
-
-    eq_time = equation_of_time(tnoon)
-    720.0 + longitude * @minutes_per_degree - eq_time
+    (noon - midnight) * minutes_per_day()
   end
 
   @doc """
@@ -422,21 +483,49 @@ defmodule Astro.Solar do
   ecliptic (~23.44°) and the eccentricity of the
   Earth's orbit (~0.0167).
 
+  It is calculated as in Meeus, *Astronomical Algorithms*,
+  chapter 28: the Sun's mean longitude, less the constant of
+  aberration (0.0057183°), less the Sun's apparent right
+  ascension, plus the nutation in right ascension (Δψ cos ε),
+  converted to minutes at four minutes of time a degree.
+
   ### Examples
 
-      iex> Astro.Solar.equation_of_time(0.0)
-      -3.244441990189671
+      iex> Astro.Solar.equation_of_time(0.0) |> Float.round(4)
+      -3.2815
 
   """
   @spec equation_of_time(float) :: float()
   def equation_of_time(julian_centuries) when is_float(julian_centuries) do
     moment = Time.moment_from_julian_centuries(julian_centuries)
     {right_ascension, _declination, _distance} = apparent_sun_position(moment)
+    {delta_psi, delta_epsilon, mean_obliquity} = Earth.nutation(julian_centuries)
 
-    mean_longitude = sun_geometric_mean_longitude(julian_centuries)
-    diff = mean_longitude - right_ascension
-    diff = diff - 360.0 * Float.round(diff / 360.0, 0)
-    diff * @minutes_per_degree
+    nutation_in_right_ascension =
+      to_degrees(delta_psi) * :math.cos(mean_obliquity + delta_epsilon)
+
+    equation =
+      mean_longitude_of_date(julian_centuries) - @equation_of_time_aberration - right_ascension +
+        nutation_in_right_ascension
+
+    degrees = mod(equation + 180.0, 360.0) - 180.0
+    degrees * @minutes_per_degree
+  end
+
+  # The Sun's mean longitude referred to the mean equinox of date, from
+  # VSOP87 (Meeus, Astronomical Algorithms, equation 28.2). Its argument is
+  # Julian millennia of dynamical time from J2000.0.
+  defp mean_longitude_of_date(julian_centuries) do
+    julian_millennia = julian_centuries / 10.0
+
+    Math.poly(julian_millennia, [
+      280.4664567,
+      360_007.6982779,
+      0.03032028,
+      1 / 49_931,
+      -1 / 15_300,
+      -1 / 2_000_000
+    ])
   end
 
   @doc """

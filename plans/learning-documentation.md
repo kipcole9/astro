@@ -54,7 +54,7 @@ Measured 2026-10-31 by running every function on the full DE440s kernel (JPL) an
 |---|---|---|
 | Sunrise, sunset | 0.07 s | 0.21 s |
 | Moonrise, moonset | 0.22 s | 0.93 s |
-| Solar noon | 0.23 s | 1.0 s |
+| Solar noon | 0.06 s (remeasured after the solar noon fix) | 0.15 s |
 | Equinoxes and solstices | 18 s (mean −14 s) | 50 s |
 | New moons | 6.0 s | 20 s |
 | Full moons | 6.2 s | 30 s |

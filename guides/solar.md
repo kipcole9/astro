@@ -74,7 +74,7 @@ The moment the sun crosses the local meridian, which is when it is highest. It i
 
 ```elixir
 iex> Astro.solar_noon({151.20666584, -33.8559799094}, ~D[2019-12-04])
-{:ok, ~U[2019-12-04 01:44:49Z]}
+{:ok, ~U[2019-12-04 01:45:04.043588Z]}
 ```
 
 ## Length of the day
