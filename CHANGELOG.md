@@ -10,6 +10,10 @@
 
 * `Astro.Coordinates.ecliptic_to_equatorial/3` converts ecliptic longitude and latitude to right ascension and declination.
 
+* `Astro.Solar.solar_longitude_day_on_or_after/3` and `solar_longitude_day_on_or_before/3` return the local day the Sun reaches a longitude, such as a solar term or the December solstice, deciding the day from the Sun's rate; about 15 times faster than finding the moment.
+
+* `Astro.Lunar.new_moon_day_before/2` and `new_moon_day_on_or_after/2` return the local day of a new moon for an offset or an offset function, refining only new moons near local midnight; about twice as fast as the moment searches.
+
 * `Astro.Solar.solar_noon/2` returns the moment the Sun's local hour angle is zero, found by Newton's method from 12:00 local mean time.
 
 ### Changed

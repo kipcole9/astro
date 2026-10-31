@@ -125,6 +125,18 @@ defmodule Astro.Lunar do
   # moon on the right side of a moment and within this of it is the nearest.
   @shortest_lunation_days 29.0
 
+  # Local days of consecutive new moons are at least this many apart: new
+  # moons are 29.27 days apart or more, less an hour's change of zone.
+  @fewest_days_between_new_moons 28
+
+  # The lunar phase advances by the Moon's motion less the Sun's, between
+  # 10.74° and 14.39° a day over 50,000 years either side of J2000; these
+  # bounds are wider. Beyond the phase
+  # limit an estimate is too far from its new moon to bound it.
+  @slowest_phase_rate 10.0
+  @fastest_phase_rate 16.0
+  @decided_day_phase_limit 30.0
+
   # A search for a lunar phase ends when its bracket is under a millisecond,
   # so that it finds a new moon at the same moment as the secant search.
   @phase_search_tolerance_days 1.0e-8
@@ -704,6 +716,129 @@ defmodule Astro.Lunar do
     end
   end
 
+  @doc """
+  Returns the local day of the last new moon before the start of a
+  local day.
+
+  Calendars that count months from new moons need only the day on
+  which each falls, in the time they keep. This is the day, at the
+  offset in force when the new moon occurs, of the last new moon
+  before local midnight at the start of `day`: the same day as taking
+  `date_time_new_moon_before/1` at that midnight and reading its
+  local date, found faster.
+
+  The lunar phase always advances, at between 10° and 16° a day, so
+  one phase evaluated at a lunation's Meeus chapter 49 estimate places
+  its new moon within a narrow window. When the whole window falls on
+  one local day, that is the day; only a new moon near local midnight
+  is refined to its moment by `date_time_new_moon_before/1`'s search.
+
+  ### Arguments
+
+  * `day` is a local day as an integer number of days since
+    `0000-01-01`.
+
+  * `offset` is the local time's offset from UTC in days, as a number,
+    or a 1-arity function that returns the offset for a moment, for a
+    calendar whose time changes over its history.
+
+  ### Returns
+
+  * the local day of the new moon as an integer number of days since
+    `0000-01-01`.
+
+  Raises `ArgumentError` for a day more than 50,000 years from J2000.
+
+  ### Accuracy
+
+  The same day as the moment search, whose new moons are within a
+  millisecond of the phase crossing; see `date_time_new_moon_before/1`.
+
+  ### Examples
+
+      iex> day = Date.to_gregorian_days(~D[2024-06-15])
+      iex> Astro.Lunar.new_moon_day_before(day, 8 / 24) |> Date.from_gregorian_days()
+      ~D[2024-06-06]
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  """
+  @doc since: "2.10.0"
+  @spec new_moon_day_before(integer(), number() | (Time.moment() -> number())) :: integer()
+
+  def new_moon_day_before(day, offset) when is_integer(day) do
+    start = day - offset_at(offset, day)
+    {lunation, _next_lunation} = searchable_lunations_around(start)
+    new_moon_day = new_moon_day(lunation, offset)
+
+    cond do
+      new_moon_day >= day -> new_moon_day(lunation - 1, offset)
+      day - new_moon_day < @fewest_days_between_new_moons -> new_moon_day
+      true -> latest_new_moon_day_before(day, new_moon_day, lunation + 1, offset)
+    end
+  end
+
+  @doc """
+  Returns the local day of the first new moon at or after the start of
+  a local day.
+
+  The day, at the offset in force when the new moon occurs, of the
+  first new moon at or after local midnight at the start of `day`: the
+  same day as taking `date_time_new_moon_at_or_after/1` at that
+  midnight and reading its local date, found faster. See
+  `new_moon_day_before/2` for how.
+
+  ### Arguments
+
+  * `day` is a local day as an integer number of days since
+    `0000-01-01`.
+
+  * `offset` is the local time's offset from UTC in days, as a number,
+    or a 1-arity function that returns the offset for a moment.
+
+  ### Returns
+
+  * the local day of the new moon as an integer number of days since
+    `0000-01-01`.
+
+  Raises `ArgumentError` for a day more than 50,000 years from J2000.
+
+  ### Accuracy
+
+  The same day as the moment search; see
+  `date_time_new_moon_at_or_after/1`.
+
+  ### Examples
+
+      iex> day = Date.to_gregorian_days(~D[2024-06-15])
+      iex> Astro.Lunar.new_moon_day_on_or_after(day, 8 / 24) |> Date.from_gregorian_days()
+      ~D[2024-07-06]
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  """
+  @doc since: "2.10.0"
+  @spec new_moon_day_on_or_after(integer(), number() | (Time.moment() -> number())) ::
+          integer()
+
+  def new_moon_day_on_or_after(day, offset) when is_integer(day) do
+    start = day - offset_at(offset, day)
+    {_previous_lunation, lunation} = searchable_lunations_around(start)
+    new_moon_day = new_moon_day(lunation, offset)
+
+    cond do
+      new_moon_day < day -> new_moon_day(lunation + 1, offset)
+      new_moon_day - day < @fewest_days_between_new_moons -> new_moon_day
+      true -> earliest_new_moon_day_on_or_after(day, new_moon_day, lunation - 1, offset)
+    end
+  end
+
   @doc false
   # `{:ok, t}` when the new moon and lunar phase searches can answer for
   # `t`, within 50,000 years of J2000, and `{:error, :year_out_of_range}`
@@ -771,9 +906,80 @@ defmodule Astro.Lunar do
   # phase passes 0° only once.
   defp new_moon(lunation) do
     estimate = nth_new_moon(lunation)
-    estimate_phase = signed_phase(estimate)
+    refine_new_moon(estimate, signed_phase(estimate))
+  end
+
+  defp refine_new_moon(estimate, estimate_phase) do
     first_step = estimate - estimate_phase / @mean_phase_rate
     secant(estimate, estimate_phase, first_step, @new_moon_steps)
+  end
+
+  # The local day of a lunation's new moon. One phase at its estimate
+  # bounds the new moon to a window, since the phase advances at between
+  # the slowest and fastest rates; if the window is on one local day that
+  # is the answer, and otherwise the new moon is refined to its moment.
+  defp new_moon_day(lunation, offset) do
+    estimate = nth_new_moon(lunation)
+    estimate_phase = signed_phase(estimate)
+
+    case decided_day(estimate, estimate_phase, offset) do
+      {:ok, day} -> day
+      :undecided -> local_day(refine_new_moon(estimate, estimate_phase), offset)
+    end
+  end
+
+  defp decided_day(_estimate, estimate_phase, _offset)
+       when abs(estimate_phase) > @decided_day_phase_limit do
+    :undecided
+  end
+
+  defp decided_day(estimate, estimate_phase, offset) do
+    earliest =
+      estimate - max(estimate_phase / @slowest_phase_rate, estimate_phase / @fastest_phase_rate)
+
+    latest =
+      estimate - min(estimate_phase / @slowest_phase_rate, estimate_phase / @fastest_phase_rate)
+
+    earliest_offset = offset_at(offset, earliest)
+
+    if earliest_offset == offset_at(offset, latest) and
+         floor(earliest + earliest_offset) == floor(latest + earliest_offset) do
+      {:ok, floor(earliest + earliest_offset)}
+    else
+      :undecided
+    end
+  end
+
+  defp local_day(moment, offset) do
+    floor(moment + offset_at(offset, moment))
+  end
+
+  defp offset_at(offset, _moment) when is_number(offset) do
+    offset
+  end
+
+  defp offset_at(offset, moment) when is_function(offset, 1) do
+    offset.(moment)
+  end
+
+  defp latest_new_moon_day_before(day, new_moon_day, next_lunation, offset) do
+    next_new_moon_day = new_moon_day(next_lunation, offset)
+
+    if next_new_moon_day < day do
+      next_new_moon_day
+    else
+      new_moon_day
+    end
+  end
+
+  defp earliest_new_moon_day_on_or_after(day, new_moon_day, previous_lunation, offset) do
+    previous_new_moon_day = new_moon_day(previous_lunation, offset)
+
+    if previous_new_moon_day >= day do
+      previous_new_moon_day
+    else
+      new_moon_day
+    end
   end
 
   defp secant(_previous, _previous_phase, current, 0) do

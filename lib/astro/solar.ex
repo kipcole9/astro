@@ -173,6 +173,18 @@ defmodule Astro.Solar do
   # millisecond. A float moment resolves 4e-9 days 50,000 years from 2000.
   @longitude_search_tolerance_days 1.0e-8
 
+  # The Sun's apparent longitude advances by between 0.953° and 1.019° a
+  # day today, and between 0.9475° and 1.0257° over 50,000 years either
+  # side of J2000 as the orbit changes; these bounds are wider still. The
+  # day searches estimate a crossing at the mean rate, look this many days
+  # either side of the estimate, and narrow the window this many times
+  # before searching for the crossing's moment.
+  @slowest_solar_rate 0.90
+  @fastest_solar_rate 1.08
+  @days_per_degree 365.242189 / 360
+  @days_around_estimate 5
+  @crossing_day_steps 4
+
   # Equinoxes and solstices are found within this many years of 2000, the
   # range of the new moon searches. Far beyond it ΔT, the series and the
   # precision of a float moment all fail.
@@ -395,6 +407,169 @@ defmodule Astro.Solar do
     tau = t - rate * mod(solar_ecliptic_longitude(t) - lambda, 360)
     cap_delta = mod(solar_ecliptic_longitude(tau) - lambda + deg(180), 360) - deg(180)
     min(t, tau - rate * cap_delta)
+  end
+
+  @doc """
+  Returns the local day on which the Sun's apparent longitude first
+  reaches `lambda` at or after the start of a local day.
+
+  Calendars that follow the Sun, such as the Chinese solar terms, need
+  only the day on which its longitude reaches a value, in the time they
+  keep. This is that day, at the offset in force when the longitude is
+  reached: the same day as `solar_ecliptic_longitude_after/2` from
+  local midnight, read at the local date, found faster.
+
+  The Sun's longitude always advances, at between 0.95° and 1.03° a
+  day, so one longitude evaluated near the crossing places it within a
+  narrow window. The search narrows the window until it falls on one
+  local day, and only a crossing near local midnight is found to its
+  moment.
+
+  ### Arguments
+
+  * `lambda` is the apparent ecliptic longitude in degrees.
+
+  * `day` is a local day as an integer number of days since
+    `0000-01-01`.
+
+  * `offset` is the local time's offset from UTC in days, as a number,
+    or a 1-arity function that returns the offset for a moment.
+
+  ### Returns
+
+  * the local day as an integer number of days since `0000-01-01`.
+
+  ### Accuracy
+
+  The same day as the moment search; see
+  `solar_ecliptic_longitude_after/2`.
+
+  ### Examples
+
+      iex> day = Date.to_gregorian_days(~D[2024-01-01])
+      iex> Astro.Solar.solar_longitude_day_on_or_after(315, day, 8 / 24) |> Date.from_gregorian_days()
+      ~D[2024-02-04]
+
+  ### Reference
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, `solar-longitude-after`.
+
+  """
+  @doc since: "2.10.0"
+  @spec solar_longitude_day_on_or_after(
+          number(),
+          integer(),
+          number() | (Time.moment() -> number())
+        ) :: integer()
+
+  def solar_longitude_day_on_or_after(lambda, day, offset) when is_integer(day) do
+    start = day - offset_at(offset, day)
+    estimate = start + @days_per_degree * mod(lambda - solar_ecliptic_longitude(start), 360)
+    bounds = {max(start, estimate - @days_around_estimate), estimate + @days_around_estimate}
+
+    crossing_day(lambda, estimate, bounds, offset, @crossing_day_steps)
+  end
+
+  @doc """
+  Returns the local day on which the Sun's apparent longitude last
+  reached `lambda`, on or before a local day.
+
+  This is the day, at the offset in force when the longitude is
+  reached, of the last time it reached `lambda` before the end of
+  `day`. With `lambda` 270 it is the day of the December solstice on
+  or before `day`, which the Chinese calendar counts its years from.
+  See `solar_longitude_day_on_or_after/3` for how it is found.
+
+  ### Arguments
+
+  * `lambda` is the apparent ecliptic longitude in degrees.
+
+  * `day` is a local day as an integer number of days since
+    `0000-01-01`.
+
+  * `offset` is the local time's offset from UTC in days, as a number,
+    or a 1-arity function that returns the offset for a moment.
+
+  ### Returns
+
+  * the local day as an integer number of days since `0000-01-01`.
+
+  ### Accuracy
+
+  The day of the crossing found to within a millisecond, as
+  `solar_ecliptic_longitude_after/2` finds it.
+
+  ### Examples
+
+      iex> day = Date.to_gregorian_days(~D[2025-03-01])
+      iex> Astro.Solar.solar_longitude_day_on_or_before(270, day, 8 / 24) |> Date.from_gregorian_days()
+      ~D[2024-12-21]
+
+  ### Reference
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, `estimate-prior-solar-longitude` and the winter
+    solstice of the Chinese calendar.
+
+  """
+  @doc since: "2.10.0"
+  @spec solar_longitude_day_on_or_before(
+          number(),
+          integer(),
+          number() | (Time.moment() -> number())
+        ) :: integer()
+
+  def solar_longitude_day_on_or_before(lambda, day, offset) when is_integer(day) do
+    finish = day + 1 - offset_at(offset, day + 1)
+    estimate = finish - @days_per_degree * mod(solar_ecliptic_longitude(finish) - lambda, 360)
+    bounds = {estimate - @days_around_estimate, min(finish, estimate + @days_around_estimate)}
+
+    crossing_day(lambda, estimate, bounds, offset, @crossing_day_steps)
+  end
+
+  # The local day of the crossing of `lambda` within `bounds`. Each step
+  # evaluates the longitude at `guess` and bounds the crossing between the
+  # slowest and fastest rates of the Sun's motion; when that window is on
+  # one local day it is the answer, and otherwise the guess moves to the
+  # crossing at the mean rate. If the steps run out the crossing is found
+  # to its moment.
+  defp crossing_day(lambda, _guess, {first, last}, offset, 0) do
+    crossing =
+      Math.invert_angular(
+        &solar_ecliptic_longitude/1,
+        lambda,
+        first,
+        last,
+        @longitude_search_tolerance_days
+      )
+
+    floor(crossing + offset_at(offset, crossing))
+  end
+
+  defp crossing_day(lambda, guess, {first, last} = bounds, offset, steps) do
+    degrees = mod(lambda - solar_ecliptic_longitude(guess) + 180.0, 360.0) - 180.0
+
+    earliest =
+      max(first, guess + min(degrees / @slowest_solar_rate, degrees / @fastest_solar_rate))
+
+    latest = min(last, guess + max(degrees / @slowest_solar_rate, degrees / @fastest_solar_rate))
+    earliest_offset = offset_at(offset, earliest)
+
+    if earliest_offset == offset_at(offset, latest) and
+         floor(earliest + earliest_offset) == floor(latest + earliest_offset) do
+      floor(earliest + earliest_offset)
+    else
+      crossing_day(lambda, guess + degrees * @days_per_degree, bounds, offset, steps - 1)
+    end
+  end
+
+  defp offset_at(offset, _moment) when is_number(offset) do
+    offset
+  end
+
+  defp offset_at(offset, moment) when is_function(offset, 1) do
+    offset.(moment)
   end
 
   @doc """

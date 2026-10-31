@@ -4,6 +4,8 @@ Work planned for Astro. The detail of anything shipped is in the CHANGELOG.
 
 ## Open
 
+* [ ] **Calendar support** — day-level new moon and solar longitude searches, a `:utc_offset` and `limb: :center` for rise and set, and a crescent visibility day search, so that Calendrical computes no astronomy of its own. Plan in [plans/calendar-support.md](plans/calendar-support.md).
+
 * [ ] **Answer every date from JPL or Meeus** — positions come from the JPL ephemeris where it covers the moment and from the Meeus series where it does not, so no consumer checks coverage or sees `{:error, :not_found}`. Design and tasks in [plans/jpl-meeus-fallback.md](plans/jpl-meeus-fallback.md).
 
 * [ ] **Remove `Astro.date_time_new_moon_at_or_before/1`** — deprecated in 2.6.2 in favour of `Astro.date_time_new_moon_before/1`; remove it in the next major release.
