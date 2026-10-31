@@ -1,7 +1,7 @@
 defmodule Astro.Lunar.CrescentVisibility do
   @moduledoc """
   Implements three criteria for predicting the visibility of the new
-  crescent moon: Yallop (1997), Odeh (2006), and Schaefer (1988/2000).
+  crescent moon: Yallop (1997), Odeh (2004), and Schaefer (1988/2000).
 
   All three functions accept a normalized location and a moment (midnight
   UTC for the date of interest) and return `{:ok, visibility}` where
@@ -17,7 +17,7 @@ defmodule Astro.Lunar.CrescentVisibility do
       ARCV' = 11.8371 − 6.3226·W + 0.7319·W² − 0.1018·W³
       q = (ARCV − ARCV') / 10
 
-  ## Odeh (2006)
+  ## Odeh (2004)
 
   An updated empirical criterion using the same polynomial family as
   Yallop but fitted to 737 observations (vs Yallop's 295). Uses
@@ -187,11 +187,11 @@ defmodule Astro.Lunar.CrescentVisibility do
   defp classify_yallop(_q), do: :E
 
   # ════════════════════════════════════════════════════════════════════════════════
-  # Odeh (2006)
+  # Odeh (2004)
   # ════════════════════════════════════════════════════════════════════════════════
 
   @doc """
-  Computes the Odeh (2006) visibility criterion for the new crescent moon.
+  Computes the Odeh (2004) visibility criterion for the new crescent moon.
 
   Uses topocentric ARCV, the same polynomial family as Yallop with an
   updated intercept (7.1651), and enforces a Danjon limit of 6.4°.

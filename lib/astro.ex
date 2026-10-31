@@ -1439,15 +1439,32 @@ defmodule Astro do
   @doc """
   Returns the moonrise for a given location and date.
 
-  The moonrise is the moment the upper limb of the Moon appears above the
-  horizon, found from the JPL DE440s ephemeris with full topocentric
-  correction.
+  Moonrise is the moment the upper limb of the Moon appears above the
+  horizon.
+
+  Refraction lifts the Moon by a standard 34′ at the horizon, and its
+  semi-diameter is 14.7′ to 16.8′ depending on its distance, so this
+  is the moment the Moon's centre, computed without refraction, is
+  34′ plus its semi-diameter below the horizon.
+
+  The Moon is close enough that where it appears depends on where it
+  is seen from: from the Earth's surface it is displaced by up to
+  about 1°, its horizontal parallax, from where it is seen from the
+  Earth's centre. Its altitude is therefore computed from its
+  topocentric position, corrected for parallax in both right
+  ascension and declination (Meeus, *Astronomical Algorithms*,
+  chapter 40), and the local apparent sidereal time. The altitude is
+  sampled every 24 minutes across the day to bracket the crossing,
+  which is then narrowed by bisection to 0.01 s. The position comes
+  from the JPL DE440s ephemeris where the loaded kernel covers the
+  date, and from the analytical series elsewhere.
 
   ### Arguments
 
   * `location` is the observer's position as a `{longitude, latitude}`
     tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
-    also carries an elevation in metres. Longitude comes first.
+    also carries an elevation in metres. Longitude comes first. An
+    elevation enters the parallax but does not lower the horizon.
 
   * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
     for the day of the moonrise.
@@ -1533,6 +1550,18 @@ defmodule Astro do
     in a time zone other than UTC and no time zone database is
     configured.
 
+  ### Accuracy
+
+  Against Skyfield, using the same ephemeris, results agree to 0.08 s
+  on average and 0.1 s at most. Against the USNO, which publishes to
+  the minute, they agree to 15.5 s on average and 29 s at most in 70
+  cases. Outside the ephemeris the series move the result by 0.22 s
+  RMS and 0.93 s at most. As for the Sun, the atmosphere matters more
+  than any of these: refraction at the horizon departs from the
+  standard 34′ with temperature and pressure, and a high observer sees
+  a lower horizon, and neither is modelled. The
+  [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> {:ok, date_time} = Astro.moonrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -1541,6 +1570,19 @@ defmodule Astro do
 
       iex> Astro.moonrise({-62.3481, 82.5018}, ~D[2024-01-01])
       {:error, :no_time}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting) and chapter 40
+    (correction for parallax).
+
+  * United States Naval Observatory, [Rise, Set, and Twilight
+    Definitions](https://aa.usno.navy.mil/faq/RST_defs).
+
+  * [Moonrise and moonset](https://en.wikipedia.org/wiki/Moonrise_and_moonset)
+    and [Lunar parallax](https://en.wikipedia.org/wiki/Lunar_parallax),
+    Wikipedia.
 
   """
   @doc since: "2.0.0"
@@ -1574,15 +1616,32 @@ defmodule Astro do
   @doc """
   Returns the moonset for a given location and date.
 
-  The moonset is the moment the upper limb of the Moon disappears below the
-  horizon, found from the JPL DE440s ephemeris with full topocentric
-  correction.
+  Moonset is the moment the upper limb of the Moon disappears below
+  the horizon.
+
+  Refraction lifts the Moon by a standard 34′ at the horizon, and its
+  semi-diameter is 14.7′ to 16.8′ depending on its distance, so this
+  is the moment the Moon's centre, computed without refraction, is
+  34′ plus its semi-diameter below the horizon.
+
+  The Moon is close enough that where it appears depends on where it
+  is seen from: from the Earth's surface it is displaced by up to
+  about 1°, its horizontal parallax, from where it is seen from the
+  Earth's centre. Its altitude is therefore computed from its
+  topocentric position, corrected for parallax in both right
+  ascension and declination (Meeus, *Astronomical Algorithms*,
+  chapter 40), and the local apparent sidereal time. The altitude is
+  sampled every 24 minutes across the day to bracket the crossing,
+  which is then narrowed by bisection to 0.01 s. The position comes
+  from the JPL DE440s ephemeris where the loaded kernel covers the
+  date, and from the analytical series elsewhere.
 
   ### Arguments
 
   * `location` is the observer's position as a `{longitude, latitude}`
     tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
-    also carries an elevation in metres. Longitude comes first.
+    also carries an elevation in metres. Longitude comes first. An
+    elevation enters the parallax but does not lower the horizon.
 
   * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
     for the day of the moonset.
@@ -1668,6 +1727,18 @@ defmodule Astro do
     in a time zone other than UTC and no time zone database is
     configured.
 
+  ### Accuracy
+
+  Against Skyfield, using the same ephemeris, results agree to 0.08 s
+  on average and 0.1 s at most. Against the USNO, which publishes to
+  the minute, they agree to 15.5 s on average and 29 s at most in 70
+  cases. Outside the ephemeris the series move the result by 0.22 s
+  RMS and 0.93 s at most. As for the Sun, the atmosphere matters more
+  than any of these: refraction at the horizon departs from the
+  standard 34′ with temperature and pressure, and a high observer sees
+  a lower horizon, and neither is modelled. The
+  [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> {:ok, date_time} = Astro.moonset({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -1676,6 +1747,19 @@ defmodule Astro do
 
       iex> Astro.moonset({-62.3481, 82.5018}, ~D[2024-01-01])
       {:error, :no_time}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting) and chapter 40
+    (correction for parallax).
+
+  * United States Naval Observatory, [Rise, Set, and Twilight
+    Definitions](https://aa.usno.navy.mil/faq/RST_defs).
+
+  * [Moonrise and moonset](https://en.wikipedia.org/wiki/Moonrise_and_moonset)
+    and [Lunar parallax](https://en.wikipedia.org/wiki/Lunar_parallax),
+    Wikipedia.
 
   """
   @doc since: "2.0.0"
@@ -1710,9 +1794,28 @@ defmodule Astro do
   Predicts the visibility of the new crescent moon at a given location
   on a given date using one of three published criteria.
 
-  At the optimal observation time after sunset, the function evaluates
-  the geometric and photometric conditions to classify the crescent
-  into one of five visibility categories.
+  A new crescent is first seen in the west after sunset, a day or two
+  after new moon. Whether it can be seen depends on how far the Moon
+  is from the Sun, how wide its lit crescent is, and how dark the sky
+  has become. Each criterion predicts this from the Sun's and the
+  Moon's positions on the evening of `date`, and classifies the
+  crescent into one of five categories.
+
+  Yallop and Odeh both work at the best time to look, sunset plus
+  four-ninths of the interval from sunset to moonset. There they find
+  the arc of vision ARCV, the Moon's altitude less the Sun's, and the
+  width of the crescent W in arcminutes, and compare ARCV with a cubic
+  in W fitted to recorded sightings:
+
+      q = (ARCV − (11.8371 − 6.3226 W + 0.7319 W² − 0.1018 W³)) / 10
+      V = ARCV − (7.1651 − 6.3226 W + 0.7319 W² − 0.1018 W³)
+
+  Yallop's q uses the geocentric arc of vision and Odeh's V the
+  topocentric one; Odeh also treats a Moon less than 6.4° from the Sun
+  as invisible, the Danjon limit. The class follows from thresholds on
+  q or V. Schaefer instead models the eye: from sunset to moonset it
+  compares the brightness of the crescent against the twilight sky
+  with the smallest contrast the eye can detect.
 
   ### Arguments
 
@@ -1725,7 +1828,7 @@ defmodule Astro do
 
   * `method` selects the prediction criterion. Default `:odeh`.
 
-    * `:odeh` — Odeh (2006). Empirical criterion based on 737 observations.
+    * `:odeh` — Odeh (2004). Empirical criterion based on 737 observations.
       Uses topocentric ARCV with a Danjon limit of 6.4°. The most widely
       used modern criterion.
 
@@ -1775,13 +1878,26 @@ defmodule Astro do
 
   ### Method comparison
 
-  | Aspect | Yallop (1997) | Odeh (2006) | Schaefer (1988/2000) |
+  | Aspect | Yallop (1997) | Odeh (2004) | Schaefer (1988/2000) |
   |---|---|---|---|
   | Basis | Empirical polynomial | Empirical polynomial | Physical model |
   | Observations | 295 | 737 | N/A (theory) |
   | ARCV type | Geocentric | Topocentric | N/A |
   | Best time | Sunset + 4/9 lag | Sunset + 4/9 lag | Scanned (max Rs) |
   | Atmosphere | Not modelled | Not modelled | Extinction coefficient |
+
+  ### Accuracy
+
+  The categories depend on the Sun's and the Moon's positions far less
+  than on the criteria: outside the ephemeris the series give the same
+  category as JPL in 3,749 of 3,750 evenings. The criteria are fits to
+  sightings made under real skies, and a crescent near the boundary of
+  two categories is as likely to be decided by the evening's weather
+  as by the calculation; Astro's predictions have not themselves been
+  compared with a record of sightings. Far from the present, ΔT moves
+  the Moon against the Sun by about 0.5″ for each second it is wrong,
+  so the 265 s uncertainty at the year 0 changes ARCV by about 2′. The
+  [accuracy guide](accuracy.md) gives the details.
 
   ### Examples
 
@@ -1792,6 +1908,19 @@ defmodule Astro do
       iex> location = {-0.1275, 51.5072}
       iex> Astro.new_visible_crescent(location, ~D[2025-03-31], :yallop)
       {:ok, :A}
+
+  ### Reference
+
+  * Bernard D. Yallop, *A Method for Predicting the First Sighting of
+    the New Crescent Moon*, NAO Technical Note 69 (1997).
+
+  * Mohammad Sh. Odeh, [New Criterion for Lunar Crescent
+    Visibility](https://doi.org/10.1007/s10686-005-9002-5),
+    *Experimental Astronomy* 18 (2004), 39–64.
+
+  * Bradley E. Schaefer, [Astronomy and the Limits of
+    Vision](https://doi.org/10.1016/0083-6656(93)90113-X),
+    *Vistas in Astronomy* 36 (1993), 311–361.
 
   """
   @doc since: "2.1.0"
@@ -1878,6 +2007,12 @@ defmodule Astro do
       iex> location = {39.8579, 21.3891}
       iex> Astro.new_visible_crescent(location, ~D[2025-03-31], :schaefer, extinction: 0.25)
       {:ok, :A}
+
+  ### Reference
+
+  * Bradley E. Schaefer, [Astronomy and the Limits of
+    Vision](https://doi.org/10.1016/0083-6656(93)90113-X),
+    *Vistas in Astronomy* 36 (1993), 311–361.
 
   """
   @doc since: "2.1.0"

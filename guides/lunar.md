@@ -117,7 +117,7 @@ iex> Astro.new_visible_crescent({151.20666584, -33.8559799094}, ~D[2019-12-26])
 
 Three criteria are available, and they disagree near the limit, which is the interesting part:
 
-* `:odeh` (the default) — Odeh (2006), an empirical polynomial fitted to 737 observations using topocentric arc of vision.
+* `:odeh` (the default) — Odeh (2004), an empirical polynomial fitted to 737 observations using topocentric arc of vision.
 
 * `:yallop` — Yallop (1997), the same shape of model over 295 observations, using geocentric arc of vision.
 

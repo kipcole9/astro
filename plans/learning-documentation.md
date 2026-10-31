@@ -95,11 +95,11 @@ Recommendation: do not add an accuracy-for-performance option. If a memory-const
 
 ## Tasks
 
-* [ ] **Document moonrise, moonset and crescent visibility.**
-
 * [ ] **Add accuracy and references to the `Astro.Solar` and `Astro.Lunar` analytical functions.**
 
 ### Done
+
+* [x] **Document moonrise, moonset and crescent visibility** — the topocentric method, Skyfield and USNO agreement, the Yallop and Odeh formulas and Schaefer's model, with the Odeh paper dated 2004 (*Experimental Astronomy* 18) rather than 2006, its online date. The crescent categories are not compared with recorded sightings, and the docs say so. 2026-10-31.
 
 * [x] **Document the new moon and phase searches** — checked against Meeus example 49.a (3h37m40s TD; Astro 3h37m39.9s TD); the phase searches and the secant new moon search now end within a millisecond, so the three new moon searches agree. USNO's minute-rounded phases differ by −26 to +44 s, too coarse to use. 2026-10-31.
 
