@@ -103,10 +103,10 @@ These are instants, not dates, and they are the same instant everywhere on Earth
 
 ```elixir
 iex> Astro.equinox(2019, :march)
-{:ok, ~U[2019-03-20 21:58:28.749476Z]}
+{:ok, ~U[2019-03-20 21:58:24.395385Z]}
 
 iex> Astro.solstice(2019, :december)
-{:ok, ~U[2019-12-22 04:19:19.643304Z]}
+{:ok, ~U[2019-12-22 04:19:23.771465Z]}
 ```
 
 `:march` and `:september` are valid for `equinox/3`; `:june` and `:december` for `solstice/3`. Naming the month rather than "spring" or "summer" avoids the hemisphere ambiguity: the December solstice is midsummer in Sydney and midwinter in London.
@@ -121,7 +121,7 @@ iex> DateTime.to_date(equinox)
 
 A named time zone is looked up in `:time_zone_database`, which defaults to the configured database (`Calendar.get_time_zone_database/0`). With none configured only UTC is known, and a named zone returns `{:error, :utc_only_time_zone_database}`.
 
-Both are documented for 1000 CE to 3000 CE and return `{:error, :year_out_of_range}` outside it.
+Both are the moments the Sun's apparent longitude reaches a multiple of 90°, and work for any year: from the JPL ephemeris where it covers the year, within a few seconds of published times, and from the analytical series otherwise.
 
 ## Position of the sun
 

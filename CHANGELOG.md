@@ -12,6 +12,8 @@
 
 ### Changed
 
+* `Astro.equinox/3` and `Astro.solstice/3` are the moments the Sun's apparent longitude reaches 0°, 90°, 180° or 270°: within a few seconds of published times, against about 30 for the Meeus closed form. They work for any year, so `{:error, :year_out_of_range}` is gone.
+
 * Dates outside the loaded ephemeris are answered from the analytical series: the `Astro` functions, sunrise and sunset, moonrise and moonset and crescent visibility no longer return `{:error, :not_found}`, and their specs no longer name it.
 
 * The positions, ecliptic coordinates, distance, altitude and phase in `Astro.Solar` and `Astro.Lunar` come from the analytical series where the loaded ephemeris does not cover the moment, where they raised `MatchError`. `Astro.Solar.solar_ecliptic_longitude/1`'s fallback is now accurate to about 1″ near the present rather than 0.01°.

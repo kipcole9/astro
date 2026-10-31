@@ -135,6 +135,26 @@ defmodule Astro.OutOfRangeTest do
              |> Astro.Time.date_time_from_moment()
   end
 
+  test "equinoxes and solstices are found for any year" do
+    for year <- [-5_000, -1_000, 500, 1_000, 3_000, 5_000, 10_000],
+        {function, event, longitude} <- [
+          {&Astro.equinox/2, :march, 0.0},
+          {&Astro.solstice/2, :june, 90.0},
+          {&Astro.equinox/2, :september, 180.0},
+          {&Astro.solstice/2, :december, 270.0}
+        ] do
+      assert {:ok, %DateTime{year: ^year} = date_time} = function.(year, event)
+
+      reached =
+        date_time
+        |> Astro.Time.date_time_to_moment()
+        |> Astro.Solar.solar_ecliptic_longitude()
+
+      difference = Astro.Math.mod(reached - longitude + 180.0, 360.0) - 180.0
+      assert abs(difference) < 0.0001
+    end
+  end
+
   test "the new moon searches succeed outside the ephemeris" do
     assert {:ok, %DateTime{}} = Astro.date_time_new_moon_before(@date)
     assert {:ok, %DateTime{}} = Astro.date_time_new_moon_at_or_after(@date)

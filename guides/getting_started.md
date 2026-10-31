@@ -142,8 +142,6 @@ Astro returns tagged tuples for the cases that are genuine astronomy, or a setti
 
 * `{:error, :invalid_solar_elevation}`, `{:error, :invalid_limb}` and `{:error, :invalid_interpolation}` — an option has a value the function does not recognise.
 
-* `{:error, :year_out_of_range}` — `equinox/3` and `solstice/3` are documented for 1000 CE to 3000 CE.
-
 ## Where next
 
 * [Solar guide](solar.html) — sunrise, sunset, twilight, daylight, equinoxes and solstices.

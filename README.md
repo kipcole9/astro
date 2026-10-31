@@ -118,17 +118,17 @@ iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-12-07]
 
 # Calculate solstices for 2019
 iex> Astro.solstice 2019, :december
-{:ok, ~U[2019-12-22 04:19:19.643304Z]}
+{:ok, ~U[2019-12-22 04:19:23.771465Z]}
 
 iex> Astro.solstice 2019, :june
-{:ok, ~U[2019-06-21 15:54:07.713837Z]}
+{:ok, ~U[2019-06-21 15:54:13.711521Z]}
 
 # Calculate equinoxes for 2019
 iex> Astro.equinox 2019, :march
-{:ok, ~U[2019-03-20 21:58:28.749476Z]}
+{:ok, ~U[2019-03-20 21:58:24.395385Z]}
 
 iex> Astro.equinox 2019, :september
-{:ok, ~U[2019-09-23 07:49:52.677810Z]}
+{:ok, ~U[2019-09-23 07:50:08.520924Z]}
 ```
 
 ## Specifying a location
@@ -167,8 +167,6 @@ The file is placed in Astro's `priv` directory and takes precedence over the bun
 config :astro,
   ephemeris: "/path/to/de440s.bsp"
 ```
-
-`Astro.equinox/3` and `Astro.solstice/3` cover the years 1000 to 3000.
 
 ### Using a different ephemeris
 

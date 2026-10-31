@@ -92,8 +92,9 @@ defmodule Astro.Test.EquinoxTimeZone do
       assert Astro.equinox(2024, :march, "Asia/Tokyo") == {:error, :time_zone_not_found}
     end
 
-    test "a year out of range is still reported first" do
-      assert Astro.solstice(900, :june, time_zone: "Mars/Olympus") == {:error, :year_out_of_range}
+    test "an unknown time zone is reported for a year far from the present" do
+      assert Astro.solstice(900, :june, time_zone: "Mars/Olympus") ==
+               {:error, :time_zone_not_found}
     end
   end
 end

@@ -1336,9 +1336,6 @@ defmodule Astro do
   * `{:ok, datetime}`, the equinox in the requested time
     zone.
 
-  * `{:error, :year_out_of_range}` if `year` is outside the
-    supported range of 1000 CE to 3000 CE.
-
   * `{:error, :time_zone_not_found}` if the time zone is
     not known to the time zone database.
 
@@ -1353,12 +1350,13 @@ defmodule Astro do
 
       iex> {:ok, dt} = Astro.equinox 2019, :march
       iex> DateTime.truncate(dt, :second)
-      ~U[2019-03-20 21:58:28Z]
+      ~U[2019-03-20 21:58:24Z]
       iex> {:ok, dt} = Astro.equinox 2019, :september
       iex> DateTime.truncate(dt, :second)
-      ~U[2019-09-23 07:49:52Z]
-      iex> Astro.equinox 900, :march
-      {:error, :year_out_of_range}
+      ~U[2019-09-23 07:50:08Z]
+      iex> {:ok, dt} = Astro.equinox 900, :march
+      iex> DateTime.to_date(dt)
+      ~D[0900-03-20]
 
       # The March 2019 equinox is on the 20th in UTC but the 21st in Tokyo
       iex> {:ok, dt} = Astro.equinox(2019, :march, time_zone: "Asia/Tokyo")
@@ -1373,8 +1371,11 @@ defmodule Astro do
 
   ### Notes
 
-  This equinox calculation is expected to be accurate
-  to within 2 minutes for the years 1000 CE to 3000 CE.
+  The equinox is the moment the Sun's apparent longitude
+  reaches 0° or 180°, found from the JPL ephemeris where it
+  covers the year and from the analytical series for any other
+  year. Within the ephemeris it agrees with published times to
+  a few seconds.
 
   An equinox is commonly regarded as the instant of
   time when the plane of earth's equator passes through
@@ -1388,23 +1389,15 @@ defmodule Astro do
   @spec equinox(Calendar.year(), :march | :september, options()) ::
           {:ok, DateTime.t()}
           | {:error,
-             :year_out_of_range
-             | :time_zone_not_found
+             :time_zone_not_found
              | :utc_only_time_zone_database
              | :invalid_time_zone_database}
   def equinox(year, event, options \\ [])
 
-  def equinox(year, event, options) when event in [:march, :september] and year in 1000..3000 do
+  def equinox(year, event, options) when event in [:march, :september] and is_integer(year) do
     with {:ok, equinox} <- Solar.equinox_and_solstice(year, event) do
       in_time_zone(equinox, options)
     end
-  end
-
-  # The calculation is accurate to within 2 minutes only for 1000 CE to
-  # 3000 CE; outside that span return an error rather than raising a
-  # FunctionClauseError at the caller.
-  def equinox(year, event, _options) when event in [:march, :september] and is_integer(year) do
-    {:error, :year_out_of_range}
   end
 
   @doc """
@@ -1438,9 +1431,6 @@ defmodule Astro do
   * `{:ok, datetime}`, the solstice in the requested time
     zone.
 
-  * `{:error, :year_out_of_range}` if `year` is outside the
-    supported range of 1000 CE to 3000 CE.
-
   * `{:error, :time_zone_not_found}` if the time zone is
     not known to the time zone database.
 
@@ -1455,12 +1445,13 @@ defmodule Astro do
 
       iex> {:ok, dt} = Astro.solstice 2019, :december
       iex> DateTime.truncate(dt, :second)
-      ~U[2019-12-22 04:19:19Z]
+      ~U[2019-12-22 04:19:23Z]
       iex> {:ok, dt} = Astro.solstice 2019, :june
       iex> DateTime.truncate(dt, :second)
-      ~U[2019-06-21 15:54:07Z]
-      iex> Astro.solstice 3500, :june
-      {:error, :year_out_of_range}
+      ~U[2019-06-21 15:54:13Z]
+      iex> {:ok, dt} = Astro.solstice 3500, :june
+      iex> DateTime.to_date(dt)
+      ~D[3500-06-20]
 
       # The June 2021 solstice is on the 21st in UTC but the 20th in Santiago
       iex> {:ok, dt} = Astro.solstice(2021, :june, time_zone: "America/Santiago")
@@ -1469,8 +1460,11 @@ defmodule Astro do
 
   ### Notes
 
-  This solstice calculation is expected to be accurate
-  to within 2 minutes for the years 1000 CE to 3000 CE.
+  The solstice is the moment the Sun's apparent longitude
+  reaches 90° or 270°, found from the JPL ephemeris where it
+  covers the year and from the analytical series for any other
+  year. Within the ephemeris it agrees with published times to
+  a few seconds.
 
   A solstice is an event occurring when the Sun appears
   to reach its most northerly or southerly excursion
@@ -1495,23 +1489,15 @@ defmodule Astro do
   @spec solstice(Calendar.year(), :june | :december, options()) ::
           {:ok, DateTime.t()}
           | {:error,
-             :year_out_of_range
-             | :time_zone_not_found
+             :time_zone_not_found
              | :utc_only_time_zone_database
              | :invalid_time_zone_database}
   def solstice(year, event, options \\ [])
 
-  def solstice(year, event, options) when event in [:june, :december] and year in 1000..3000 do
+  def solstice(year, event, options) when event in [:june, :december] and is_integer(year) do
     with {:ok, solstice} <- Solar.equinox_and_solstice(year, event) do
       in_time_zone(solstice, options)
     end
-  end
-
-  # The calculation is accurate to within 2 minutes only for 1000 CE to
-  # 3000 CE; outside that span return an error rather than raising a
-  # FunctionClauseError at the caller.
-  def solstice(year, event, _options) when event in [:june, :december] and is_integer(year) do
-    {:error, :year_out_of_range}
   end
 
   @doc """

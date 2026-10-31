@@ -47,7 +47,7 @@ defmodule Astro.Solar do
 
   ### Equinoxes and solstices
 
-  * `equinox_and_solstice/2` — March/September equinox or June/December solstice
+  * `equinox_and_solstice/2` — the moment the Sun's longitude reaches 0°, 90°, 180° or 270°
 
   ### Solar elevation
 
@@ -148,53 +148,18 @@ defmodule Astro.Solar do
                          {coefficient, addend, multiplier}
                        end)
 
-  # Equinox/solstice periodic terms from Meeus Table 27.C (24 terms).
-  # Each row: amplitude, addend (degrees), multiplier (degrees per Julian century).
+  # The Sun's apparent longitude at each equinox and solstice, and the month
+  # it falls in. A search starts a few weeks before the 1st of that month:
+  # the Gregorian calendar keeps the events within a few days of their
+  # present dates for ±10,000 years.
+  @equinox_and_solstice %{
+    march: {0.0, 3},
+    june: {90.0, 6},
+    september: {180.0, 9},
+    december: {270.0, 12}
+  }
 
-  @periodic24_terms """
-  485  324.96   1934.136
-  203  337.23  32964.467
-  199  342.08     20.186
-  182   27.85 445267.112
-  156   73.14  45036.886
-  136  171.52  22518.443
-   77  222.54  65928.934
-   74  296.72   3034.906
-   70  243.58   9037.513
-   58  119.81  33718.147
-   52  297.17    150.678
-   50   21.02   2281.226
-   45  247.54  29929.562
-   44  325.15  31555.956
-   29   60.93   4443.417
-   18  155.12  67555.328
-   17  288.79   4562.452
-   16  198.04  62894.029
-   14  199.76  31436.921
-   12   95.39  14577.848
-   12  287.11  31931.756
-   12  320.81  34777.259
-    9  227.73   1222.114
-    8   15.45  16859.074
-  """
-
-  @p24_parsed @periodic24_terms
-              |> String.split("\n", trim: true)
-              |> Enum.map(fn line ->
-                line
-                |> String.split()
-                |> Enum.map(fn s ->
-                  case Float.parse(s) do
-                    {f, ""} -> f
-                    {f, _} -> f
-                  end
-                end)
-                |> List.to_tuple()
-              end)
-
-  @p24_amplitudes Enum.map(@p24_parsed, &elem(&1, 0))
-  @p24_addends Enum.map(@p24_parsed, &elem(&1, 1))
-  @p24_multipliers Enum.map(@p24_parsed, &elem(&1, 2))
+  @days_before_search 20
 
   @solar_elevation %{
     geometric: 90.0,
@@ -781,9 +746,18 @@ defmodule Astro.Solar do
   @doc """
   Returns the UTC datetime of an equinox or solstice.
 
+  An equinox or solstice is the moment the Sun's apparent ecliptic
+  longitude reaches a multiple of 90°: 0° at the March equinox, 90° at
+  the June solstice, 180° at the September equinox and 270° at the
+  December solstice. It is found by searching for that longitude with
+  `solar_ecliptic_longitude_after/2`, starting a few weeks before the
+  month the event falls in, so it uses the same positions as the rest of
+  this module: the JPL ephemeris where it covers the year, and the
+  analytical series for any other year.
+
   ### Arguments
 
-  * `year` is a positive integer Gregorian year.
+  * `year` is an integer Gregorian year.
 
   * `event` is one of `:march`, `:june`, `:september`,
     or `:december` identifying the equinox or solstice.
@@ -793,68 +767,29 @@ defmodule Astro.Solar do
   * `{:ok, datetime}` where `datetime` is a `DateTime.t()`
     in UTC.
 
-  ### Notes
-
-  The `:march` and `:september` events are the equinoxes
-  (Sun's ecliptic longitude 0° and 180° respectively).
-  The `:june` and `:december` events are the solstices
-  (ecliptic longitude 90° and 270°).
-
   ### Examples
 
       iex> {:ok, dt} = Astro.Solar.equinox_and_solstice(2024, :march)
-      iex> dt.year
-      2024
-      iex> dt.month
-      3
-      iex> dt.day
-      20
+      iex> {dt.year, dt.month, dt.day}
+      {2024, 3, 20}
+
+      iex> {:ok, dt} = Astro.Solar.equinox_and_solstice(-1000, :june)
+      iex> {dt.year, dt.month}
+      {-1000, 6}
 
   """
-  @spec equinox_and_solstice(pos_integer, :march | :june | :september | :december) ::
+  @spec equinox_and_solstice(integer(), :march | :june | :september | :december) ::
           {:ok, DateTime.t()}
 
-  def equinox_and_solstice(year, event) when event in [:march, :june, :september, :december] do
-    jde0 = initial_estimate(year, event)
-    t = (jde0 - 2_451_545.0) / 36_525
-    w = 35_999.373 * t - 2.47
-    dl = 1 + 0.0334 * Math.cos(w) + 0.0007 * Math.cos(2.0 * w)
-    s = periodic24(t)
-    jde = jde0 + 0.00001 * s / dl
+  def equinox_and_solstice(year, event)
+      when is_integer(year) and event in [:march, :june, :september, :december] do
+    {longitude, month} = Map.fetch!(@equinox_and_solstice, event)
 
-    {:ok, tdt} = Time.date_time_from_julian_days(jde)
-    Time.utc_date_time_from_dynamical_date_time(tdt)
-  end
+    first_of_month = Time.date_time_to_moment(Date.new!(year, month, 1))
+    search_start = first_of_month - @days_before_search
 
-  defp initial_estimate(year, event) do
-    year = (year - 2000) / 1000
-
-    equinox_and_solstice_solar_terms()
-    |> Map.get(event)
-    |> Enum.with_index()
-    |> Enum.reduce(0, fn {term, i}, acc ->
-      acc + term * :math.pow(year, i)
-    end)
-  end
-
-  defp equinox_and_solstice_solar_terms do
-    %{
-      march: [2_451_623.80984, 365_242.37404, 0.05169, -0.00411, -0.00057],
-      june: [2_451_716.56767, 365_241.62603, 0.00325, 0.00888, -0.00030],
-      september: [2_451_810.21715, 365_242.01767, -0.11575, 0.00337, 0.00078],
-      december: [2_451_900.05952, 365_242.74049, -0.06223, -0.00823, 0.00032]
-    }
-  end
-
-  defp periodic24(t) do
-    periodic24(t, @p24_amplitudes, @p24_addends, @p24_multipliers)
-  end
-
-  defp periodic24(_t, [], [], []) do
-    0
-  end
-
-  defp periodic24(t, [a | rest_a], [b | rest_b], [c | rest_c]) do
-    a * Math.cos(b + c * t) + periodic24(t, rest_a, rest_b, rest_c)
+    longitude
+    |> solar_ecliptic_longitude_after(search_start)
+    |> Time.date_time_from_moment()
   end
 end

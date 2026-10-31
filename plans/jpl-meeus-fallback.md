@@ -34,7 +34,7 @@ Calendrical, Tempo and every other consumer deal only with Astro's API. They nev
 
 * **Callers become total.** With the choice made in `Astro.Solar` and `Astro.Lunar`, their `{:ok, _} =` matches on the ephemeris go, the coverage checks in the `Astro` functions and in the rise and set searches are removed, and equinoxes, solstices and new moons are found as crossings of the JPL-or-Meeus positions.
 
-* **Equinoxes and solstices.** Seed with the Ch.27 estimate, then find the crossing with `Astro.Solar.solar_ecliptic_longitude_after/2`. Inside the ephemeris this matches published instants to about 5 seconds, against about 30 for the closed form, and the 1000–3000 refusal goes.
+* **Equinoxes and solstices.** Find the crossing with `Astro.Solar.solar_ecliptic_longitude_after/2`, starting 20 days before the 1st of the event's month (the Ch.27 polynomial seed is fitted only to 1000–3000, so the calendar date is the better seed for any era). Inside the ephemeris this matches published instants to about 1.5 seconds, against about 30 for the closed form, and the 1000–3000 refusal goes.
 
 * **New moons.** Seed with `Astro.Lunar.nth_new_moon/1`, then refine to the moment the lunar phase is zero. Inside the ephemeris the result moves by seconds; outside it the series and the crossing agree to within the Moon series' accuracy.
 
@@ -74,8 +74,6 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 ## Tasks
 
-* [ ] **Find equinoxes and solstices as longitude crossings** — seeded by the Ch.27 estimate, with the 1000–3000 refusal removed.
-
 * [ ] **Refine new moons to the zero-phase crossing** — seeded by `nth_new_moon/1`. First fix `Astro.Lunar.lunar_phase_at/1`: its check that swaps the computed phase for the Ch.49-based estimate when they differ by more than 180° misfires across 0°/360°, so near every new moon the phase is the Ch.49 estimate, and every new moon search lands on the Ch.49 instant (about 3.5 s from the JPL zero crossing in 2024, 110 s at the year 1000).
 
 * [ ] **Test the ephemeris edges** — every public function across both edges of the bundled and the full kernel, with no error, no raise, and event times within the stated jump.
@@ -85,6 +83,8 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 * [ ] **Calendrical follow-up** — once released, remove `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error from `Calendrical.Islamic.Visibility`, and raise Calendrical's Astro requirement. In the Calendrical repository, by its maintainer.
 
 ### Done
+
+* [x] **Find equinoxes and solstices as longitude crossings** — seeded from the event's month rather than Ch.27, whose tables are gone; within 1.5 s of published 2019 and 2024 instants and within the ±30 s rounding of all 42 reference solstices; any year. 2026-10-31.
 
 * [x] **Remove the coverage checks** — from the `Astro` functions, both rise and set searches and crescent visibility; `:not_found` is gone from their specs and docs, the README and the guides; tests show answers for the years 500 and 1000. 2026-10-31.
 
