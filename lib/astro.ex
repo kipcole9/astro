@@ -1105,6 +1105,233 @@ defmodule Astro do
   end
 
   @doc """
+  Returns the first lunar eclipse whose greatest eclipse is at or after
+  a date or date time.
+
+  An eclipse is found at a full moon near a node of the Moon's orbit.
+  At each full moon the Moon's angular distance from the axis of the
+  Earth's shadow, the point opposite the Sun, is compared with the
+  radius of the penumbra; where it can reach it, greatest eclipse is
+  the moment of least distance, found by golden section search, and
+  each contact the moment the Moon's limb meets a shadow's edge, found
+  by bisection. `Astro.Lunar.Eclipse` describes the geometry. The
+  positions come from the JPL DE440s ephemeris where the loaded kernel
+  covers the date, and from the analytical series elsewhere.
+
+  ### Arguments
+
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
+    any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`, within 50,000
+    years of J2000.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:shadow` is the convention for enlarging the Earth's shadow for
+    its atmosphere: `:danjon` (the default, as NASA's eclipse
+    catalogues use it) or `:chauvenet` (the older almanac convention,
+    which makes the umbral magnitude about 0.006 larger).
+
+  ### Returns
+
+  * `{:ok, eclipse}`, an `t:Astro.Lunar.Eclipse.t/0` with the type
+    (`:penumbral`, `:partial` or `:total`), gamma, the penumbral and
+    umbral magnitudes, and greatest eclipse and the contacts as UTC
+    `t:DateTime.t/0`s, `nil` for the contacts the eclipse does not
+    have.
+
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000.
+
+  * `{:error, :invalid_shadow}` if `:shadow` is not `:danjon` or
+    `:chauvenet`.
+
+  * `{:error, :invalid_options}` if `options` is not a keyword list.
+
+  ### Accuracy
+
+  Against NASA's catalogue for 1901–2100, compared in Terrestrial Time
+  so that ΔT does not enter, greatest eclipse is within 3 s (0.5 s on
+  average), gamma within 0.00015, both magnitudes within 0.0004, the
+  partial and total phases' durations within 0.1 minute, and every
+  eclipse's type is the same. Outside the ephemeris the series place
+  greatest eclipse within 15 s of NASA's in the nineteenth century,
+  40 s in the thirtieth and two and a half minutes around 950 BCE,
+  with magnitudes within 0.002 and the same types. In Universal Time
+  every instant also carries ΔT's uncertainty; the
+  [accuracy guide](accuracy.md) gives it.
+
+  ### Examples
+
+      iex> {:ok, eclipse} = Astro.lunar_eclipse_at_or_after(~D[2025-03-01])
+      iex> {eclipse.type, DateTime.truncate(eclipse.greatest, :second)}
+      {:total, ~U[2025-03-14 06:58:46Z]}
+
+      iex> {:ok, eclipse} = Astro.lunar_eclipse_at_or_after(~D[2025-03-15])
+      iex> {eclipse.type, DateTime.to_date(eclipse.greatest)}
+      {:total, ~D[2025-09-07]}
+
+  ### Reference
+
+  * Fred Espenak and Jean Meeus, *Five Millennium Canon of Lunar
+    Eclipses: −1999 to +3000*, NASA/TP-2009-214172 (2009), and the
+    [Five Millennium Catalog of Lunar Eclipses](https://eclipse.gsfc.nasa.gov/LEcat5/LEcatalog.html).
+
+  * [Enlargement of Earth's Shadows](https://eclipse.gsfc.nasa.gov/LEcat5/shadow.html),
+    NASA, on Danjon's and Chauvenet's conventions.
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 54 (eclipses).
+
+  """
+  @doc since: "2.10.0"
+  @spec lunar_eclipse_at_or_after(date(), Keyword.t()) ::
+          {:ok, Astro.Lunar.Eclipse.t()}
+          | {:error, :invalid_date | :year_out_of_range | :invalid_shadow | :invalid_options}
+
+  def lunar_eclipse_at_or_after(date, options \\ []) do
+    with {:ok, shadow} <- lunar_eclipse_shadow(options),
+         {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment),
+         {:ok, circumstances} <- Astro.Lunar.Eclipse.eclipse_at_or_after(moment, shadow) do
+      lunar_eclipse(circumstances)
+    end
+  end
+
+  @doc """
+  Returns the last lunar eclipse whose greatest eclipse is before a
+  date or date time.
+
+  An eclipse is found at a full moon near a node of the Moon's orbit.
+  At each full moon the Moon's angular distance from the axis of the
+  Earth's shadow, the point opposite the Sun, is compared with the
+  radius of the penumbra; where it can reach it, greatest eclipse is
+  the moment of least distance, found by golden section search, and
+  each contact the moment the Moon's limb meets a shadow's edge, found
+  by bisection. `Astro.Lunar.Eclipse` describes the geometry. The
+  positions come from the JPL DE440s ephemeris where the loaded kernel
+  covers the date, and from the analytical series elsewhere.
+
+  ### Arguments
+
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
+    any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`, within 50,000
+    years of J2000.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:shadow` is the convention for enlarging the Earth's shadow for
+    its atmosphere: `:danjon` (the default, as NASA's eclipse
+    catalogues use it) or `:chauvenet` (the older almanac convention,
+    which makes the umbral magnitude about 0.006 larger).
+
+  ### Returns
+
+  * `{:ok, eclipse}`, an `t:Astro.Lunar.Eclipse.t/0` with the type
+    (`:penumbral`, `:partial` or `:total`), gamma, the penumbral and
+    umbral magnitudes, and greatest eclipse and the contacts as UTC
+    `t:DateTime.t/0`s, `nil` for the contacts the eclipse does not
+    have.
+
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000.
+
+  * `{:error, :invalid_shadow}` if `:shadow` is not `:danjon` or
+    `:chauvenet`.
+
+  * `{:error, :invalid_options}` if `options` is not a keyword list.
+
+  ### Accuracy
+
+  Against NASA's catalogue for 1901–2100, compared in Terrestrial Time
+  so that ΔT does not enter, greatest eclipse is within 3 s (0.5 s on
+  average), gamma within 0.00015, both magnitudes within 0.0004, the
+  partial and total phases' durations within 0.1 minute, and every
+  eclipse's type is the same. Outside the ephemeris the series place
+  greatest eclipse within 15 s of NASA's in the nineteenth century,
+  40 s in the thirtieth and two and a half minutes around 950 BCE,
+  with magnitudes within 0.002 and the same types. In Universal Time
+  every instant also carries ΔT's uncertainty; the
+  [accuracy guide](accuracy.md) gives it.
+
+  ### Examples
+
+      iex> {:ok, eclipse} = Astro.lunar_eclipse_before(~D[2025-03-14])
+      iex> {eclipse.type, DateTime.to_date(eclipse.greatest)}
+      {:partial, ~D[2024-09-18]}
+
+  ### Reference
+
+  * Fred Espenak and Jean Meeus, *Five Millennium Canon of Lunar
+    Eclipses: −1999 to +3000*, NASA/TP-2009-214172 (2009), and the
+    [Five Millennium Catalog of Lunar Eclipses](https://eclipse.gsfc.nasa.gov/LEcat5/LEcatalog.html).
+
+  * [Enlargement of Earth's Shadows](https://eclipse.gsfc.nasa.gov/LEcat5/shadow.html),
+    NASA, on Danjon's and Chauvenet's conventions.
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 54 (eclipses).
+
+  """
+  @doc since: "2.10.0"
+  @spec lunar_eclipse_before(date(), Keyword.t()) ::
+          {:ok, Astro.Lunar.Eclipse.t()}
+          | {:error, :invalid_date | :year_out_of_range | :invalid_shadow | :invalid_options}
+
+  def lunar_eclipse_before(date, options \\ []) do
+    with {:ok, shadow} <- lunar_eclipse_shadow(options),
+         {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment),
+         {:ok, circumstances} <- Astro.Lunar.Eclipse.eclipse_before(moment, shadow) do
+      lunar_eclipse(circumstances)
+    end
+  end
+
+  defp lunar_eclipse_shadow(options) when is_list(options) do
+    case Keyword.get(options, :shadow, :danjon) do
+      shadow when shadow in [:danjon, :chauvenet] -> {:ok, shadow}
+      _other -> {:error, :invalid_shadow}
+    end
+  end
+
+  defp lunar_eclipse_shadow(_options) do
+    {:error, :invalid_options}
+  end
+
+  # The eclipse with its instants as UTC date times.
+  defp lunar_eclipse(circumstances) do
+    fields = Map.new(circumstances, fn {key, value} -> {key, eclipse_value(key, value)} end)
+    {:ok, struct(Astro.Lunar.Eclipse, fields)}
+  end
+
+  defp eclipse_value(key, value)
+       when key in [:type, :gamma, :penumbral_magnitude, :umbral_magnitude] or is_nil(value) do
+    value
+  end
+
+  defp eclipse_value(_key, moment) do
+    moment
+    |> Time.date_time_from_moment()
+    |> utc_date_time()
+  end
+
+  # `Time.date_time_from_moment/1` answers `{:ok, date_time}` for every moment.
+  defp utc_date_time({:ok, date_time}) do
+    date_time
+  end
+
+  @doc """
   Calculates the sunrise for a given location and date.
 
   Sunrise is the moment when the upper limb of the sun appears on the

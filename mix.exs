@@ -60,7 +60,8 @@ defmodule Astro.MixProject do
         Lunar: [
           Astro.Lunar,
           Astro.Lunar.MoonRiseSet,
-          Astro.Lunar.CrescentVisibility
+          Astro.Lunar.CrescentVisibility,
+          Astro.Lunar.Eclipse
         ],
         Ephemeris: [
           Astro.Ephemeris,
