@@ -21,6 +21,8 @@ defmodule Astro.Lunar do
     ELP-2000/82 lunar theory. They are less accurate (about 3″ RMS in
     longitude near the present) but give a position for any date.
 
+  The [accuracy guide](accuracy.md) compares the two.
+
   The series are sums of sine and cosine terms whose arguments combine
   five fundamental arguments: `mean_lunar_ecliptic_longitude/1`,
   `lunar_elongation/1`, `solar_anomaly/1`, `lunar_anomaly/1` and

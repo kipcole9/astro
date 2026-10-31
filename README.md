@@ -222,6 +222,8 @@ A [comparison document](https://hexdocs.pm/astro/rise_and_set_comparisons.html) 
 
 * **[Lunar events](https://hexdocs.pm/astro/lunar.html)** — moonrise, moonset, phases, new moons and crescent visibility.
 
+* **[Accuracy](https://hexdocs.pm/astro/accuracy.html)** — where the positions come from, how accurate results are near and far from the present, and the uncertainty of ΔT.
+
 * **[Rise and set comparisons](https://hexdocs.pm/astro/rise_and_set_comparisons.html)** — Astro's results against Skyfield, the USNO and timeanddate.com.
 
 The full API documentation is on [HexDocs](https://hexdocs.pm/astro).

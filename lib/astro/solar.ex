@@ -16,6 +16,8 @@ defmodule Astro.Solar do
     sum of periodic perturbations. They are less accurate (about 1″
     near the present) but give a position for any date.
 
+  The [accuracy guide](accuracy.md) compares the two.
+
   The analytical series work from the Earth's orbital elements:
   `sun_geometric_mean_longitude/1`, `sun_geometric_mean_anomaly/1`,
   `earth_orbit_eccentricity/1` and `sun_equation_of_center/1`.

@@ -95,8 +95,6 @@ Recommendation: do not add an accuracy-for-performance option. If a memory-const
 
 ## Tasks
 
-* [ ] **Write `guides/accuracy.md`** — and link it from the README, the guides and the four moduledocs.
-
 * [ ] **Document the Sun functions** — sunrise, sunset, solar noon, daylight, position, azimuth and elevation, apparent longitude.
 
 * [ ] **Document the equinox and solstice functions.**
@@ -110,5 +108,7 @@ Recommendation: do not add an accuracy-for-performance option. If a memory-const
 * [ ] **Add accuracy and references to the `Astro.Solar` and `Astro.Lunar` analytical functions.**
 
 ### Done
+
+* [x] **Write `guides/accuracy.md`** — sources, within and outside the ephemeris, the edges, far term (series drift, ΔT uncertainty from NASA after Morrison and Stephenson 2004 and Huber 2000, Astro's ΔT against Espenak and Meeus) and speed; linked from the README, the docs extras and the `Astro`, `Astro.Solar`, `Astro.Lunar` and `Astro.Ephemeris` moduledocs. 2026-10-31.
 
 * [x] **Measure every function's series accuracy** — see "Series accuracy, measured" above. 2026-10-31.

@@ -47,6 +47,9 @@ defmodule Astro.Ephemeris do
   This is a 10–100× improvement over the truncated Chapront series used in
   Meeus that was the core of the Astro 1.x library.
 
+  The [accuracy guide](accuracy.md) gives the measured accuracy of every
+  function, and of the analytical series that answer outside the ephemeris.
+
   """
 
   alias Astro.Coordinates

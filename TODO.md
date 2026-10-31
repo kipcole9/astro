@@ -4,6 +4,8 @@ Work planned for Astro. The detail of anything shipped is in the CHANGELOG.
 
 ## Open
 
+* [ ] **Review the ΔT model** — `Astro.Time.delta_t/1` extrapolates in a straight line at 0.15 s a year after 2025, where long-term models follow a parabola: 216 s against Espenak and Meeus's 4,436 s at 3000, outside NASA's 1,885 s uncertainty. Before 1000 its Meeus chapter 10 polynomials differ from Espenak and Meeus by 700–1,100 s around 0–500 CE, against an uncertainty of 140–265 s. Consider adopting the Espenak and Meeus polynomials; the figures are in `guides/accuracy.md`.
+
 * [ ] **Documentation as a learning guide** — each primary function explains what it calculates, how and from which source, how accurate it is, and where to read more, with an accuracy guide covering JPL against the series, near and far term. Plan in [plans/learning-documentation.md](plans/learning-documentation.md).
 
 * [ ] **Answer every date from JPL or Meeus** — positions come from the JPL ephemeris where it covers the moment and from the Meeus series where it does not, so no consumer checks coverage or sees `{:error, :not_found}`. Design and tasks in [plans/jpl-meeus-fallback.md](plans/jpl-meeus-fallback.md).

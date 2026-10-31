@@ -44,6 +44,7 @@ defmodule Astro.MixProject do
         "guides/getting_started.md",
         "guides/solar.md",
         "guides/lunar.md",
+        "guides/accuracy.md",
         "LICENSE.md",
         "CHANGELOG.md",
         "rise_and_set_comparisons.md"

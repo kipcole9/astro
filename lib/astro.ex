@@ -13,6 +13,9 @@ defmodule Astro do
   For lower-level access see `Astro.Solar`, `Astro.Lunar`, `Astro.Time`,
   `Astro.Earth` and `Astro.Ephemeris`.
 
+  How accurate the results are, inside and outside the JPL ephemeris and
+  far from the present, is described in the [accuracy guide](accuracy.md).
+
   ## Specifying a location
 
   A location is a `{longitude, latitude}` tuple (note the order, which
