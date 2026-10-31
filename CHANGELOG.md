@@ -12,6 +12,8 @@
 
 ### Changed
 
+* New moons are the moments the lunar phase passes 0°, refined from the Meeus chapter 49 estimate: within a second of JPL, against up to 12 s. Far from the present they follow the analytical series, which drift from chapter 49 by about 1 s per century².
+
 * `Astro.equinox/3` and `Astro.solstice/3` are the moments the Sun's apparent longitude reaches 0°, 90°, 180° or 270°: within a few seconds of published times, against about 30 for the Meeus closed form. They work for any year, so `{:error, :year_out_of_range}` is gone.
 
 * Dates outside the loaded ephemeris are answered from the analytical series: the `Astro` functions, sunrise and sunset, moonrise and moonset and crescent visibility no longer return `{:error, :not_found}`, and their specs no longer name it.
@@ -21,6 +23,8 @@
 * `Astro.Solar.sun_geometric_mean_anomaly/1`, `earth_orbit_eccentricity/1` and `sun_equation_of_center/1`, and `Astro.Lunar.mean_lunar_ecliptic_longitude/1` and `lunar_elongation/1` are no longer deprecated: the analytical series are built from them.
 
 ### Bug Fixes
+
+* `Astro.Lunar.lunar_phase_at/1` returned the chapter 49 estimate instead of the computed phase near every new moon, because its check for a large difference compared 359.9° with 0.1° as 359.8° apart.
 
 * The precession applied to JPL positions took the epoch terms of Meeus 21.2 as its t² and t³ coefficients, misplacing the Sun and Moon by up to about 2″ at 1900 and 2100. Rise and set times near the present move by milliseconds.
 

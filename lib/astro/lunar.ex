@@ -110,6 +110,14 @@ defmodule Astro.Lunar do
   # the lunation nearest a moment is estimated in mean synodic months.
   @new_moon_zero 376.46287205875086
 
+  # A new moon is found by searching for the zero-phase crossing within this
+  # fraction of a mean synodic month either side of the Meeus chapter 49
+  # estimate. The estimate is within seconds of the crossing near the present
+  # and drifts as the square of the time from J2000 (about four hours at
+  # −10,000), so 0.4 of a month (about ±12 days, ±144° of phase) keeps exactly
+  # one crossing in the window far beyond any calendar's range.
+  @new_moon_search_months 0.4
+
   # IAU 2015 lunar radius in km
   @lunar_radius 1_737.4
   @lunar_radius_m @lunar_radius * Earth.meters_per_kilometer()
@@ -565,6 +573,11 @@ defmodule Astro.Lunar do
   Returns the date time of the new
   moon before a given moment.
 
+  A new moon is the moment the lunar phase, the Moon's apparent ecliptic
+  longitude minus the Sun's, passes 0°. It is found by refining the
+  estimate of `nth_new_moon/1` (Meeus, *Astronomical Algorithms*, chapter
+  49) to that crossing.
+
   ### Arguments
 
   * `t` is a `t:Astro.Time.moment/0` float number of days
@@ -578,7 +591,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_before 738390
-      738375.5764772523
+      738375.5764800685
 
   """
   @doc since: "0.5.0"
@@ -593,6 +606,11 @@ defmodule Astro.Lunar do
   Returns the date time of the new
   moon at or after a given moment.
 
+  A new moon is the moment the lunar phase, the Moon's apparent ecliptic
+  longitude minus the Sun's, passes 0°. It is found by refining the
+  estimate of `nth_new_moon/1` (Meeus, *Astronomical Algorithms*, chapter
+  49) to that crossing.
+
   ### Arguments
 
   * `t` is a `t:Astro.Time.moment/0` float number of days
@@ -606,7 +624,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_at_or_after(738390)
-      738405.0359290199
+      738405.0359543662
 
   """
   @doc since: "0.5.0"
@@ -618,32 +636,77 @@ defmodule Astro.Lunar do
   end
 
   # The new moons either side of `t`: the last one before it and the first one
-  # at or after it. New moons strictly increase with their lunation number, so
-  # the pair is found by starting from the lunation nearest `t` in mean months
-  # and walking to its neighbour on the other side of `t`. That estimate is
-  # within a couple of days of the true new moon, so the walk ends after those
-  # two evaluations.
+  # at or after it, each the moment the lunar phase passes 0°.
+  #
+  # The Meeus chapter 49 estimates of two consecutive lunations bracket `t`,
+  # and each is refined to its zero-phase crossing. When `t` falls between an
+  # estimate and its crossing, a refined new moon lands on the other side of
+  # `t`, and the neighbouring lunation completes the pair. A new moon is
+  # always refined from its own lunation's estimate, so the same new moon is
+  # the same moment however it is reached.
   defp new_moons_around(t) do
-    n = round((t - @new_moon_zero) / mean_synodic_month())
-    moment = nth_new_moon(n)
+    {lunation_before, lunation_after} = lunations_around(t)
+    bracket(t, lunation_before, new_moon(lunation_before), new_moon(lunation_after))
+  end
 
-    if moment < t do
-      walk_forward(n + 1, moment, t)
+  defp bracket(t, lunation_before, before, _at_or_after) when before >= t do
+    {new_moon(lunation_before - 1), before}
+  end
+
+  defp bracket(t, lunation_before, _before, at_or_after) when at_or_after < t do
+    {at_or_after, new_moon(lunation_before + 2)}
+  end
+
+  defp bracket(_t, _lunation_before, before, at_or_after) do
+    {before, at_or_after}
+  end
+
+  # The moment a lunation's new moon occurs: where the lunar phase passes 0°
+  # near its Meeus chapter 49 estimate.
+  defp new_moon(lunation) do
+    estimate = nth_new_moon(lunation)
+    half_width = @new_moon_search_months * mean_synodic_month()
+
+    invert_angular(
+      &lunar_phase_at/1,
+      new_moon_phase(),
+      estimate - half_width,
+      estimate + half_width
+    )
+  end
+
+  # The lunations whose Meeus chapter 49 estimates are the last before `t`
+  # and the first at or after it. Estimates strictly increase with the
+  # lunation number, so the pair is found by starting from the lunation
+  # nearest `t` in mean months and walking to its neighbour on the other side
+  # of `t`. That start is within a couple of days of the estimate, so the
+  # walk ends after one or two steps.
+  defp lunations_around(t) do
+    lunation = round((t - @new_moon_zero) / mean_synodic_month())
+
+    if nth_new_moon(lunation) < t do
+      walk_forward(lunation + 1, t)
     else
-      walk_back(n - 1, moment, t)
+      walk_back(lunation - 1, t)
     end
   end
 
-  # Lunation `n - 1`, at `previous`, is before `t`.
-  defp walk_forward(n, previous, t) do
-    moment = nth_new_moon(n)
-    if moment < t, do: walk_forward(n + 1, moment, t), else: {previous, moment}
+  # Lunation `lunation - 1` is before `t`.
+  defp walk_forward(lunation, t) do
+    if nth_new_moon(lunation) < t do
+      walk_forward(lunation + 1, t)
+    else
+      {lunation - 1, lunation}
+    end
   end
 
-  # Lunation `n + 1`, at `following`, is at or after `t`.
-  defp walk_back(n, following, t) do
-    moment = nth_new_moon(n)
-    if moment < t, do: {moment, following}, else: walk_back(n - 1, moment, t)
+  # Lunation `lunation + 1` is at or after `t`.
+  defp walk_back(lunation, t) do
+    if nth_new_moon(lunation) < t do
+      {lunation, lunation + 1}
+    else
+      walk_back(lunation - 1, t)
+    end
   end
 
   @doc """
@@ -663,7 +726,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_nearest(738390)
-      738375.576473942
+      738375.5764815714
 
   """
   @doc since: "2.0.0"
@@ -684,6 +747,10 @@ defmodule Astro.Lunar do
   @doc """
   Returns the lunar phase as a float number of degrees at
   a given moment.
+
+  The phase is the Moon's apparent ecliptic longitude minus the Sun's,
+  reduced to the range 0 to 360: 0° at new moon, 90° at first quarter,
+  180° at full moon and 270° at last quarter.
 
   ### Arguments
 
@@ -708,15 +775,7 @@ defmodule Astro.Lunar do
   @spec lunar_phase_at(t :: Astro.Time.moment()) :: Astro.angle()
 
   def lunar_phase_at(t) when is_number(t) do
-    phi = mod(lunar_ecliptic_longitude(t) - Solar.solar_ecliptic_longitude(t), 360)
-    n = round((t - @new_moon_zero) / mean_synodic_month())
-    phi_prime = deg(360) * mod((t - nth_new_moon(n)) / mean_synodic_month(), 1)
-
-    if abs(phi - phi_prime) > deg(180.0) do
-      phi_prime
-    else
-      phi
-    end
+    mod(lunar_ecliptic_longitude(t) - Solar.solar_ecliptic_longitude(t), 360.0)
   end
 
   @doc """
@@ -741,7 +800,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_before(738368, Astro.Lunar.new_moon_phase())
-      738346.0531681819
+      738346.0532063289
 
   """
   @doc since: "0.5.0"

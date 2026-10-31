@@ -74,7 +74,9 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 ## Tasks
 
-* [ ] **Refine new moons to the zero-phase crossing** — seeded by `nth_new_moon/1`. First fix `Astro.Lunar.lunar_phase_at/1`: its check that swaps the computed phase for the Ch.49-based estimate when they differ by more than 180° misfires across 0°/360°, so near every new moon the phase is the Ch.49 estimate, and every new moon search lands on the Ch.49 instant (about 3.5 s from the JPL zero crossing in 2024, 110 s at the year 1000).
+* [ ] **Speed up the new moon refinement** — each search now refines two new moons by bisection over ±12 days (about 21 phase evaluations each): 0.39 ms inside the ephemeris and 1.25 ms outside it, against about 0.01 ms for chapter 49 alone. A Newton step on the phase (the estimate minus the signed phase over the Moon's rate) converges in three or four evaluations, and only the one new moon a caller needs has to be refined. A lunisolar calendar over 2,000 years needs about 25,000 new moons.
+
+* [ ] **Restore the far-date new moon search** — the corrected lunation estimate and the ±300,000-year `ArgumentError` decided above are not in any commit (possibly in the user's `stash@{0}`); without them a search 100,000 years out walks many lunations and one beyond ±300,000 years does not end.
 
 * [ ] **Test the ephemeris edges** — every public function across both edges of the bundled and the full kernel, with no error, no raise, and event times within the stated jump.
 
@@ -83,6 +85,8 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 * [ ] **Calendrical follow-up** — once released, remove `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error from `Calendrical.Islamic.Visibility`, and raise Calendrical's Astro requirement. In the Calendrical repository, by its maintainer.
 
 ### Done
+
+* [x] **Refine new moons to the zero-phase crossing** — `lunar_phase_at/1` is the plain longitude difference (its chapter 49 substitution misfired across 0°/360°); each lunation's new moon is refined from its own chapter 49 estimate, so a new moon is the same moment however it is reached. Chapter 49 is within 12 s of the JPL crossing over 1900–2100 and drifts from the series as about 1 s per century² outside it (96 s at 1000, 4 h at −10,000). 2026-10-31.
 
 * [x] **Find equinoxes and solstices as longitude crossings** — seeded from the event's month rather than Ch.27, whose tables are gone; within 1.5 s of published 2019 and 2024 instants and within the ±30 s rounding of all 42 reference solstices; any year. 2026-10-31.
 

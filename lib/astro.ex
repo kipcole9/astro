@@ -420,7 +420,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_new_moon_before(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:50:07.634598Z]}
+      {:ok, ~U[2021-08-08 13:50:07.877918Z]}
 
   """
   @doc since: "0.5.0"
@@ -471,7 +471,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:50:07.348591Z]}
+      {:ok, ~U[2021-08-08 13:50:08.007771Z]}
 
   """
   @doc since: "2.0.0"
@@ -514,7 +514,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_new_moon_at_or_after(~D[2021-08-23])
-      {:ok, ~U[2021-09-07 00:51:44.267320Z]}
+      {:ok, ~U[2021-09-07 00:51:46.457240Z]}
 
   """
   @doc since: "0.5.0"
@@ -559,8 +559,8 @@ defmodule Astro do
       iex> Astro.lunar_phase_at ~U[2021-08-22 12:02:02.816534Z]
       180.00068383330358
 
-      iex> Astro.lunar_phase_at(~U[2021-07-10 01:16:34.022607Z])
-      3.6600909621461326e-6
+      iex> Astro.lunar_phase_at(~U[2021-07-10 01:16:37.026816Z])
+      359.9999651540469
 
   Outside the loaded ephemeris the phase comes from the analytical
   series:
@@ -660,7 +660,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
-      {:ok, ~U[2021-07-10 01:16:33.730917Z]}
+      {:ok, ~U[2021-07-10 01:16:37.026816Z]}
 
   """
 

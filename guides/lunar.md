@@ -72,10 +72,10 @@ Rather than asking what the phase is on a date, these search for when a phase oc
 
 ```elixir
 iex> Astro.date_time_new_moon_before(~D[2019-12-04])
-{:ok, ~U[2019-11-26 15:05:39.392335Z]}
+{:ok, ~U[2019-11-26 15:05:35.255816Z]}
 
 iex> Astro.date_time_new_moon_at_or_after(~D[2019-12-04])
-{:ok, ~U[2019-12-26 05:13:15.112931Z]}
+{:ok, ~U[2019-12-26 05:13:07.569872Z]}
 ```
 
 `date_time_new_moon_nearest/1` picks whichever of the two is closer.
