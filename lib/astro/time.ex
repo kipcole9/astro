@@ -256,7 +256,7 @@ defmodule Astro.Time do
   @julian_epoch_days 1_721_425.5
 
   # IERS-observed ΔT values (TT − UT1 ≈ TT − UTC to within 0.9 s),
-  # one value per year at the year midpoint (July 1), 1972–2025.
+  # one value per year at January 1, 1972–2025.
   # Source: IERS Earth Orientation Parameters, Bulletin A/B.
   # Each row spans a decade (10 annual entries); first year shown in comment.
   @iers_first_year 1972
@@ -273,42 +273,14 @@ defmodule Astro.Time do
                       |> Enum.map(&String.to_float/1)
                       |> Enum.with_index(@iers_first_year)
                       |> Map.new(fn {val, year} -> {year, val} end)
-  # Linear extrapolation rate beyond the IERS table (seconds/year).
-  @iers_extrap_rate 0.15
 
-  # Meeus biennial lookup table for 1620–2002 (ΔT in seconds, even years only).
-  # Source: Meeus, Astronomical Algorithms, Table 10.A.
-  # Each row spans 20 years (10 biennial entries); the comment gives the first year.
-  @meeus_delta_t_tuple """
-                         121  112  103   95   88   82   77   72   68   63
-                          60   56   53   51   48   46   44   42   40   38
-                          35   33   31   29   26   24   22   20   18   16
-                          14   12   11   10    9    8    7    7    7    7
-                           7    7    8    8    9    9    9    9    9   10
-                          10   10   10   10   10   10   10   11   11   11
-                          11   11   12   12   12   12   13   13   13   14
-                          14   14   14   15   15   15   15   15   16   16
-                          16   16   16   16   16   16   15   15   14   13
-                        13.1 12.5 12.2 12.0 12.0 12.0 12.0 12.0 12.0 11.9
-                        11.6 11.0 10.2  9.2  8.2  7.1  6.2  5.6  5.4  5.3
-                         5.4  5.6  5.9  6.2  6.5  6.8  7.1  7.3  7.5  7.6
-                         7.7  7.3  6.2  5.2  2.7  1.4 -1.2 -2.8 -3.8 -4.8
-                        -5.5 -5.3 -5.6 -5.7 -5.9 -6.0 -6.3 -6.5 -6.2 -4.7
-                        -2.8 -0.1  2.6  5.3  7.7 10.4 13.3 16.0 18.2 20.2
-                        21.1 22.4 23.5 23.8 24.3 24.0 23.9 23.9 23.7 24.0
-                        24.3 25.3 26.2 27.3 28.2 29.1 30.0 30.7 31.4 32.2
-                        33.1 34.0 35.0 36.5 38.3 40.2 42.2 44.5 46.5 48.5
-                        50.5 52.5 53.8 54.9 55.8 56.9 58.3 60.0 61.6 63.0
-                        63.8 64.3
-                       """
-                       |> String.split()
-                       |> Enum.map(
-                         &String.to_float(if String.contains?(&1, "."), do: &1, else: &1 <> ".0")
-                       )
-                       |> List.to_tuple()
-
-  @meeus_first_year 1620
-  @meeus_last_year 2002
+  # After the IERS table, ΔT is joined smoothly to the long-term parabola of
+  # Morrison and Stephenson (2004), reaching it at this year and following it
+  # after. The join starts from the last IERS value and the mean rate over
+  # the table's last five years.
+  @long_term_join_year 2150
+  @iers_recent_rate (@iers_delta_t_table[@iers_last_year] -
+                       @iers_delta_t_table[@iers_last_year - 5]) / 5
 
   @jd_j2000 2_451_545.0
 
@@ -1591,16 +1563,26 @@ defmodule Astro.Time do
   @doc """
   Returns ΔT (TT − UTC) in seconds for the given decimal year.
 
-  ΔT is the difference between Terrestrial Time (TT) and Universal
-  Time (UTC). It varies over time as Earth's rotation rate changes.
+  ΔT is the difference between Terrestrial Time (TT), the uniform time
+  in which the Sun's and the Moon's positions are computed, and
+  Universal Time, which follows the Earth's rotation. Tidal friction
+  slows the Earth, so ΔT grows roughly as the square of the time from
+  the present, with fluctuations over decades from the Earth's core.
 
-  Uses the best available data for each era:
+  It comes from three sources:
 
-  * **1972–2025** — IERS-observed annual values with linear interpolation.
+  * **Before 1972** — the polynomials of Espenak and Meeus, fitted to
+    the historical values of Morrison and Stephenson (2004) from
+    ancient eclipses and, since 1600, lunar occultations, with the
+    long-term parabola `−20 + 32u²` (`u` in centuries from 1820)
+    before −500. This is the model NASA's eclipse catalogues use.
 
-  * **1620–1971** — the Meeus biennial lookup table with interpolation.
+  * **1972–2025** — values observed by the IERS, one for each
+    1 January, interpolated linearly.
 
-  * **Before 1620 and after 2025** — polynomial approximations.
+  * **After 2025** — a cubic that starts from the last observed value
+    and its rate over the preceding five years and joins the long-term
+    parabola at 2150, which it follows after.
 
   ### Arguments
 
@@ -1610,6 +1592,13 @@ defmodule Astro.Time do
 
   * ΔT in seconds as a `float`.
 
+  ### Accuracy
+
+  NASA estimates the uncertainty of ΔT as 0.1 s at 1900, 5 s at 1700,
+  54 s at 1000, 265 s at the year 0 and 3,732 s at −2000; and, into the
+  future, 612 s at 2500 and 1,885 s at 3000. The
+  [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> Astro.Time.delta_t(2000.0)
@@ -1618,31 +1607,29 @@ defmodule Astro.Time do
       iex> Float.round(Astro.Time.delta_t(2024.5), 2)
       69.24
 
+      iex> round(Astro.Time.delta_t(1000.0))
+      1574
+
+  ### Reference
+
+  * Fred Espenak and Jean Meeus, [Polynomial Expressions for Delta
+    T](https://eclipse.gsfc.nasa.gov/SEhelp/deltatpoly2004.html), NASA.
+
+  * Leslie Morrison and F. Richard Stephenson, Historical Values of
+    the Earth's Clock Error ΔT and the Calculation of Eclipses,
+    *Journal for the History of Astronomy* 35 (2004).
+
+  * F. Richard Stephenson, Leslie Morrison and Catherine Hohenkerk,
+    [Measurement of the Earth's rotation: 720 BC to AD 2015](https://doi.org/10.1098/rspa.2016.0404),
+    *Proceedings of the Royal Society A* 472 (2016), 20160404.
+
   """
   @spec delta_t(float()) :: float()
   def delta_t(year) when is_number(year) do
     cond do
-      # IERS observed values — most accurate for modern dates
-      year >= @iers_first_year and year <= @iers_last_year ->
-        iers_delta_t(year)
-
-      # Post-IERS: extrapolate forward from last IERS entry
-      year > @iers_last_year ->
-        @iers_delta_t_table[@iers_last_year] + @iers_extrap_rate * (year - @iers_last_year)
-
-      # Meeus biennial table for 1620–1971
-      year >= @meeus_first_year ->
-        meeus_table_delta_t(year)
-
-      # Pre-1620: Meeus polynomial approximations
-      year < 948 ->
-        t = (year - 2000) / 100.0
-        2177 + 497 * t + 44.1 * t * t
-
-      true ->
-        # 948–1619
-        t = (year - 2000) / 100.0
-        102 + 102 * t + 25.3 * t * t
+      year > @iers_last_year -> projected_delta_t(year)
+      year >= @iers_first_year -> iers_delta_t(year)
+      true -> historical_delta_t(year)
     end
   end
 
@@ -1657,41 +1644,105 @@ defmodule Astro.Time do
     v0 + frac * (v1 - v0)
   end
 
-  # Meeus biennial table interpolation (even-year entries, 1620–2002)
-  defp meeus_table_delta_t(year) do
-    year_int = trunc(year)
+  # The polynomials of Espenak and Meeus for each era before 1972, as NASA
+  # publishes them (https://eclipse.gsfc.nasa.gov/SEhelp/deltatpoly2004.html).
+  defp historical_delta_t(year) when year < -500 do
+    long_term_delta_t(year)
+  end
 
-    cond do
-      year_int >= @meeus_first_year and year_int <= @meeus_last_year and rem(year_int, 2) == 0 ->
-        idx = div(year_int - @meeus_first_year, 2)
-        v0 = elem(@meeus_delta_t_tuple, idx)
-        # Interpolate fractional year within the 2-year bin
-        if year_int + 2 <= @meeus_last_year do
-          v1 = elem(@meeus_delta_t_tuple, idx + 1)
-          frac = (year - year_int) / 2.0
-          v0 + frac * (v1 - v0)
-        else
-          v0
-        end
+  defp historical_delta_t(year) when year < 500 do
+    Math.poly(year / 100, [
+      10_583.6,
+      -1014.41,
+      33.78311,
+      -5.952053,
+      -0.1798452,
+      0.022174192,
+      0.0090316521
+    ])
+  end
 
-      year_int >= @meeus_first_year and year_int <= @meeus_last_year ->
-        # Odd year: average of neighboring even years
-        v_prev = meeus_table_delta_t(year_int - 1.0)
-        v_next = meeus_table_delta_t(year_int + 1.0)
-        frac = year - year_int
-        avg = (v_prev + v_next) / 2.0
+  defp historical_delta_t(year) when year < 1600 do
+    Math.poly((year - 1000) / 100, [
+      1574.2,
+      -556.01,
+      71.23472,
+      0.319781,
+      -0.8503463,
+      -0.005050998,
+      0.0083572073
+    ])
+  end
 
-        if year_int + 1 <= @meeus_last_year do
-          avg + frac * (v_next - avg)
-        else
-          avg
-        end
+  defp historical_delta_t(year) when year < 1700 do
+    Math.poly(year - 1600, [120.0, -0.9808, -0.01532, 1 / 7129])
+  end
 
-      true ->
-        # Shouldn't reach here, but fallback to polynomial
-        t = (year - 2000) / 100.0
-        102 + 102 * t + 25.3 * t * t
-    end
+  defp historical_delta_t(year) when year < 1800 do
+    Math.poly(year - 1700, [8.83, 0.1603, -0.0059285, 0.00013336, -1 / 1_174_000])
+  end
+
+  defp historical_delta_t(year) when year < 1860 do
+    Math.poly(year - 1800, [
+      13.72,
+      -0.332447,
+      0.0068612,
+      0.0041116,
+      -0.00037436,
+      0.0000121272,
+      -0.0000001699,
+      0.000000000875
+    ])
+  end
+
+  defp historical_delta_t(year) when year < 1900 do
+    Math.poly(year - 1860, [7.62, 0.5737, -0.251754, 0.01680668, -0.0004473624, 1 / 233_174])
+  end
+
+  defp historical_delta_t(year) when year < 1920 do
+    Math.poly(year - 1900, [-2.79, 1.494119, -0.0598939, 0.0061966, -0.000197])
+  end
+
+  defp historical_delta_t(year) when year < 1941 do
+    Math.poly(year - 1920, [21.20, 0.84493, -0.076100, 0.0020936])
+  end
+
+  defp historical_delta_t(year) when year < 1961 do
+    Math.poly(year - 1950, [29.07, 0.407, -1 / 233, 1 / 2547])
+  end
+
+  defp historical_delta_t(year) do
+    Math.poly(year - 1975, [45.45, 1.067, -1 / 260, -1 / 718])
+  end
+
+  # A cubic Hermite curve from the last IERS value, at its recent rate, to
+  # the long-term parabola and its slope at the join year; the parabola
+  # after that.
+  defp projected_delta_t(year) when year >= @long_term_join_year do
+    long_term_delta_t(year)
+  end
+
+  defp projected_delta_t(year) do
+    span = @long_term_join_year - @iers_last_year
+    t = (year - @iers_last_year) / span
+
+    start_value = @iers_delta_t_table[@iers_last_year] * (2 * t * t * t - 3 * t * t + 1)
+    start_slope = span * @iers_recent_rate * (t * t * t - 2 * t * t + t)
+    end_value = long_term_delta_t(@long_term_join_year) * (3 * t * t - 2 * t * t * t)
+    end_slope = span * long_term_delta_t_rate(@long_term_join_year) * (t * t * t - t * t)
+
+    start_value + start_slope + end_value + end_slope
+  end
+
+  # The long-term parabola of Morrison and Stephenson (2004), and its
+  # rate in seconds a year.
+  defp long_term_delta_t(year) do
+    centuries = (year - 1820) / 100
+    -20 + 32 * centuries * centuries
+  end
+
+  defp long_term_delta_t_rate(year) do
+    64 * (year - 1820) / 10_000
   end
 
   # ── Dynamical time / moment conversions ──────────────────────────────────────

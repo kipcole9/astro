@@ -29,7 +29,7 @@ defmodule Astro.Moon.NewMoon.Test do
 
     test "the date-time searches find new moons before AD 1" do
       assert {:ok, new_moon} = Astro.date_time_new_moon_before(~D[-0349-06-21])
-      assert DateTime.truncate(new_moon, :second) == ~U[-0349-06-04 18:31:27Z]
+      assert DateTime.truncate(new_moon, :second) == ~U[-0349-06-04 18:32:36Z]
 
       assert {:ok, next} = Astro.date_time_new_moon_at_or_after(~D[-0349-06-21])
       assert DateTime.diff(next, new_moon, :day) in 29..30
@@ -48,7 +48,7 @@ defmodule Astro.Moon.NewMoon.Test do
 
     test "lunation 0 is the moment the searches estimate from" do
       # `@new_moon_zero` in `Astro.Lunar`.
-      assert Astro.Lunar.nth_new_moon(0) === 376.46287205875086
+      assert Astro.Lunar.nth_new_moon(0) === 376.45466366536925
     end
   end
 

@@ -280,7 +280,7 @@ defmodule Astro.Solar do
 
       iex> moment = Astro.Time.date_time_to_moment(~D[1000-06-01])
       iex> Astro.Solar.solar_ecliptic_longitude(moment) |> Float.round(4)
-      69.5902
+      69.5898
 
   """
   def solar_ecliptic_longitude(t) do

@@ -110,7 +110,7 @@ defmodule Astro.Lunar do
 
   # The moment of lunation 0, `nth_new_moon(0)` (11 January 1 CE), from which
   # the lunation nearest a moment is estimated in mean synodic months.
-  @new_moon_zero 376.46287205875086
+  @new_moon_zero 376.45466366536925
 
   # The lunar phase advances by 360° each mean synodic month, about 12.2° a
   # day. The secant search for a new moon takes its first step at this rate.

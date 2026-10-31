@@ -79,20 +79,17 @@ Before about 1600 and after about 2100, an uncertainty of minutes to hours in Δ
 
 ### How Astro computes ΔT
 
-`Astro.Time.delta_t/1` uses IERS observations for 1972–2025, the table of Meeus, *Astronomical Algorithms*, chapter 10, for 1620–1971, two polynomials of Meeus chapter 10 before 1620, and a straight line from the last IERS value at 0.15 s a year after 2025. Compared with the model of Espenak and Meeus used by NASA's eclipse catalogues ([Polynomial Expressions for Delta T](https://eclipse.gsfc.nasa.gov/SEhelp/deltatpoly2004.html)):
+`Astro.Time.delta_t/1` uses three sources:
 
-| Year | Astro | Espenak and Meeus |
-|---|---|---|
-| −2000 | 52,857 s | 46,676 s |
-| 0 | 9,877 s | 10,584 s |
-| 500 | 4,645 s | 5,710 s |
-| 1000 | 1,612 s | 1,574 s |
-| 1500 | 225 s | 198 s |
-| 2500 | 141 s | 1,460 s |
-| 3000 | 216 s | 4,436 s |
-| 5000 | 516 s | 32,340 s |
+* **Before 1972** — the polynomials of Espenak and Meeus ([Polynomial Expressions for Delta T](https://eclipse.gsfc.nasa.gov/SEhelp/deltatpoly2004.html)), the model NASA's eclipse catalogues use. They are fitted to the historical values of Morrison and Stephenson (2004), drawn from ancient and medieval eclipses and, since 1600, lunar occultations, and follow the long-term parabola `−20 + 32u²`, `u` in centuries from 1820, before −500. They agree with every value Morrison and Stephenson tabulate from −500 to 1950 to within 0.1 s.
 
-The two agree well between about 1000 and the present. Before that they differ by more than the uncertainty above, and after 2025 Astro's straight line stays far below the parabola that tidal braking of the Earth's rotation leads models to expect: by 3000 the difference is about 70 minutes.
+* **1972–2025** — the values observed by the IERS, one for each 1 January.
+
+* **After 2025** — a smooth curve from the last observed value, and its rate over 2020–2025, that joins the long-term parabola at 2150 and follows it after: 70 s in 2030, 88 s in 2050, 199 s in 2100 and 4,436 s in 3000.
+
+The parabola reflects tidal friction, which lengthens the day: Stephenson, Morrison and Hohenkerk ([2016](https://doi.org/10.1098/rspa.2016.0404)) measure an average lengthening of 1.8 ms a century since 720 BC, which corresponds to ΔT growing by about 33 s per century². The Earth's rotation also fluctuates over decades, which no model predicts: it has sped up since 2016, so ΔT barely changed between 2020 and 2025, and the join keeps that for the next few years before it turns toward the long-term trend.
+
+Earlier versions of Astro used the older formulas of Meeus, *Astronomical Algorithms*, chapter 10, and a straight line after 2025. They differed from the model above by up to 20 minutes around 250 CE and 70 minutes at 3000, and jumped 41 s at 1620.
 
 ## Speed
 

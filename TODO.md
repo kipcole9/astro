@@ -4,8 +4,6 @@ Work planned for Astro. The detail of anything shipped is in the CHANGELOG.
 
 ## Open
 
-* [ ] **Review the ΔT model** — Astro's ΔT differs from the Espenak and Meeus model NASA uses by more than two standard errors at −1000, 0 and 3000, jumps 41 s at 1620, and extrapolates in a straight line after 2025. Analysis and recommendation in [plans/delta-t.md](plans/delta-t.md).
-
 * [ ] **Documentation as a learning guide** — each primary function explains what it calculates, how and from which source, how accurate it is, and where to read more, with an accuracy guide covering JPL against the series, near and far term. Plan in [plans/learning-documentation.md](plans/learning-documentation.md).
 
 * [ ] **Answer every date from JPL or Meeus** — positions come from the JPL ephemeris where it covers the moment and from the Meeus series where it does not, so no consumer checks coverage or sees `{:error, :not_found}`. Design and tasks in [plans/jpl-meeus-fallback.md](plans/jpl-meeus-fallback.md).
@@ -13,6 +11,8 @@ Work planned for Astro. The detail of anything shipped is in the CHANGELOG.
 * [ ] **Remove `Astro.date_time_new_moon_at_or_before/1`** — deprecated in 2.6.2 in favour of `Astro.date_time_new_moon_before/1`; remove it in the next major release.
 
 ## Done
+
+* [x] **Review the ΔT model** — Espenak and Meeus before 1972, IERS 1972–2025, a smooth join to the long-term parabola after; see [plans/delta-t.md](plans/delta-t.md). 2026-10-31.
 
 * [x] **Return errors rather than raise on invalid input** — the tuple-returning `Astro` functions return errors for invalid arguments and beyond 50,000 years; the seven bare-value functions keep raising, by decision. See [plans/invalid-input.md](plans/invalid-input.md). 2026-10-31.
 

@@ -1,6 +1,6 @@
 # ΔT
 
-**Status:** planning, 2026-10-31
+**Status:** implemented (v2.10.0), 2026-10-31
 
 ΔT is the difference between Terrestrial Time, in which the Sun's and the Moon's positions are computed, and Universal Time, which follows the Earth's rotation and in which Astro returns its results. Tidal friction slows the Earth, so ΔT grows roughly as the square of the time from the present, with decade-scale fluctuations from the Earth's core. Every event time Astro gives far from the present is shifted by ΔT, and outside the telescopic era ΔT is known only from records of ancient eclipses and occultations.
 
@@ -63,8 +63,10 @@ What changes: event times before about 1000 CE and after about 2050 move, by up 
 
 ## Tasks
 
-* [ ] **Replace ΔT before 1972 with the Espenak and Meeus polynomials** — and test them against NASA's published values at their range boundaries.
+### Done
 
-* [ ] **Join 2025 to the long-term parabola** — cubic Hermite from the last IERS value and rate to `−20 + 32u²` at 2150.
+* [x] **Replace ΔT before 1972 with the Espenak and Meeus polynomials** — within 0.07 s of all 28 Morrison and Stephenson values NASA tabulates from −500 to 1950; steps at the formula boundaries at most 0.25 s, where 1620 jumped 41 s. 2026-10-31.
 
-* [ ] **Update the accuracy guide and the ΔT docs** — the comparison table in `guides/accuracy.md` becomes a description of the model.
+* [x] **Join 2025 to the long-term parabola** — cubic Hermite from the 2025 IERS value and the 2020–2025 rate to `−20 + 32u²` at 2150. 2026-10-31.
+
+* [x] **Update the accuracy guide and the ΔT docs.** 2026-10-31.
