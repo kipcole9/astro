@@ -1199,7 +1199,7 @@ defmodule Astro do
          {:ok, moment} <- Time.checked_moment(date),
          {:ok, moment} <- Lunar.checked_search_moment(moment),
          {:ok, circumstances} <- Astro.Lunar.Eclipse.eclipse_at_or_after(moment, shadow) do
-      lunar_eclipse(circumstances)
+      eclipse(Astro.Lunar.Eclipse, circumstances)
     end
   end
 
@@ -1294,7 +1294,167 @@ defmodule Astro do
          {:ok, moment} <- Time.checked_moment(date),
          {:ok, moment} <- Lunar.checked_search_moment(moment),
          {:ok, circumstances} <- Astro.Lunar.Eclipse.eclipse_before(moment, shadow) do
-      lunar_eclipse(circumstances)
+      eclipse(Astro.Lunar.Eclipse, circumstances)
+    end
+  end
+
+  @doc """
+  Returns the first solar eclipse whose greatest eclipse is at or after
+  a date or date time.
+
+  An eclipse is found at a new moon near a node of the Moon's orbit. At
+  each new moon the Besselian elements of the Moon's shadow, computed
+  from the Sun's and the Moon's apparent positions, give the distance
+  of the shadow axis from the centre of the Earth; where the shadow can
+  reach the Earth, greatest eclipse is the moment of least distance,
+  found by golden section search. Where the axis meets the Earth the
+  eclipse is central, total or annular by the umbra at the surface, and
+  hybrid if a total eclipse's umbra falls short of the surface at
+  either end of the central line; otherwise the eclipse is partial, or
+  total or annular without a central line where the umbra still
+  reaches the limb. `Astro.Solar.Eclipse` describes the geometry. The
+  positions come from the JPL DE440s ephemeris where the loaded kernel
+  covers the date, and from the analytical series elsewhere.
+
+  ### Arguments
+
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
+    any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`, within 50,000
+    years of J2000.
+
+  ### Returns
+
+  * `{:ok, eclipse}`, an `t:Astro.Solar.Eclipse.t/0` with the type
+    (`:partial`, `:annular`, `:total` or `:hybrid`), greatest eclipse
+    as a UTC `t:DateTime.t/0`, gamma and the magnitude: for a central
+    eclipse the ratio of the Moon's apparent diameter to the Sun's at
+    greatest eclipse, and otherwise the fraction of the Sun's diameter
+    covered there.
+
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000.
+
+  ### Accuracy
+
+  Against NASA's catalogue for 1901–2100, compared in Terrestrial Time
+  so that ΔT does not enter, greatest eclipse is within 0.6 s, gamma
+  within 0.0001, the magnitude within 0.0001, and every eclipse's type
+  is the same, hybrids included. Outside the ephemeris the series
+  place greatest eclipse within 9 s of NASA's in the nineteenth
+  century, 35 s in the thirtieth and two and a quarter minutes around
+  950 BCE, with gamma within 0.001, magnitudes within 0.0015 and the
+  same types. In Universal Time every instant also carries ΔT's
+  uncertainty; the [accuracy guide](accuracy.md) gives it.
+
+  ### Examples
+
+      iex> {:ok, eclipse} = Astro.solar_eclipse_at_or_after(~D[2024-04-01])
+      iex> {eclipse.type, DateTime.truncate(eclipse.greatest, :second)}
+      {:total, ~U[2024-04-08 18:17:20Z]}
+      iex> {Float.round(eclipse.gamma, 4), Float.round(eclipse.magnitude, 4)}
+      {0.3431, 1.0565}
+
+      iex> {:ok, eclipse} = Astro.solar_eclipse_at_or_after(~D[2024-04-09])
+      iex> {eclipse.type, DateTime.to_date(eclipse.greatest)}
+      {:annular, ~D[2024-10-02]}
+
+  ### Reference
+
+  * Fred Espenak and Jean Meeus, *Five Millennium Canon of Solar
+    Eclipses: −1999 to +3000*, NASA/TP-2006-214141 (2006), and the
+    [Five Millennium Catalog of Solar Eclipses](https://eclipse.gsfc.nasa.gov/SEcat5/SEcatalog.html).
+
+  * P. Kenneth Seidelmann (editor), *Explanatory Supplement to the
+    Astronomical Almanac* (1992), chapter 8 (eclipses of the Sun and
+    Moon).
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 54 (eclipses).
+
+  """
+  @doc since: "2.10.0"
+  @spec solar_eclipse_at_or_after(date()) ::
+          {:ok, Astro.Solar.Eclipse.t()} | {:error, :invalid_date | :year_out_of_range}
+
+  def solar_eclipse_at_or_after(date) do
+    with {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment),
+         {:ok, circumstances} <- Astro.Solar.Eclipse.eclipse_at_or_after(moment) do
+      eclipse(Astro.Solar.Eclipse, circumstances)
+    end
+  end
+
+  @doc """
+  Returns the last solar eclipse whose greatest eclipse is before a
+  date or date time.
+
+  An eclipse is found at a new moon near a node of the Moon's orbit. At
+  each new moon the Besselian elements of the Moon's shadow, computed
+  from the Sun's and the Moon's apparent positions, give the distance
+  of the shadow axis from the centre of the Earth; where the shadow can
+  reach the Earth, greatest eclipse is the moment of least distance,
+  found by golden section search. `Astro.Solar.Eclipse` describes the
+  geometry and the types. The positions come from the JPL DE440s
+  ephemeris where the loaded kernel covers the date, and from the
+  analytical series elsewhere.
+
+  ### Arguments
+
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
+    any struct that meets the requirements of
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`, within 50,000
+    years of J2000.
+
+  ### Returns
+
+  * `{:ok, eclipse}`, an `t:Astro.Solar.Eclipse.t/0` with the type
+    (`:partial`, `:annular`, `:total` or `:hybrid`), greatest eclipse
+    as a UTC `t:DateTime.t/0`, gamma and the magnitude: for a central
+    eclipse the ratio of the Moon's apparent diameter to the Sun's at
+    greatest eclipse, and otherwise the fraction of the Sun's diameter
+    covered there.
+
+  * `{:error, :invalid_date}` if `date_time` is not a valid date or
+    date time in its calendar.
+
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000.
+
+  ### Accuracy
+
+  As `solar_eclipse_at_or_after/1`: within 0.6 s of NASA's greatest
+  eclipse in Terrestrial Time over 1901–2100, gamma and the magnitude
+  within 0.0001, and every type the same.
+
+  ### Examples
+
+      iex> {:ok, eclipse} = Astro.solar_eclipse_before(~D[2024-04-01])
+      iex> {eclipse.type, DateTime.to_date(eclipse.greatest)}
+      {:annular, ~D[2023-10-14]}
+
+  ### Reference
+
+  * Fred Espenak and Jean Meeus, *Five Millennium Canon of Solar
+    Eclipses: −1999 to +3000*, NASA/TP-2006-214141 (2006), and the
+    [Five Millennium Catalog of Solar Eclipses](https://eclipse.gsfc.nasa.gov/SEcat5/SEcatalog.html).
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 54 (eclipses).
+
+  """
+  @doc since: "2.10.0"
+  @spec solar_eclipse_before(date()) ::
+          {:ok, Astro.Solar.Eclipse.t()} | {:error, :invalid_date | :year_out_of_range}
+
+  def solar_eclipse_before(date) do
+    with {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment),
+         {:ok, circumstances} <- Astro.Solar.Eclipse.eclipse_before(moment) do
+      eclipse(Astro.Solar.Eclipse, circumstances)
     end
   end
 
@@ -1310,13 +1470,14 @@ defmodule Astro do
   end
 
   # The eclipse with its instants as UTC date times.
-  defp lunar_eclipse(circumstances) do
+  defp eclipse(module, circumstances) do
     fields = Map.new(circumstances, fn {key, value} -> {key, eclipse_value(key, value)} end)
-    {:ok, struct(Astro.Lunar.Eclipse, fields)}
+    {:ok, struct(module, fields)}
   end
 
   defp eclipse_value(key, value)
-       when key in [:type, :gamma, :penumbral_magnitude, :umbral_magnitude] or is_nil(value) do
+       when key in [:type, :gamma, :magnitude, :penumbral_magnitude, :umbral_magnitude] or
+              is_nil(value) do
     value
   end
 

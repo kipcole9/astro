@@ -1,6 +1,6 @@
 # Eclipses
 
-**Status:** in progress, 2026-10-31
+**Status:** in progress, 2026-11-01
 
 Astro 2.10 adds solar and lunar eclipses: finding them, classifying them, and giving their circumstances, globally and for a solar eclipse at a place. Like the rest of Astro they are computed from the Sun's and the Moon's apparent positions (the JPL ephemeris where it covers a date, the analytical series beyond it), so an eclipse is answered for any date within 50,000 years of 2000, and the implementation is written to be read as a guide to how eclipses are calculated.
 
@@ -60,13 +60,17 @@ All four were accepted as recommended on 2026-10-31.
 
 In `Astro`, returning `{:ok, eclipse}` or `{:error, reason}`, with `{:error, :year_out_of_range}` beyond 50,000 years of 2000 as the new moon searches do:
 
-* `solar_eclipse_at_or_after/2` and `solar_eclipse_before/2` — the next or previous solar eclipse as an `Astro.Solar.Eclipse` struct: `:type` (`:partial`, `:annular`, `:total` or `:hybrid`), `:greatest` (a `DateTime`), `:gamma`, `:magnitude`.
+* `solar_eclipse_at_or_after/1` and `solar_eclipse_before/1` — the next or previous solar eclipse as an `Astro.Solar.Eclipse` struct: `:type` (`:partial`, `:annular`, `:total` or `:hybrid`), `:greatest` (a `DateTime`), `:gamma`, `:magnitude`.
 
 * `lunar_eclipse_at_or_after/2` and `lunar_eclipse_before/2` — an `Astro.Lunar.Eclipse` struct: `:type` (`:penumbral`, `:partial` or `:total`), `:greatest`, `:gamma`, `:penumbral_magnitude`, `:umbral_magnitude`, and the contacts `:penumbral_begins`, `:partial_begins`, `:total_begins`, `:total_ends`, `:partial_ends` and `:penumbral_ends`, `nil` for those the eclipse does not have.
 
 * `solar_eclipse_local/3` — the local circumstances of an eclipse at a location: the contacts, the instant of maximum, magnitude, obscuration, and the Sun's altitude at each, or `{:error, :not_visible}` where the eclipse is not seen there.
 
-Instants are UTC `DateTime`s, as the new moon searches return them. The lunar functions take `:shadow`.
+Instants are UTC `DateTime`s, as the new moon searches return them. The lunar functions take `:shadow`; the solar ones have no options, so they take none.
+
+The Besselian `μ` is the Greenwich hour angle at the moment, not NASA's ephemeris hour angle (TD read as UT); the two differ by ΔT's worth of rotation, which local circumstances must not apply twice.
+
+For a total or annular eclipse whose axis misses the Earth, NASA's magnitude is the fraction of the Sun's diameter covered at the limb, as for a partial eclipse, not the diameter ratio.
 
 ## Accuracy
 
@@ -74,13 +78,13 @@ Within the JPL ephemeris, instants of greatest eclipse should agree with NASA's 
 
 ## Tasks
 
-* [ ] **Solar eclipses** — `Astro.Solar.Eclipse`: Besselian elements, finding, greatest eclipse, type including hybrid, magnitude; tested against NASA's 1901–2100 catalogue and its Besselian elements for a sample of eclipses, and a sample outside 1901–2100.
-
 * [ ] **Local circumstances** — `solar_eclipse_local/3`, tested against NASA's local circumstances for a few places and eclipses.
 
 * [ ] **Documentation** — the `Astro` functions in the house format with Accuracy and Reference sections, and an eclipses section in `guides/accuracy.md`.
 
 ### Done
+
+* [x] **Solar eclipses** — `Astro.Solar.Eclipse` (Besselian elements, finding, greatest eclipse, type including hybrid, magnitude) and `Astro.solar_eclipse_at_or_after/1` / `solar_eclipse_before/1`. Against NASA in TD: 1901–2100 greatest within 0.6 s, gamma 0.00006, magnitude 0.00007, every type the same (hybrids included); elements for 2024-04-08 within 1e-4 radii; series centuries within 9 s (1801–1900), 32 s (2901–3000), 80 s (1–100) and 130 s (−999 to −900), magnitudes 0.0014. `test/solar_eclipse_test.exs`. 2026-11-01.
 
 * [x] **Lunar eclipses** — `Astro.Lunar.Eclipse` and `Astro.lunar_eclipse_at_or_after/2` / `lunar_eclipse_before/2`. Against NASA in TD: 1901–2100 greatest within 2.7 s (0.5 s mean), gamma 0.00014, magnitudes 0.0004, partial and total durations 0.07 min, every type the same; series centuries within 15 s (1801–1900), 40 s (2901–3000), 78 s (1–100) and 141 s (−999 to −900), magnitudes 0.002. `test/lunar_eclipse_test.exs`. 2026-10-31.
 

@@ -55,7 +55,8 @@ defmodule Astro.MixProject do
       groups_for_modules: [
         Solar: [
           Astro.Solar,
-          Astro.Solar.SunRiseSet
+          Astro.Solar.SunRiseSet,
+          Astro.Solar.Eclipse
         ],
         Lunar: [
           Astro.Lunar,

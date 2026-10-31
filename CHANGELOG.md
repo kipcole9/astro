@@ -4,6 +4,8 @@
 
 ### Added
 
+* `Astro.solar_eclipse_at_or_after/1` and `solar_eclipse_before/1` return a solar eclipse's type (partial, annular, total or hybrid), gamma, magnitude and greatest eclipse, from Besselian elements; they match NASA's catalogue to 0.6 s over 1901–2100.
+
 * `Astro.lunar_eclipse_at_or_after/2` and `lunar_eclipse_before/2` return a lunar eclipse's type, gamma, magnitudes, greatest eclipse and contacts, matching NASA's catalogue to seconds over 1901–2100. The `:shadow` option chooses Danjon's (default) or Chauvenet's shadow enlargement.
 
 * `Astro.Solar.analytical_solar_position/1` and `analytical_solar_ecliptic_position/1` give the apparent Sun from analytical series for any date, within about 1″ RMS of JPL DE440s over 1900–2100.
