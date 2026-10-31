@@ -417,6 +417,9 @@ defmodule Astro do
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
 
+  Raises `ArgumentError` for a date more than 50,000 years from J2000,
+  where the new moons can no longer be told apart reliably.
+
   ### Examples
 
       iex> Astro.date_time_new_moon_before(~D[2021-08-23])
@@ -510,6 +513,9 @@ defmodule Astro do
 
   * `{:ok, date_time}`, the UTC `t:DateTime.t/0` at which the new
     moon occurs.
+
+  Raises `ArgumentError` for a date more than 50,000 years from J2000,
+  where the new moons can no longer be told apart reliably.
 
   ### Examples
 

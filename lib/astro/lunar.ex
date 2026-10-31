@@ -119,6 +119,14 @@ defmodule Astro.Lunar do
   @new_moon_tolerance_days 1.0e-7
   @new_moon_steps 20
 
+  # New moons are found within this many years of J2000. There the chapter 49
+  # estimates are within about a day and a half of the zero-phase crossings;
+  # beyond about 75,000 years they can be more than half a month away, and a
+  # search can settle on a neighbouring lunation's new moon.
+  @new_moon_range_years 50_000
+  @new_moon_range_days @new_moon_range_years * 365.2425
+  @j2000_moment Astro.Time.j2000()
+
   # IAU 2015 lunar radius in km
   @lunar_radius 1_737.4
   @lunar_radius_m @lunar_radius * Earth.meters_per_kilometer()
@@ -579,6 +587,11 @@ defmodule Astro.Lunar do
   estimate of `nth_new_moon/1` (Meeus, *Astronomical Algorithms*, chapter
   49) to that crossing.
 
+  Raises `ArgumentError` for a moment more than 50,000 years from J2000.
+  Beyond about 75,000 years the chapter 49 estimates can be more than half
+  a month from the new moons, and a search could settle on a neighbouring
+  lunation's.
+
   ### Arguments
 
   * `t` is a `t:Astro.Time.moment/0` float number of days
@@ -611,6 +624,11 @@ defmodule Astro.Lunar do
   longitude minus the Sun's, passes 0°. It is found by refining the
   estimate of `nth_new_moon/1` (Meeus, *Astronomical Algorithms*, chapter
   49) to that crossing.
+
+  Raises `ArgumentError` for a moment more than 50,000 years from J2000.
+  Beyond about 75,000 years the chapter 49 estimates can be more than half
+  a month from the new moons, and a search could settle on a neighbouring
+  lunation's.
 
   ### Arguments
 
@@ -645,6 +663,13 @@ defmodule Astro.Lunar do
   # `t`, and the neighbouring lunation completes the pair. A new moon is
   # always refined from its own lunation's estimate, so the same new moon is
   # the same moment however it is reached.
+  defp new_moons_around(t) when abs(t - @j2000_moment) > @new_moon_range_days do
+    raise ArgumentError,
+          "new moons are found within #{@new_moon_range_years} years of J2000, " <>
+            "where the Meeus chapter 49 estimates identify each lunation; " <>
+            "moment #{inspect(t)} is outside that range"
+  end
+
   defp new_moons_around(t) do
     {lunation_before, lunation_after} = lunations_around(t)
     bracket(t, lunation_before, new_moon(lunation_before), new_moon(lunation_after))

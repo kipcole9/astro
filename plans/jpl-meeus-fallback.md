@@ -50,7 +50,7 @@ Calendrical, Tempo and every other consumer deal only with Astro's API. They nev
 
 * **At the edge of the ephemeris** the source switches, so a position can jump by up to the series' error, and an event time by seconds. Tests pin this down at both edges of both kernels.
 
-* **The new moon series is ordered only within about ±300,000 years of J2000**, where `date_time_new_moon_before/1` and `date_time_new_moon_at_or_after/1` raise `ArgumentError`. That is far beyond any calendar's range and is the one limit that stays.
+* **New moons are found within ±50,000 years of J2000**, where `date_time_new_moon_before/1` and `date_time_new_moon_at_or_after/1` raise `ArgumentError`. There the chapter 49 estimates are within about 1.5 days of the zero-phase crossings; beyond about ±75,000 years they can be more than half a month away and a search can settle on a neighbouring lunation. It is far beyond any calendar's range and is the one limit that stays.
 
 ## Sun series measurement
 
@@ -68,19 +68,19 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 * **2026-10-31 — Remove `{:error, :not_found}` from the specs and `### Returns` of the functions that can no longer return it.** So downstream Dialyzer sees the real shape; a consumer's own `:not_found` clause then shows as unreachable, which is the signal to delete it.
 
-* **2026-10-31 — Keep the `ArgumentError` beyond ±300,000 years.** No calendar reaches it, and returning an error would change the shape of two functions that return bare moments.
+* **2026-10-31 — Raise `ArgumentError` beyond ±50,000 years.** Measurement showed the chapter 49 seeds stop identifying each lunation reliably between ±75,000 and ±100,000 years, well inside the ±300,000 first assumed. No calendar reaches it, and returning an error would change the shape of two functions that return bare moments.
 
 * **2026-10-31 — Use the 49-term Sun series with corrected nutation.** It is twelve times more accurate than Ch.25 against JPL over 1900–2100 and stays sane at ±10,000 years.
 
 ## Tasks
-
-* [ ] **Bound the far-date new moon search** — the walk from the mean-month estimate to the chapter 49 lunations either side of a moment takes many steps 100,000 years out, where the series' higher-order terms carry the estimates thousands of months from the mean, and does not end beyond about ±300,000 years, where chapter 49 is out of lunation order. Correct the starting lunation by the series' own slope, and raise `ArgumentError` where the order breaks, as decided above.
 
 * [ ] **Validate far dates against DE441** — optional: DE441 covers −13,200 to +17,191, so it can measure both Meeus series at ±10,000 years. It is a 3 GB kernel, so this is a one-off check, not a CI job.
 
 * [ ] **Calendrical follow-up** — once released, remove `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error from `Calendrical.Islamic.Visibility`, and raise Calendrical's Astro requirement. In the Calendrical repository, by its maintainer.
 
 ### Done
+
+* [x] **Bound the far-date new moon search** — `ArgumentError` beyond ±50,000 years; within it the walk to the bracketing lunations is 0–1 steps, so no slope correction is needed. `date_time_new_moon_nearest/1` and the phase searches start from the phase and are not bounded. 2026-10-31.
 
 * [x] **Test the ephemeris edges** — `test/ephemeris_edge_test.exs` finds each body's coverage edges in whichever kernel is loaded; positions half a second either side differ by at most 1.1″ for the Sun and 3.1″ for the Moon, and every public function answers on the days either side (a monthly moonrise or moonset skip aside). 2026-10-31.
 

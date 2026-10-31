@@ -51,4 +51,44 @@ defmodule Astro.Moon.NewMoon.Test do
       assert Astro.Lunar.nth_new_moon(0) === 376.46287205875086
     end
   end
+
+  describe "new moons far from J2000" do
+    # The new moon searches built on the Meeus chapter 49 estimates work
+    # within 50,000 years of J2000 and raise beyond it.
+    defp years_from_j2000(years) do
+      Astro.Time.j2000() + years * 365.2425
+    end
+
+    test "are found just inside 50,000 years of J2000" do
+      for years <- [-49_999, 49_999] do
+        t = years_from_j2000(years)
+        before = Astro.Lunar.date_time_new_moon_before(t)
+        at_or_after = Astro.Lunar.date_time_new_moon_at_or_after(t)
+
+        assert before < t and at_or_after >= t
+        assert at_or_after - before > 29.0 and at_or_after - before < 30.0
+      end
+    end
+
+    test "raise ArgumentError beyond 50,000 years of J2000" do
+      for years <- [-50_001, 50_001] do
+        t = years_from_j2000(years)
+
+        assert_raise ArgumentError, ~r/within 50000 years of J2000/, fn ->
+          Astro.Lunar.date_time_new_moon_before(t)
+        end
+
+        assert_raise ArgumentError, ~r/within 50000 years of J2000/, fn ->
+          Astro.Lunar.date_time_new_moon_at_or_after(t)
+        end
+      end
+    end
+
+    test "the nearest new moon, found from the phase alone, is not bounded" do
+      t = years_from_j2000(60_000)
+      nearest = Astro.Lunar.date_time_new_moon_nearest(t)
+
+      assert abs(nearest - t) < 15.0
+    end
+  end
 end

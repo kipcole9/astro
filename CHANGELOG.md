@@ -12,6 +12,8 @@
 
 ### Changed
 
+* `Astro.date_time_new_moon_before/1` and `date_time_new_moon_at_or_after/1`, and their `Astro.Lunar` forms, raise `ArgumentError` more than 50,000 years from J2000, where 2.9.0 answered from chapter 49 alone to about ±300,000 years. Beyond that range the chapter 49 estimates cannot reliably identify each new moon.
+
 * New moons are the moments the lunar phase passes 0°, refined from the Meeus chapter 49 estimate by the secant method, where chapter 49 alone was up to 12 s from JPL. Far from the present they follow the analytical series, which drift from chapter 49 by about 1 s per century².
 
 * `Astro.equinox/3` and `Astro.solstice/3` are the moments the Sun's apparent longitude reaches 0°, 90°, 180° or 270°: within a few seconds of published times, against about 30 for the Meeus closed form. They work for any year, so `{:error, :year_out_of_range}` is gone.
