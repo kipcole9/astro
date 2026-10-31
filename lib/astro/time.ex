@@ -245,13 +245,6 @@ defmodule Astro.Time do
   @type zone_name() :: binary()
 
   @julian_day_jan_1_2000 2_451_545
-  # tz_world's backends, in its own order of precedence.
-  @tz_world_backends [
-    TzWorld.Backend.SpatialIndex,
-    TzWorld.Backend.EtsWithIndexCache,
-    TzWorld.Backend.DetsWithIndexCache
-  ]
-
   @julian_days_per_century 36_525.0
   @julian_epoch_days 1_721_425.5
 
@@ -1546,9 +1539,20 @@ defmodule Astro.Time do
     # default, then tz_world's own order of precedence. It is found here
     # because `TzWorld.timezone_at/1` raises when none is running.
     defp running_tz_world_backend do
-      [Application.get_env(:tz_world, :default_backend) | @tz_world_backends]
+      [Application.get_env(:tz_world, :default_backend) | tz_world_backends()]
       |> Enum.reject(&is_nil/1)
       |> Enum.find(&Process.whereis/1)
+    end
+
+    # tz_world's backends, in its own order of precedence. A function rather
+    # than a module attribute, which would be unused, and warn, in a project
+    # without tz_world.
+    defp tz_world_backends do
+      [
+        TzWorld.Backend.SpatialIndex,
+        TzWorld.Backend.EtsWithIndexCache,
+        TzWorld.Backend.DetsWithIndexCache
+      ]
     end
   else
     def tz_world_timezone_at(%Geo.Point{} = _point) do
