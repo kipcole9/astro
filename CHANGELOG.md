@@ -16,6 +16,8 @@
 
 * `Astro.Time.delta_t/1` uses the Espenak and Meeus polynomials (NASA's eclipse model) before 1972 and joins the 2025 IERS value to the long-term parabola by 2150. Times move by up to 20 minutes around 250 CE and 70 minutes at 3000, and by under 2 s from 1700 to 2050.
 
+* The new moon and lunar phase searches end within a millisecond of the crossing, where the phase searches stopped within 0.43 s, so the three new moon searches agree to a millisecond.
+
 * The `Astro` new moon and lunar phase searches return `{:error, :year_out_of_range}` more than 50,000 years from J2000, as equinoxes and solstices do; the `Astro.Lunar` new moon searches raise `ArgumentError` there. 2.9.0 answered from chapter 49 alone to about ±300,000 years.
 
 * New moons are the moments the lunar phase passes 0°, refined from the Meeus chapter 49 estimate by the secant method, where chapter 49 alone was up to 12 s from JPL. Far from the present they follow the analytical series, which drift from chapter 49 by about 1 s per century².

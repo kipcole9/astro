@@ -84,7 +84,7 @@ For phases other than new, give the angle:
 
 ```elixir
 iex> Astro.date_time_lunar_phase_at_or_after(~D[2019-12-04], 180)
-{:ok, ~U[2019-12-12 05:12:15.891636Z]}
+{:ok, ~U[2019-12-12 05:12:15.756775Z]}
 ```
 
 `date_time_lunar_phase_at_or_before/2` searches backwards. Together these are what lunar and lunisolar calendars are built from — the new moon instants set the month boundaries.

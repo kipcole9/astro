@@ -95,13 +95,13 @@ Recommendation: do not add an accuracy-for-performance option. If a memory-const
 
 ## Tasks
 
-* [ ] **Document the new moon and phase searches.**
-
 * [ ] **Document moonrise, moonset and crescent visibility.**
 
 * [ ] **Add accuracy and references to the `Astro.Solar` and `Astro.Lunar` analytical functions.**
 
 ### Done
+
+* [x] **Document the new moon and phase searches** — checked against Meeus example 49.a (3h37m40s TD; Astro 3h37m39.9s TD); the phase searches and the secant new moon search now end within a millisecond, so the three new moon searches agree. USNO's minute-rounded phases differ by −26 to +44 s, too coarse to use. 2026-10-31.
 
 * [x] **Document the Moon position, phase and illumination functions** — position, phase, phase emoji, illuminated fraction; checked against Meeus examples 47.a (2.1″, 0.3″, 4 km) and 48.a (0.67856 against 0.6786). 2026-10-31.
 

@@ -570,6 +570,22 @@ defmodule Astro do
   Returns the date time of the new
   moon before a given date or date time.
 
+  A new moon is the moment the lunar phase (see `lunar_phase_at/1`)
+  passes 0°: the Moon's apparent ecliptic longitude equals the Sun's.
+  The Moon is then between the Earth and the Sun with its dark side
+  towards us. This is a conjunction in longitude; the Moon can pass
+  up to about 5° north or south of the Sun, which is why most new
+  moons are not eclipses.
+
+  The search numbers lunations as Meeus, *Astronomical Algorithms*,
+  chapter 49, does, and that chapter's series estimates each
+  lunation's new moon to within seconds near the present. The
+  estimates of two consecutive lunations bracket the date, and each
+  is refined to the moment the phase passes 0° by the secant method,
+  which converges in a few steps, to under a millisecond. The phase
+  comes from the JPL DE440s ephemeris where the loaded kernel covers
+  the date, and from the analytical series elsewhere.
+
   ### Arguments
 
   * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
@@ -588,10 +604,29 @@ defmodule Astro do
     years from J2000, beyond which the Meeus chapter 49 estimates can no
     longer tell the lunations apart.
 
+  ### Accuracy
+
+  For the new moon of 18 February 1977, Meeus gives 3h37m40s TD as
+  the correct time (*Astronomical Algorithms*, example 49.a); Astro
+  gives 3h37m39.9s TD. Outside the ephemeris the series place new
+  moons within 6.0 s RMS of JPL over 1900–2100, and 20 s at most. Far
+  from the present the result is limited by ΔT, uncertain by minutes
+  before about 1000 and after about 2500; the
+  [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> Astro.date_time_new_moon_before(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:50:08.051937Z]}
+      {:ok, ~U[2021-08-08 13:50:08.051917Z]}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  * [New moon](https://en.wikipedia.org/wiki/New_moon) and
+    [Secant method](https://en.wikipedia.org/wiki/Secant_method),
+    Wikipedia.
 
   """
   @doc since: "0.5.0"
@@ -621,6 +656,19 @@ defmodule Astro do
   Returns the date time of the new
   moon nearest to a given date or date time.
 
+  A new moon is the moment the lunar phase (see `lunar_phase_at/1`)
+  passes 0°: the Moon's apparent ecliptic longitude equals the Sun's.
+  The Moon is then between the Earth and the Sun with its dark side
+  towards us. This is a conjunction in longitude; the Moon can pass
+  up to about 5° north or south of the Sun, which is why most new
+  moons are not eclipses.
+
+  It is the nearer of the new moons found by the lunar phase searches
+  either side of the date (see `date_time_lunar_phase_at_or_before/2`
+  and `date_time_lunar_phase_at_or_after/2`), and agrees with
+  `date_time_new_moon_before/1` and `date_time_new_moon_at_or_after/1`
+  to a millisecond.
+
   ### Arguments
 
   * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
@@ -639,10 +687,29 @@ defmodule Astro do
     years from J2000, beyond which the Meeus chapter 49 estimates can no
     longer tell the lunations apart.
 
+  ### Accuracy
+
+  For the new moon of 18 February 1977, Meeus gives 3h37m40s TD as
+  the correct time (*Astronomical Algorithms*, example 49.a); Astro
+  gives 3h37m39.9s TD. Outside the ephemeris the series place new
+  moons within 6.0 s RMS of JPL over 1900–2100, and 20 s at most. Far
+  from the present the result is limited by ΔT, uncertain by minutes
+  before about 1000 and after about 2500; the
+  [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:50:08.007771Z]}
+      {:ok, ~U[2021-08-08 13:50:08.051866Z]}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  * [New moon](https://en.wikipedia.org/wiki/New_moon) and
+    [Secant method](https://en.wikipedia.org/wiki/Secant_method),
+    Wikipedia.
 
   """
   @doc since: "2.0.0"
@@ -663,11 +730,27 @@ defmodule Astro do
   moon at or after a given date or
   date time.
 
+  A new moon is the moment the lunar phase (see `lunar_phase_at/1`)
+  passes 0°: the Moon's apparent ecliptic longitude equals the Sun's.
+  The Moon is then between the Earth and the Sun with its dark side
+  towards us. This is a conjunction in longitude; the Moon can pass
+  up to about 5° north or south of the Sun, which is why most new
+  moons are not eclipses.
+
+  The search numbers lunations as Meeus, *Astronomical Algorithms*,
+  chapter 49, does, and that chapter's series estimates each
+  lunation's new moon to within seconds near the present. The
+  estimates of two consecutive lunations bracket the date, and each
+  is refined to the moment the phase passes 0° by the secant method,
+  which converges in a few steps, to under a millisecond. The phase
+  comes from the JPL DE440s ephemeris where the loaded kernel covers
+  the date, and from the analytical series elsewhere.
+
   ### Arguments
 
-  * `date_time` is a `DateTime` or a `Date` or
+  * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date` or `t:Calendar.datetime`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
 
   ### Returns
 
@@ -681,10 +764,29 @@ defmodule Astro do
     years from J2000, beyond which the Meeus chapter 49 estimates can no
     longer tell the lunations apart.
 
+  ### Accuracy
+
+  For the new moon of 18 February 1977, Meeus gives 3h37m40s TD as
+  the correct time (*Astronomical Algorithms*, example 49.a); Astro
+  gives 3h37m39.9s TD. Outside the ephemeris the series place new
+  moons within 6.0 s RMS of JPL over 1900–2100, and 20 s at most. Far
+  from the present the result is limited by ΔT, uncertain by minutes
+  before about 1000 and after about 2500; the
+  [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> Astro.date_time_new_moon_at_or_after(~D[2021-08-23])
       {:ok, ~U[2021-09-07 00:51:46.307784Z]}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  * [New moon](https://en.wikipedia.org/wiki/New_moon) and
+    [Secant method](https://en.wikipedia.org/wiki/Secant_method),
+    Wikipedia.
 
   """
   @doc since: "0.5.0"
@@ -843,6 +945,16 @@ defmodule Astro do
   lunar phase at or before a given
   date time or date.
 
+  The lunar phase (see `lunar_phase_at/1`) is the Moon's apparent
+  ecliptic longitude less the Sun's: 0° at new moon, 90° at first
+  quarter, 180° at full moon and 270° at last quarter. The search
+  estimates when the phase is next reached at or before the date from
+  the mean synodic month of 29.530589 days, then bisects a four-day
+  bracket around the estimate until it is narrower than a
+  millisecond. The phase comes from the JPL DE440s ephemeris where
+  the loaded kernel covers the date, and from the analytical series
+  elsewhere.
+
   ### Arguments
 
   * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
@@ -862,16 +974,34 @@ defmodule Astro do
     date time in its calendar.
 
   * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
-    years from J2000, beyond which the Meeus chapter 49 estimates can no
-    longer tell the lunations apart.
+    years from J2000, the range of the new moon searches.
 
   * `{:error, :invalid_phase}` if `phase` is not a number from 0 to
     360.
 
+  ### Accuracy
+
+  The search ends within a millisecond of the crossing. For the new
+  moon of 18 February 1977, Meeus gives 3h37m40s TD as the correct
+  time (*Astronomical Algorithms*, example 49.a); Astro gives
+  3h37m39.9s TD. Outside the ephemeris the series place the phases
+  within about 6 s RMS of JPL over 1900–2100 (new moons 20 s and full
+  moons 30 s at most). Far from the present the result is limited by
+  ΔT; the [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_before(~D[2021-08-01], Astro.Lunar.new_moon_phase())
-      {:ok, ~U[2021-07-10 01:16:37.026816Z]}
+      {:ok, ~U[2021-07-10 01:16:37.291067Z]}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  * [Lunar phase](https://en.wikipedia.org/wiki/Lunar_phase) and
+    [Bisection method](https://en.wikipedia.org/wiki/Bisection_method),
+    Wikipedia.
 
   """
 
@@ -897,6 +1027,16 @@ defmodule Astro do
   lunar phase at or after a given
   date time or date.
 
+  The lunar phase (see `lunar_phase_at/1`) is the Moon's apparent
+  ecliptic longitude less the Sun's: 0° at new moon, 90° at first
+  quarter, 180° at full moon and 270° at last quarter. The search
+  estimates when the phase is next reached at or after the date from
+  the mean synodic month of 29.530589 days, then bisects a four-day
+  bracket around the estimate until it is narrower than a
+  millisecond. The phase comes from the JPL DE440s ephemeris where
+  the loaded kernel covers the date, and from the analytical series
+  elsewhere.
+
   ### Arguments
 
   * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
@@ -916,16 +1056,34 @@ defmodule Astro do
     date time in its calendar.
 
   * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
-    years from J2000, beyond which the Meeus chapter 49 estimates can no
-    longer tell the lunations apart.
+    years from J2000, the range of the new moon searches.
 
   * `{:error, :invalid_phase}` if `phase` is not a number from 0 to
     360.
 
+  ### Accuracy
+
+  The search ends within a millisecond of the crossing. For the new
+  moon of 18 February 1977, Meeus gives 3h37m40s TD as the correct
+  time (*Astronomical Algorithms*, example 49.a); Astro gives
+  3h37m39.9s TD. Outside the ephemeris the series place the phases
+  within about 6 s RMS of JPL over 1900–2100 (new moons 20 s and full
+  moons 30 s at most). Far from the present the result is limited by
+  ΔT; the [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> Astro.date_time_lunar_phase_at_or_after(~D[2021-08-01], Astro.Lunar.full_moon_phase())
-      {:ok, ~U[2021-08-22 12:01:57.910586Z]}
+      {:ok, ~U[2021-08-22 12:01:58.152306Z]}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  * [Lunar phase](https://en.wikipedia.org/wiki/Lunar_phase) and
+    [Bisection method](https://en.wikipedia.org/wiki/Bisection_method),
+    Wikipedia.
 
   """
 

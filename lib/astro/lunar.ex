@@ -94,7 +94,7 @@ defmodule Astro.Lunar do
       mod: 2,
       degrees: 1,
       poly: 2,
-      invert_angular: 4,
+      invert_angular: 5,
       to_degrees: 1,
       zip_terms: 1
     ]
@@ -117,9 +117,13 @@ defmodule Astro.Lunar do
   @mean_phase_rate 360.0 / Astro.Time.mean_synodic_month()
 
   # The secant search for a new moon stops when a step is shorter than this
-  # many days (about 9 ms), or after this many steps.
-  @new_moon_tolerance_days 1.0e-7
+  # many days (under a millisecond), or after this many steps.
+  @new_moon_tolerance_days 1.0e-8
   @new_moon_steps 20
+
+  # A search for a lunar phase ends when its bracket is under a millisecond,
+  # so that it finds a new moon at the same moment as the secant search.
+  @phase_search_tolerance_days 1.0e-8
 
   # New moons are found within this many years of J2000. There the chapter 49
   # estimates are within about a day and a half of the zero-phase crossings;
@@ -607,7 +611,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_before 738390
-      738375.5764820826
+      738375.5764820824
 
   """
   @doc since: "0.5.0"
@@ -801,7 +805,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_nearest(738390)
-      738375.5764815714
+      738375.5764820818
 
   """
   @doc since: "2.0.0"
@@ -875,7 +879,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_before(738368, Astro.Lunar.new_moon_phase())
-      738346.0532063289
+      738346.0532093873
 
   """
   @doc since: "0.5.0"
@@ -886,7 +890,7 @@ defmodule Astro.Lunar do
     tau = t - mean_synodic_month() * (1.0 / deg(360.0)) * mod(lunar_phase_at(t) - phase, 360.0)
     a = tau - 2
     b = min(t, tau + 2)
-    invert_angular(&lunar_phase_at/1, phase, a, b)
+    invert_angular(&lunar_phase_at/1, phase, a, b, @phase_search_tolerance_days)
   end
 
   @doc """
@@ -911,7 +915,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_after(738368, Astro.Lunar.full_moon_phase())
-      738389.5013647059
+      738389.5013675035
 
   """
   @doc since: "0.5.0"
@@ -922,7 +926,7 @@ defmodule Astro.Lunar do
     tau = t + mean_synodic_month() * (1 / deg(360.0)) * mod(phase - lunar_phase_at(t), 360.0)
     a = max(t, tau - 2)
     b = tau + 2
-    invert_angular(&lunar_phase_at/1, phase, a, b)
+    invert_angular(&lunar_phase_at/1, phase, a, b, @phase_search_tolerance_days)
   end
 
   @doc """
