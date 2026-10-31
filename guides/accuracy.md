@@ -24,7 +24,7 @@ Inside 1900–2100 (or 1849–2150 with the full kernel), positions are limited 
 | Moonrise and moonset | Skyfield, same ephemeris | 0.08 s mean, 0.1 s at most |
 | Sunrise and sunset | timeanddate.com, to the minute | 28.8 s mean, within a minute in 307 of 310 cases |
 | Moonrise and moonset | USNO, to the minute | 15.5 s mean, 29 s at most |
-| Equinoxes and solstices | published times for 2019 and 2024 | within 1.5 s |
+| June solstice of 1962 | Meeus, full VSOP87 theory, to the second | the same second |
 
 The remaining second against Skyfield for the Sun comes from the horizon: Astro uses a fixed solar radius of 16′ where Skyfield uses the apparent radius. The [rise and set comparisons](rise_and_set_comparisons.md) give the details.
 
@@ -59,7 +59,7 @@ Where the kernel's coverage ends the source switches, so a position can jump by 
 
 Two things limit results far from the present.
 
-The first is the series themselves. They are fitted to modern observations, and their small secular terms grow with the square of the time from J2000. Astro's Sun series and the simpler series of Meeus chapter 25 agree within 45″ (about 20 minutes of equinox time) between −2000 and 3000, but differ by up to 4,150″ (more than a day) at ±10,000 years, and nothing can say which is closer that far out. The Meeus chapter 49 new-moon estimates drift from the zero crossings of the series by about 1 second per century squared: 96 s at the years 1000 and 3000, 25 minutes at −2000 and four hours at −10,000. New moons are always the zero crossings, and the searches built on chapter 49 are limited to 50,000 years either side of J2000, beyond which its estimates can no longer identify each lunation.
+The first is the series themselves. They are fitted to modern observations, and their small secular terms grow with the square of the time from J2000. Astro's Sun series and the simpler series of Meeus chapter 25 agree within 45″ (about 20 minutes of equinox time) between −2000 and 3000, but differ by up to 4,150″ (more than a day) at ±10,000 years, and nothing can say which is closer that far out. The Meeus chapter 49 new-moon estimates drift from the zero crossings of the series by about 1 second per century squared: 96 s at the years 1000 and 3000, 25 minutes at −2000 and four hours at −10,000. New moons are always the zero crossings, and the searches built on chapter 49 are limited to 50,000 years either side of J2000, beyond which its estimates can no longer identify each lunation. Equinoxes and solstices share the same limit.
 
 The second, and larger, is ΔT, the difference between Terrestrial Time, in which positions are computed, and Universal Time, in which results are given. It reflects the slowing and irregular rotation of the Earth, and before the telescopic era it is known only from historical eclipses and other observations. NASA's estimate of its uncertainty ([Uncertainty in Delta T](https://eclipse.gsfc.nasa.gov/LEcat5/uncertainty.html), after Morrison and Stephenson, 2004, and Huber, 2000) is:
 

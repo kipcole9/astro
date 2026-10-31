@@ -118,17 +118,17 @@ iex> Astro.hours_of_daylight {-62.3481, 82.5018}, ~D[2019-12-07]
 
 # Calculate solstices for 2019
 iex> Astro.solstice 2019, :december
-{:ok, ~U[2019-12-22 04:19:23.771465Z]}
+{:ok, ~U[2019-12-22 04:19:24.069965Z]}
 
 iex> Astro.solstice 2019, :june
-{:ok, ~U[2019-06-21 15:54:13.711521Z]}
+{:ok, ~U[2019-06-21 15:54:13.309300Z]}
 
 # Calculate equinoxes for 2019
 iex> Astro.equinox 2019, :march
-{:ok, ~U[2019-03-20 21:58:24.395385Z]}
+{:ok, ~U[2019-03-20 21:58:24.583335Z]}
 
 iex> Astro.equinox 2019, :september
-{:ok, ~U[2019-09-23 07:50:08.520924Z]}
+{:ok, ~U[2019-09-23 07:50:08.222978Z]}
 ```
 
 ## Specifying a location

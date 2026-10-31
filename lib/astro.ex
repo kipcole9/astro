@@ -1473,10 +1473,25 @@ defmodule Astro do
   Returns the datetime of either the March or September
   equinox, in UTC or a requested time zone.
 
+  An equinox is the moment the Sun's apparent ecliptic longitude
+  reaches 0° (the March equinox) or 180° (the September equinox).
+  The Sun is then very nearly on the celestial equator, heading
+  north in March and south in September, and day and night are of
+  almost equal length everywhere.
+
+  The moment is found from the Sun's apparent ecliptic longitude
+  (see `sun_apparent_longitude/1`). Starting 20 days before the 1st
+  of the month, the Sun's mean motion of 360° a tropical year
+  estimates when it reaches the target longitude, and a ten-day
+  bracket around that estimate is bisected until it is narrower than
+  a millisecond. The longitude comes from the JPL DE440s ephemeris where the
+  loaded kernel covers the year, and from the analytical series for
+  any other year.
+
   ### Arguments
 
-  * `year` is the gregorian year for which the equinox is
-    to be calculated.
+  * `year` is the Gregorian year for which the equinox is
+    to be calculated, within 50,000 years of 2000.
 
   * `event` is either `:march` or `:september` indicating
     which of the two annual equinox datetimes is required.
@@ -1510,6 +1525,25 @@ defmodule Astro do
   * `{:error, :invalid_time_zone_database}` if
     `:time_zone_database` is not a time zone database.
 
+  * `{:error, :invalid_year}` if `year` is not an integer.
+
+  * `{:error, :year_out_of_range}` if `year` is more than 50,000
+    years from 2000.
+
+  * `{:error, :invalid_event}` if `event` is not `:march` or
+    `:september`.
+
+  ### Accuracy
+
+  The search ends within a millisecond of the crossing. For the June
+  solstice of 1962, Meeus gives 21h24m42s TD from the full VSOP87
+  theory (*Astronomical Algorithms*, chapter 27); Astro gives
+  21:24:07.8 UTC, which is 21h24m42.0s TD. Outside the ephemeris the
+  series put the events 14 s early on average over 1900–2100, 18 s
+  RMS and 50 s at most. Far from the present the time is limited by
+  ΔT, which is uncertain by minutes before about 1000 and after
+  about 2500; the [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> {:ok, dt} = Astro.equinox 2019, :march
@@ -1533,27 +1567,25 @@ defmodule Astro do
       ...> )
       {:error, :utc_only_time_zone_database}
 
-  ### Notes
+  ### Reference
 
-  The equinox is the moment the Sun's apparent longitude
-  reaches 0° or 180°, found from the JPL ephemeris where it
-  covers the year and from the analytical series for any other
-  year. Within the ephemeris it agrees with published times to
-  a few seconds.
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 27 (equinoxes and solstices).
 
-  An equinox is commonly regarded as the instant of
-  time when the plane of earth's equator passes through
-  the center of the Sun. This occurs twice each year:
-  around 20 March and 23 September.
+  * United States Naval Observatory, [Earth's
+    Seasons](https://aa.usno.navy.mil/data/Earth_Seasons).
 
-  In other words, it is the moment at which the
-  center of the visible sun is directly above the equator.
+  * [Equinox](https://en.wikipedia.org/wiki/Equinox) and
+    [Tropical year](https://en.wikipedia.org/wiki/Tropical_year), Wikipedia.
 
   """
   @spec equinox(Calendar.year(), :march | :september, options()) ::
           {:ok, DateTime.t()}
           | {:error,
-             :time_zone_not_found
+             :invalid_year
+             | :invalid_event
+             | :year_out_of_range
+             | :time_zone_not_found
              | :utc_only_time_zone_database
              | :invalid_time_zone_database}
   def equinox(year, event, options \\ [])
@@ -1564,14 +1596,37 @@ defmodule Astro do
     end
   end
 
+  def equinox(year, _event, _options) when not is_integer(year) do
+    {:error, :invalid_year}
+  end
+
+  def equinox(_year, _event, _options) do
+    {:error, :invalid_event}
+  end
+
   @doc """
   Returns the datetime of either the June or December
   solstice, in UTC or a requested time zone.
 
+  A solstice is the moment the Sun's apparent ecliptic longitude
+  reaches 90° (the June solstice) or 270° (the December solstice).
+  The Sun is then at its farthest north or south of the celestial
+  equator, and the day is the longest of the year in one hemisphere
+  and the shortest in the other.
+
+  The moment is found from the Sun's apparent ecliptic longitude
+  (see `sun_apparent_longitude/1`). Starting 20 days before the 1st
+  of the month, the Sun's mean motion of 360° a tropical year
+  estimates when it reaches the target longitude, and a ten-day
+  bracket around that estimate is bisected until it is narrower than
+  a millisecond. The longitude comes from the JPL DE440s ephemeris where the
+  loaded kernel covers the year, and from the analytical series for
+  any other year.
+
   ### Arguments
 
-  * `year` is the gregorian year for which the solstice is
-    to be calculated.
+  * `year` is the Gregorian year for which the solstice is
+    to be calculated, within 50,000 years of 2000.
 
   * `event` is either `:june` or `:december` indicating
     which of the two annual solstice datetimes is required.
@@ -1605,11 +1660,30 @@ defmodule Astro do
   * `{:error, :invalid_time_zone_database}` if
     `:time_zone_database` is not a time zone database.
 
+  * `{:error, :invalid_year}` if `year` is not an integer.
+
+  * `{:error, :year_out_of_range}` if `year` is more than 50,000
+    years from 2000.
+
+  * `{:error, :invalid_event}` if `event` is not `:june` or
+    `:december`.
+
+  ### Accuracy
+
+  The search ends within a millisecond of the crossing. For the June
+  solstice of 1962, Meeus gives 21h24m42s TD from the full VSOP87
+  theory (*Astronomical Algorithms*, chapter 27); Astro gives
+  21:24:07.8 UTC, which is 21h24m42.0s TD. Outside the ephemeris the
+  series put the events 14 s early on average over 1900–2100, 18 s
+  RMS and 50 s at most. Far from the present the time is limited by
+  ΔT, which is uncertain by minutes before about 1000 and after
+  about 2500; the [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> {:ok, dt} = Astro.solstice 2019, :december
       iex> DateTime.truncate(dt, :second)
-      ~U[2019-12-22 04:19:23Z]
+      ~U[2019-12-22 04:19:24Z]
       iex> {:ok, dt} = Astro.solstice 2019, :june
       iex> DateTime.truncate(dt, :second)
       ~U[2019-06-21 15:54:13Z]
@@ -1622,38 +1696,25 @@ defmodule Astro do
       iex> DateTime.to_date(dt)
       ~D[2021-06-20]
 
-  ### Notes
+  ### Reference
 
-  The solstice is the moment the Sun's apparent longitude
-  reaches 90° or 270°, found from the JPL ephemeris where it
-  covers the year and from the analytical series for any other
-  year. Within the ephemeris it agrees with published times to
-  a few seconds.
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 27 (equinoxes and solstices).
 
-  A solstice is an event occurring when the Sun appears
-  to reach its most northerly or southerly excursion
-  relative to the celestial equator on the celestial
-  sphere. Two solstices occur annually, around June 21
-  and December 21.
+  * United States Naval Observatory, [Earth's
+    Seasons](https://aa.usno.navy.mil/data/Earth_Seasons).
 
-  The seasons of the year are determined by
-  reference to both the solstices and the equinoxes.
-
-  The day of a solstice in either hemisphere has either the most
-  sunlight of the year (summer solstice) or the least
-  sunlight of the year (winter solstice) for any place
-  other than the Equator.
-
-  Alternative terms, with no ambiguity as to which
-  hemisphere is the context, are "June solstice" and
-  "December solstice", referring to the months in
-  which they take place every year.
+  * [Solstice](https://en.wikipedia.org/wiki/Solstice) and
+    [Tropical year](https://en.wikipedia.org/wiki/Tropical_year), Wikipedia.
 
   """
   @spec solstice(Calendar.year(), :june | :december, options()) ::
           {:ok, DateTime.t()}
           | {:error,
-             :time_zone_not_found
+             :invalid_year
+             | :invalid_event
+             | :year_out_of_range
+             | :time_zone_not_found
              | :utc_only_time_zone_database
              | :invalid_time_zone_database}
   def solstice(year, event, options \\ [])
@@ -1662,6 +1723,14 @@ defmodule Astro do
     with {:ok, solstice} <- Solar.equinox_and_solstice(year, event) do
       in_time_zone(solstice, options)
     end
+  end
+
+  def solstice(year, _event, _options) when not is_integer(year) do
+    {:error, :invalid_year}
+  end
+
+  def solstice(_year, _event, _options) do
+    {:error, :invalid_event}
   end
 
   @doc """

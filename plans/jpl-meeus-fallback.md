@@ -34,7 +34,7 @@ Calendrical, Tempo and every other consumer deal only with Astro's API. They nev
 
 * **Callers become total.** With the choice made in `Astro.Solar` and `Astro.Lunar`, their `{:ok, _} =` matches on the ephemeris go, the coverage checks in the `Astro` functions and in the rise and set searches are removed, and equinoxes, solstices and new moons are found as crossings of the JPL-or-Meeus positions.
 
-* **Equinoxes and solstices.** Find the crossing with `Astro.Solar.solar_ecliptic_longitude_after/2`, starting 20 days before the 1st of the event's month (the Ch.27 polynomial seed is fitted only to 1000–3000, so the calendar date is the better seed for any era). Inside the ephemeris this matches published instants to about 1.5 seconds, against about 30 for the closed form, and the 1000–3000 refusal goes.
+* **Equinoxes and solstices.** Find the crossing with `Astro.Solar.solar_ecliptic_longitude_after/2`, starting 20 days before the 1st of the event's month (the Ch.27 polynomial seed is fitted only to 1000–3000, so the calendar date is the better seed for any era). Inside the ephemeris this matches Meeus's full VSOP87 time for the June 1962 solstice to the second, against 26 s for the closed form, and the 1000–3000 refusal goes.
 
 * **New moons.** Seed with `Astro.Lunar.nth_new_moon/1`, then refine to the moment the lunar phase is zero. Inside the ephemeris the result moves by seconds; outside it the series and the crossing agree to within the Moon series' accuracy.
 
@@ -88,7 +88,7 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 * [x] **Refine new moons to the zero-phase crossing** — `lunar_phase_at/1` is the plain longitude difference (its chapter 49 substitution misfired across 0°/360°); each lunation's new moon is refined from its own chapter 49 estimate, so a new moon is the same moment however it is reached. Chapter 49 is within 12 s of the JPL crossing over 1900–2100 and drifts from the series as about 1 s per century² outside it (96 s at 1000, 4 h at −10,000). 2026-10-31.
 
-* [x] **Find equinoxes and solstices as longitude crossings** — seeded from the event's month rather than Ch.27, whose tables are gone; within 1.5 s of published 2019 and 2024 instants and within the ±30 s rounding of all 42 reference solstices; any year. 2026-10-31.
+* [x] **Find equinoxes and solstices as longitude crossings** — seeded from the event's month rather than Ch.27, whose tables are gone; within a second of Meeus's full VSOP87 June 1962 solstice and within the ±30 s rounding of all 42 reference solstices; any year. 2026-10-31.
 
 * [x] **Remove the coverage checks** — from the `Astro` functions, both rise and set searches and crescent visibility; `:not_found` is gone from their specs and docs, the README and the guides; tests show answers for the years 500 and 1000. 2026-10-31.
 

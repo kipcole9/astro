@@ -169,6 +169,15 @@ defmodule Astro.Solar do
 
   @days_before_search 20
 
+  # A search for a solar longitude ends when its bracket is under a
+  # millisecond. A float moment resolves 4e-9 days 50,000 years from 2000.
+  @longitude_search_tolerance_days 1.0e-8
+
+  # Equinoxes and solstices are found within this many years of 2000, the
+  # range of the new moon searches. Far beyond it ΔT, the series and the
+  # precision of a float moment all fail.
+  @equinox_and_solstice_range_years 50_000
+
   # Solar noon is refined until a step is under a millisecond.
   @meridian_transit_tolerance_days 1.0e-8
   @meridian_transit_steps 8
@@ -315,7 +324,13 @@ defmodule Astro.Solar do
     a = max(t, tau - 5)
     b = tau + 5
 
-    Math.invert_angular(&solar_ecliptic_longitude/1, lambda, a, b)
+    Math.invert_angular(
+      &solar_ecliptic_longitude/1,
+      lambda,
+      a,
+      b,
+      @longitude_search_tolerance_days
+    )
   end
 
   @doc """
@@ -841,14 +856,19 @@ defmodule Astro.Solar do
   longitude reaches a multiple of 90°: 0° at the March equinox, 90° at
   the June solstice, 180° at the September equinox and 270° at the
   December solstice. It is found by searching for that longitude with
-  `solar_ecliptic_longitude_after/2`, starting a few weeks before the
-  month the event falls in, so it uses the same positions as the rest of
-  this module: the JPL ephemeris where it covers the year, and the
+  `solar_ecliptic_longitude_after/2`, starting 20 days before the 1st of
+  the month the event falls in, so it uses the same positions as the rest
+  of this module: the JPL ephemeris where it covers the year, and the
   analytical series for any other year.
+
+  The month is a date in dynamical time, in which the Sun's motion is
+  uniform, so the search starts ΔT earlier in Universal Time. ΔT is about
+  a minute today but grows to days thousands of years from the present,
+  and far enough back the event falls in the previous year in UTC.
 
   ### Arguments
 
-  * `year` is an integer Gregorian year.
+  * `year` is an integer Gregorian year within 50,000 years of 2000.
 
   * `event` is one of `:march`, `:june`, `:september`,
     or `:december` identifying the equinox or solstice.
@@ -857,6 +877,9 @@ defmodule Astro.Solar do
 
   * `{:ok, datetime}` where `datetime` is a `DateTime.t()`
     in UTC.
+
+  * `{:error, :year_out_of_range}` if `year` is more than 50,000
+    years from 2000.
 
   ### Examples
 
@@ -870,14 +893,20 @@ defmodule Astro.Solar do
 
   """
   @spec equinox_and_solstice(integer(), :march | :june | :september | :december) ::
-          {:ok, DateTime.t()}
+          {:ok, DateTime.t()} | {:error, :year_out_of_range}
+
+  def equinox_and_solstice(year, event)
+      when is_integer(year) and abs(year - 2000) > @equinox_and_solstice_range_years and
+             event in [:march, :june, :september, :december] do
+    {:error, :year_out_of_range}
+  end
 
   def equinox_and_solstice(year, event)
       when is_integer(year) and event in [:march, :june, :september, :december] do
     {longitude, month} = Map.fetch!(@equinox_and_solstice, event)
 
     first_of_month = Time.date_time_to_moment(Date.new!(year, month, 1))
-    search_start = first_of_month - @days_before_search
+    search_start = Time.universal_from_dynamical(first_of_month) - @days_before_search
 
     longitude
     |> solar_ecliptic_longitude_after(search_start)

@@ -18,7 +18,7 @@
 
 * New moons are the moments the lunar phase passes 0°, refined from the Meeus chapter 49 estimate by the secant method, where chapter 49 alone was up to 12 s from JPL. Far from the present they follow the analytical series, which drift from chapter 49 by about 1 s per century².
 
-* `Astro.equinox/3` and `Astro.solstice/3` are the moments the Sun's apparent longitude reaches 0°, 90°, 180° or 270°: within a few seconds of published times, against about 30 for the Meeus closed form. They work for any year, so `{:error, :year_out_of_range}` is gone.
+* `Astro.equinox/3` and `Astro.solstice/3` are the moments the Sun's apparent longitude reaches 0°, 90°, 180° or 270°: within a second of Meeus's full VSOP87 time for the June 1962 solstice, against 26 s for the Meeus closed form. They work for any year within 50,000 years of 2000, where 2.9.0 allowed 1000 to 3000, and the search ends within a millisecond rather than 0.86 s.
 
 * Dates outside the loaded ephemeris are answered from the analytical series: the `Astro` functions, sunrise and sunset, moonrise and moonset and crescent visibility no longer return `{:error, :not_found}`, and their specs no longer name it.
 
@@ -29,6 +29,8 @@
 ### Bug Fixes
 
 * `Astro.solar_noon/2` evaluated the equation of time twelve hours early, so it was up to 18 s from the meridian transit. It is now the transit itself, to the microsecond rather than the second.
+
+* `Astro.equinox/3` and `Astro.solstice/3` raised `FunctionClauseError` for a non-integer year or an unknown event; they return `{:error, :invalid_year}` or `{:error, :invalid_event}`.
 
 * `Astro.sun_azimuth_elevation/2` used mean rather than apparent sidereal time, so its azimuth was about 0.3′ from NREL's solar position algorithm; it now agrees to 0.05″.
 

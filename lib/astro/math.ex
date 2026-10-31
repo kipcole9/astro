@@ -330,28 +330,26 @@ defmodule Astro.Math do
     end
   end
 
-  @spec invert_angular(function(), number(), number(), number()) :: number()
-  def invert_angular(f, y, a, b) do
+  @spec invert_angular(function(), number(), number(), number(), number()) :: number()
+  def invert_angular(f, y, a, b, tolerance \\ 1 / 100_000.0) do
     # returns X such that A =< X =< B for which f(X) = Y
     # where |X-X0| < Tolerance
-    tolerance = 1 / 100_000.0
     phi = fn l, u -> u - l < tolerance end
     psi = fn x -> mod(f.(x) - y, 360.0) < deg(180.0) end
     bisection_search(a, b, phi, psi)
   end
 
+  # The search also ends when the midpoint rounds to an end of the bracket:
+  # far from the epoch a float cannot represent a bracket as narrow as the
+  # tolerance, and the search would otherwise never end.
   @spec bisection_search(number(), number(), function(), function()) :: number()
   def bisection_search(u, v, phi, psi) do
     x = (v + u) / 2.0
 
-    if phi.(u, v) do
-      x
-    else
-      if psi.(x) do
-        bisection_search(u, x, phi, psi)
-      else
-        bisection_search(x, v, phi, psi)
-      end
+    cond do
+      phi.(u, v) or x == u or x == v -> x
+      psi.(x) -> bisection_search(u, x, phi, psi)
+      true -> bisection_search(x, v, phi, psi)
     end
   end
 end
