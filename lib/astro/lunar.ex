@@ -1653,6 +1653,60 @@ defmodule Astro.Lunar do
   end
 
   @doc """
+  Returns the number of the lunation in progress at a moment.
+
+  Lunations are numbered as Meeus and NASA's eclipse catalogues number
+  them: lunation 0 begins with the new moon of 6 January 2000, and the
+  numbers before it are negative. A lunation begins at the new moon
+  estimated by the method of Meeus chapter 49, within 17 s of the
+  computed new moon over 1900–2100, 25 minutes at −2000 and four hours
+  at −10,000, so that close to a new moon the neighbouring lunation can
+  be returned.
+
+  The lunation is found by counting mean synodic months from that new
+  moon and stepping to the lunation whose estimated new moon is the
+  last at or before the moment, so the count holds for any date,
+  however far ΔT and the Moon's tidal deceleration move the new moons
+  from the mean.
+
+  ### Arguments
+
+  * `t` is a `t:Astro.Time.moment/0`.
+
+  ### Returns
+
+  * The lunation number, an integer.
+
+  ### Examples
+
+      iex> Astro.Lunar.lunation_at(Astro.Time.date_time_to_moment(~D[2000-01-07]))
+      0
+
+      iex> Astro.Lunar.lunation_at(Astro.Time.date_time_to_moment(~D[2024-04-15]))
+      300
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  """
+  @doc since: "2.10.0"
+  @spec lunation_at(Time.moment()) :: integer()
+  def lunation_at(t) do
+    {before, at_or_after} = lunations_around(t)
+
+    in_progress =
+      if nth_new_moon(at_or_after) == t do
+        at_or_after
+      else
+        before
+      end
+
+    in_progress - @months_epoch_to_j2000
+  end
+
+  @doc """
   Returns the Moon's equatorial horizontal parallax in degrees for a
   given moment.
 

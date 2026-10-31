@@ -2,6 +2,7 @@ defmodule Astro.SolarEclipseTest do
   use ExUnit.Case, async: true
 
   doctest Astro.Solar.Eclipse
+  doctest Astro.Saros
 
   # The oracle is NASA's Five Millennium Catalog of Solar Eclipses
   # (Espenak and Meeus), https://eclipse.gsfc.nasa.gov/SEcat5/SEcatalog.html:
@@ -111,6 +112,10 @@ defmodule Astro.SolarEclipseTest do
     assert eclipse.type == row.type, label
     assert_in_delta eclipse.gamma, row.gamma, tolerance.gamma, label
     assert_in_delta eclipse.magnitude, row.magnitude, tolerance.magnitude, label
+    assert eclipse.saros == row.saros, label
+
+    lunation = Astro.Lunar.lunation_at(eclipse.greatest + Astro.Time.mean_synodic_month() / 2)
+    assert lunation == row.lunation, label
   end
 
   defp polynomial(terms, hours) do
@@ -135,7 +140,7 @@ defmodule Astro.SolarEclipseTest do
   end
 
   defp row(line) do
-    [year, month, day, td, _delta_t, _lunation, _saros, type, gamma, magnitude | _rest] =
+    [year, month, day, td, _delta_t, lunation, saros, type, gamma, magnitude | _rest] =
       String.split(line, ",")
 
     {year, month, day} =
@@ -153,7 +158,9 @@ defmodule Astro.SolarEclipseTest do
       td: days(year, month, day) + (hours * 3_600 + minutes * 60 + seconds) / 86_400,
       type: eclipse_type(String.first(type)),
       gamma: String.to_float(gamma),
-      magnitude: String.to_float(magnitude)
+      magnitude: String.to_float(magnitude),
+      lunation: String.to_integer(lunation),
+      saros: String.to_integer(saros)
     }
   end
 

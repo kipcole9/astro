@@ -137,6 +137,17 @@ iex> {eclipse.type, DateTime.to_date(eclipse.greatest)}
 {:annular, ~D[2023-10-14]}
 ```
 
+Eclipses recur after a saros of 223 lunations, about 18 years and 11 days, and the eclipses a saros apart form a Saros series, which the `:saros` field numbers as NASA's catalogues do. The eclipse of 8 April 2024 is in Saros 139, and the next in the series is 18 years later:
+
+```elixir
+iex> {:ok, eclipse} = Astro.solar_eclipse_at_or_after(~D[2024-04-01])
+iex> eclipse.saros
+139
+iex> {:ok, next} = Astro.solar_eclipse_at_or_after(~D[2042-04-01])
+iex> {next.saros, DateTime.to_date(next.greatest)}
+{139, ~D[2042-04-20]}
+```
+
 `solar_eclipse_at/3` describes an eclipse as seen from a place: the type there, the contacts and the moment of maximum in the location's time zone, the magnitude, the fraction of the Sun covered, and the Sun's altitude at each contact. It takes the eclipse, or a date for the next one, and returns `{:error, :not_visible}` where nothing of it is seen.
 
 ```elixir

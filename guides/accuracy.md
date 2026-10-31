@@ -97,7 +97,7 @@ Eclipses are tested against NASA's [Five Millennium Catalog of Solar Eclipses](h
 
 ### Global circumstances
 
-Every eclipse NASA lists from 1901 to 2100, 452 solar and 457 lunar, is found, of the same type, hybrid solar eclipses included:
+Every eclipse NASA lists from 1901 to 2100, 452 solar and 457 lunar, is found, of the same type, hybrid solar eclipses included. Its Saros series is NASA's for every eclipse of the six centuries tested, 694 solar and 703 lunar:
 
 | Result | Solar | Lunar |
 |---|---|---|
@@ -105,6 +105,7 @@ Every eclipse NASA lists from 1901 to 2100, 452 solar and 457 lunar, is found, o
 | Gamma | within 0.00006 | within 0.00014 |
 | Magnitudes | within 0.00007 | within 0.0004 |
 | Durations of the partial and total phases | — | within 4 s |
+| Saros series | the same | the same |
 
 NASA gives durations to 0.1 minute; a phase the Moon only grazes, entering it by less than 0.05 of its diameter, lasts a time that changes quickly with how far it enters, and is only required to happen. Lunar eclipses use Danjon's enlargement of the Earth's shadow, as NASA's catalogue does; the `:shadow` option gives Chauvenet's, the older almanac convention, whose larger shadow adds about 0.005 to the umbral magnitude and 0.025 to the penumbral.
 

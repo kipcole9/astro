@@ -93,7 +93,8 @@ defmodule Astro.Lunar.Eclipse do
 
   @typedoc """
   A lunar eclipse. Every instant is a UTC `t:DateTime.t/0`; the umbral
-  contacts are `nil` for an eclipse that does not reach them.
+  contacts are `nil` for an eclipse that does not reach them, and the
+  Saros series is numbered as NASA numbers it (`Astro.Saros`).
 
   """
   @type t :: %__MODULE__{
@@ -107,7 +108,8 @@ defmodule Astro.Lunar.Eclipse do
           total_begins: DateTime.t() | nil,
           total_ends: DateTime.t() | nil,
           partial_ends: DateTime.t() | nil,
-          penumbral_ends: DateTime.t()
+          penumbral_ends: DateTime.t(),
+          saros: integer()
         }
 
   defstruct [
@@ -121,7 +123,8 @@ defmodule Astro.Lunar.Eclipse do
     :total_begins,
     :total_ends,
     :partial_ends,
-    :penumbral_ends
+    :penumbral_ends,
+    :saros
   ]
 
   # The Moon's radius in equatorial radii of the Earth, as NASA's catalogues
@@ -381,7 +384,8 @@ defmodule Astro.Lunar.Eclipse do
       total_begins: contact(greatest, at_greatest, {:umbra, -1.0}, :before, shadow),
       total_ends: contact(greatest, at_greatest, {:umbra, -1.0}, :after, shadow),
       partial_ends: contact(greatest, at_greatest, {:umbra, 1.0}, :after, shadow),
-      penumbral_ends: contact(greatest, at_greatest, {:penumbra, 1.0}, :after, shadow)
+      penumbral_ends: contact(greatest, at_greatest, {:penumbra, 1.0}, :after, shadow),
+      saros: Astro.Saros.series(Lunar.lunation_at(greatest), :lunar)
     }
   end
 

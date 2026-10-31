@@ -332,11 +332,68 @@ defmodule Astro.Time do
   @doc false
   def days_from_minutes(minutes), do: minutes / @minutes_per_day
 
-  @doc false
-  def mean_synodic_month, do: @mean_synodic_month
+  @doc """
+  Returns the mean synodic month: the mean time from one new moon to
+  the next, in days.
 
-  @doc false
-  def mean_tropical_year, do: @mean_tropical_year
+  A single lunation is from about 6 hours shorter to 7 hours longer
+  than the mean, 29.27 to 29.83 days over 1900–2100, as the Moon's and
+  the Earth's orbits are eccentric, so the mean is a step between
+  lunations, not the length of any one of them. Lunisolar calendars use
+  it to count and estimate lunations.
+
+  ### Returns
+
+  * The mean synodic month in days, `29.530588861`.
+
+  ### Examples
+
+      iex> Astro.Time.mean_synodic_month()
+      29.530588861
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
+
+  """
+  @doc since: "2.10.0"
+  @spec mean_synodic_month() :: float()
+  def mean_synodic_month do
+    @mean_synodic_month
+  end
+
+  @doc """
+  Returns the mean tropical year: the mean time for the Sun's ecliptic
+  longitude to advance 360°, in days.
+
+  It is the mean over the whole orbit: the year from one March
+  equinox to the next is about 16 seconds longer, and from one June
+  solstice to the next about 48 seconds shorter, as the Earth's orbit
+  is eccentric. Solar and
+  lunisolar calendars use it to estimate when the Sun reaches a
+  longitude, before refining the moment from the Sun's position.
+
+  ### Returns
+
+  * The mean tropical year in days, `365.242189`.
+
+  ### Examples
+
+      iex> Astro.Time.mean_tropical_year()
+      365.242189
+
+  ### Reference
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, 4th edition (2018).
+
+  """
+  @doc since: "2.10.0"
+  @spec mean_tropical_year() :: float()
+  def mean_tropical_year do
+    @mean_tropical_year
+  end
 
   @doc """
   Returns the dynamical moment for a given universal (UTC) moment.

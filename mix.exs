@@ -79,6 +79,7 @@ defmodule Astro.MixProject do
         ],
         Internals: [
           Astro.Coordinates,
+          Astro.Saros,
           Astro.Earth,
           Astro.Time,
           Astro.Supervisor

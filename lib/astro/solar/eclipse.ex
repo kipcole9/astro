@@ -113,17 +113,19 @@ defmodule Astro.Solar.Eclipse do
         }
 
   @typedoc """
-  A solar eclipse. Greatest eclipse is a UTC `t:DateTime.t/0`.
+  A solar eclipse. Greatest eclipse is a UTC `t:DateTime.t/0`, and the
+  Saros series is numbered as NASA numbers it (`Astro.Saros`).
 
   """
   @type t :: %__MODULE__{
           type: eclipse_type(),
           greatest: DateTime.t(),
           gamma: float(),
-          magnitude: float()
+          magnitude: float(),
+          saros: integer()
         }
 
-  defstruct [:type, :greatest, :gamma, :magnitude]
+  defstruct [:type, :greatest, :gamma, :magnitude, :saros]
 
   # The Moon's radius in Earth radii for the penumbra and for the umbra.
   @penumbral_k 0.272488
@@ -326,10 +328,20 @@ defmodule Astro.Solar.Eclipse do
       greatest =
         least_distance(new_moon - @days_around_new_moon, new_moon + @days_around_new_moon)
 
-      circumstances(greatest, elements(greatest))
+      with {:ok, eclipse} <- circumstances(greatest, elements(greatest)) do
+        {:ok, Map.put(eclipse, :saros, saros(greatest))}
+      end
     else
       :none
     end
+  end
+
+  # A solar eclipse is in the lunation that begins with its new moon,
+  # the lunation in progress half a month after it.
+  defp saros(greatest) do
+    (greatest + Time.mean_synodic_month() / 2)
+    |> Lunar.lunation_at()
+    |> Astro.Saros.series(:solar)
   end
 
   defp axis_distance(%{x: x, y: y}) do

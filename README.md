@@ -16,7 +16,7 @@ Astro is a library of accurate astronomical functions, with a focus on those tha
 
 * **Crescent visibility** — `Astro.new_visible_crescent/3` predicts the first visibility of the new crescent with the Odeh, Yallop or Schaefer criteria.
 
-* **Eclipses** — `Astro.solar_eclipse_at_or_after/1` and `Astro.lunar_eclipse_at_or_after/2` find solar and lunar eclipses with their type, greatest eclipse and magnitudes; `Astro.solar_eclipse_at/3` and `Astro.lunar_eclipse_at/3` describe one as seen from a place; and `Astro.solar_eclipse_path/2` gives the central line and limits of a total or annular eclipse for drawing on a map.
+* **Eclipses** — `Astro.solar_eclipse_at_or_after/1` and `Astro.lunar_eclipse_at_or_after/2` find solar and lunar eclipses with their type, greatest eclipse, magnitudes and Saros series; `Astro.solar_eclipse_at/3` and `Astro.lunar_eclipse_at/3` describe one as seen from a place; and `Astro.solar_eclipse_path/2` gives the central line and limits of a total or annular eclipse for drawing on a map.
 
 * **Positions of the sun and moon** — right ascension, declination and distance, and the sun's azimuth and elevation from any location.
 

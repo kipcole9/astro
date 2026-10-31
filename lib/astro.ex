@@ -142,7 +142,8 @@ defmodule Astro do
     :magnitude,
     :obscuration,
     :penumbral_magnitude,
-    :umbral_magnitude
+    :umbral_magnitude,
+    :saros
   ]
 
   # The seconds between the points of a solar eclipse's path, by default
@@ -1155,9 +1156,9 @@ defmodule Astro do
 
   * `{:ok, eclipse}`, an `t:Astro.Lunar.Eclipse.t/0` with the type
     (`:penumbral`, `:partial` or `:total`), gamma, the penumbral and
-    umbral magnitudes, and greatest eclipse and the contacts as UTC
+    umbral magnitudes, greatest eclipse and the contacts as UTC
     `t:DateTime.t/0`s, `nil` for the contacts the eclipse does not
-    have.
+    have, and its Saros series as NASA numbers it (`Astro.Saros`).
 
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.
@@ -1254,9 +1255,9 @@ defmodule Astro do
 
   * `{:ok, eclipse}`, an `t:Astro.Lunar.Eclipse.t/0` with the type
     (`:penumbral`, `:partial` or `:total`), gamma, the penumbral and
-    umbral magnitudes, and greatest eclipse and the contacts as UTC
+    umbral magnitudes, greatest eclipse and the contacts as UTC
     `t:DateTime.t/0`s, `nil` for the contacts the eclipse does not
-    have.
+    have, and its Saros series as NASA numbers it (`Astro.Saros`).
 
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.
@@ -1347,7 +1348,8 @@ defmodule Astro do
     as a UTC `t:DateTime.t/0`, gamma and the magnitude: for a central
     eclipse the ratio of the Moon's apparent diameter to the Sun's at
     greatest eclipse, and otherwise the fraction of the Sun's diameter
-    covered there.
+    covered there; and its Saros series as NASA numbers it
+    (`Astro.Saros`).
 
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.
@@ -1433,7 +1435,8 @@ defmodule Astro do
     as a UTC `t:DateTime.t/0`, gamma and the magnitude: for a central
     eclipse the ratio of the Moon's apparent diameter to the Sun's at
     greatest eclipse, and otherwise the fraction of the Sun's diameter
-    covered there.
+    covered there; and its Saros series as NASA numbers it
+    (`Astro.Saros`).
 
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.

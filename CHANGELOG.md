@@ -6,6 +6,12 @@ This is the changelog for Astro version 2.10.0, released on November 1st, 2026. 
 
 ### Added
 
+* Solar and lunar eclipses have a `:saros` field, their Saros series as NASA's catalogues number it (`Astro.Saros`); it matches NASA for all 1,397 eclipses of the six centuries tested.
+
+* `Astro.Lunar.lunation_at/1` returns the lunation in progress at a moment, numbered as Meeus and NASA number them from the new moon of 6 January 2000.
+
+* `Astro.Time.mean_synodic_month/0` and `mean_tropical_year/0` are documented as public API.
+
 * `Astro.solar_eclipse_path/2` returns a solar eclipse's central line and northern and southern limits as timed `Geo.Point`s, with path width, duration and Sun altitude on the central line, for drawing the path on a map. Within 0.7 km of NASA's path tables where the Sun is 20° or more up.
 
 * `Astro.solar_eclipse_at/3` and `lunar_eclipse_at/3` return an eclipse's local circumstances: contacts, maximum, magnitude and obscuration for the Sun, and the Sun's or the Moon's altitude at each contact, or `{:error, :not_visible}`. Solar contacts match the USNO's to 2 s.

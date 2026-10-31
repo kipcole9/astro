@@ -150,6 +150,14 @@ iex> Float.round(eclipse.umbral_magnitude, 3)
 1.183
 ```
 
+The `:saros` field gives the eclipse's Saros series, numbered as NASA's catalogues number them; eclipses of a series recur every 223 lunations, about 18 years and 11 days:
+
+```elixir
+iex> {:ok, eclipse} = Astro.lunar_eclipse_at_or_after(~D[2025-01-01])
+iex> eclipse.saros
+123
+```
+
 `lunar_eclipse_at/3` gives the same eclipse in the location's time zone with the Moon's altitude at greatest eclipse and at each contact, or `{:error, :not_visible}` where the Moon is below the horizon throughout:
 
 ```elixir

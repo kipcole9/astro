@@ -52,7 +52,7 @@ All four were accepted as recommended on 2026-10-31.
 
 2. **The Moon's radius for solar eclipses.** NASA uses `k1 = 0.272488` for the penumbra and `k2 = 0.272281`, a mean radius below the limb's peaks, for the umbra, so that a total phase is not overstated. **Decided:** NASA's two values, so that types and central durations compare with the catalogue.
 
-3. **Scope for 2.10.** **Decided:** global circumstances for both kinds (finding, type, greatest eclipse, gamma, magnitudes, lunar contacts and durations) and local circumstances of a solar eclipse at a place. Defer the Saros series number to a later release. **Revised 2026-11-01:** the geography of a solar eclipse (the central line, the northern and southern limits, path width) is in 2.10 too, as `Astro.solar_eclipse_path/2`, for drawing the path on a map.
+3. **Scope for 2.10.** **Decided:** global circumstances for both kinds (finding, type, greatest eclipse, gamma, magnitudes, lunar contacts and durations) and local circumstances of a solar eclipse at a place. Defer the Saros series number to a later release (added in 2.10.0, 2026-11-01). **Revised 2026-11-01:** the geography of a solar eclipse (the central line, the northern and southern limits, path width) is in 2.10 too, as `Astro.solar_eclipse_path/2`, for drawing the path on a map.
 
 4. **Where the code lives.** **Decided:** `Astro.Solar.Eclipse` and `Astro.Lunar.Eclipse`, beside `Astro.Lunar.MoonRiseSet` and `Astro.Lunar.CrescentVisibility`, taking moments as the other `Astro.Solar` and `Astro.Lunar` functions do, with the public functions in `Astro` taking dates and date-times.
 
@@ -83,6 +83,8 @@ Within the JPL ephemeris, instants of greatest eclipse should agree with NASA's 
 ## Tasks
 
 ### Done
+
+* [x] **Saros series** — `:saros` on solar and lunar eclipses (`Astro.Saros`), from the lunation (`Astro.Lunar.lunation_at/1`) by `s ≡ 38 (n − c) (mod 223)` and a fitted band of series in progress; NASA's number for all 694 solar and 703 lunar eclipses tested, with the lunation. 2026-11-01, v2.10.0.
 
 * [x] **Documentation** — the `Astro` eclipse functions in the house format with Accuracy and Reference sections, and an eclipses section in `guides/accuracy.md` (global, local and path accuracy against NASA and the USNO, and ΔT's effect on paths). 2026-11-01.
 

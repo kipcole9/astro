@@ -50,6 +50,7 @@ defmodule Astro.Lunar.Eclipse.Local do
           total_ends: DateTime.t() | nil,
           partial_ends: DateTime.t() | nil,
           penumbral_ends: DateTime.t(),
+          saros: integer(),
           moon_altitudes: %{atom() => float()}
         }
 
@@ -65,6 +66,7 @@ defmodule Astro.Lunar.Eclipse.Local do
     :total_ends,
     :partial_ends,
     :penumbral_ends,
+    :saros,
     :moon_altitudes
   ]
 

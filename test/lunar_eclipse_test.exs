@@ -113,6 +113,8 @@ defmodule Astro.LunarEclipseTest do
 
     assert abs(terrestrial_time(eclipse.greatest) - row.td) * 86_400 <= tolerance.seconds, label
     assert eclipse.type == row.type, label
+    assert eclipse.saros == row.saros, label
+    assert Astro.Lunar.lunation_at(eclipse.greatest) == row.lunation, label
     assert_in_delta eclipse.gamma, row.gamma, tolerance.gamma, label
 
     assert_in_delta eclipse.penumbral_magnitude,
@@ -177,7 +179,7 @@ defmodule Astro.LunarEclipseTest do
   end
 
   defp row(line) do
-    [year, month, day, td, _delta_t, _lunation, _saros, type, gamma, pen, um, pen_d, par_d, tot_d] =
+    [year, month, day, td, _delta_t, lunation, saros, type, gamma, pen, um, pen_d, par_d, tot_d] =
       String.split(line, ",")
 
     {year, month, day} =
@@ -194,6 +196,8 @@ defmodule Astro.LunarEclipseTest do
       day: day,
       td: days(year, month, day) + (hours * 3_600 + minutes * 60 + seconds) / 86_400,
       type: eclipse_type(String.first(type)),
+      lunation: String.to_integer(lunation),
+      saros: String.to_integer(saros),
       gamma: String.to_float(gamma),
       penumbral_magnitude: String.to_float(pen),
       umbral_magnitude: String.to_float(um),
