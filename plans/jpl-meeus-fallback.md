@@ -74,15 +74,15 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 ## Tasks
 
-* [ ] **Restore the far-date new moon search** — the corrected lunation estimate and the ±300,000-year `ArgumentError` decided above are not in any commit (possibly in the user's `stash@{0}`); without them a search 100,000 years out walks many lunations and one beyond ±300,000 years does not end.
-
-* [ ] **Test the ephemeris edges** — every public function across both edges of the bundled and the full kernel, with no error, no raise, and event times within the stated jump.
+* [ ] **Bound the far-date new moon search** — the walk from the mean-month estimate to the chapter 49 lunations either side of a moment takes many steps 100,000 years out, where the series' higher-order terms carry the estimates thousands of months from the mean, and does not end beyond about ±300,000 years, where chapter 49 is out of lunation order. Correct the starting lunation by the series' own slope, and raise `ArgumentError` where the order breaks, as decided above.
 
 * [ ] **Validate far dates against DE441** — optional: DE441 covers −13,200 to +17,191, so it can measure both Meeus series at ±10,000 years. It is a 3 GB kernel, so this is a one-off check, not a CI job.
 
 * [ ] **Calendrical follow-up** — once released, remove `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error from `Calendrical.Islamic.Visibility`, and raise Calendrical's Astro requirement. In the Calendrical repository, by its maintainer.
 
 ### Done
+
+* [x] **Test the ephemeris edges** — `test/ephemeris_edge_test.exs` finds each body's coverage edges in whichever kernel is loaded; positions half a second either side differ by at most 1.1″ for the Sun and 3.1″ for the Moon, and every public function answers on the days either side (a monthly moonrise or moonset skip aside). 2026-10-31.
 
 * [x] **Speed up the new moon refinement** — the secant method on the signed phase replaces the bisection: 0.065 ms per search inside the ephemeris (from 0.40) and 0.19–0.36 ms outside it (from 1.3–1.5), with the phase at each new moon within 10⁻⁸° of zero (from 4×10⁻⁵°). Refining only the one new moon a caller needs was not needed. 2026-10-31.
 
