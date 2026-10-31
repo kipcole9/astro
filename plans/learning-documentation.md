@@ -95,8 +95,6 @@ Recommendation: do not add an accuracy-for-performance option. If a memory-const
 
 ## Tasks
 
-* [ ] **Document the Moon position, phase and illumination functions** — position, phase, phase emoji, illuminated fraction.
-
 * [ ] **Document the new moon and phase searches.**
 
 * [ ] **Document moonrise, moonset and crescent visibility.**
@@ -104,6 +102,8 @@ Recommendation: do not add an accuracy-for-performance option. If a memory-const
 * [ ] **Add accuracy and references to the `Astro.Solar` and `Astro.Lunar` analytical functions.**
 
 ### Done
+
+* [x] **Document the Moon position, phase and illumination functions** — position, phase, phase emoji, illuminated fraction; checked against Meeus examples 47.a (2.1″, 0.3″, 4 km) and 48.a (0.67856 against 0.6786). 2026-10-31.
 
 * [x] **Document the equinox and solstice functions** — and replace the unsourced "within 1.5 s of published times" with the check against Meeus's full VSOP87 June 1962 solstice (to the second); USNO's minute-rounded seasons differ by −24 to +41 s over 2015–2035, too coarse to use. 2026-10-31.
 

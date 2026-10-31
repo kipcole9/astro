@@ -385,22 +385,53 @@ defmodule Astro do
   end
 
   @doc """
-  Returns a `t:Geo.PointZ.t/0` containing
-  the right ascension and declination of
-  the moon at a given date or date time.
+  Returns the Moon's apparent right ascension, declination and distance
+  at a date or date time.
+
+  This is the Moon's apparent geocentric position: where it is seen
+  from the centre of the Earth, referred to the true equator and
+  equinox of the date. The Moon is close enough that an observer on
+  the Earth's surface sees it displaced by up to about 1° from this
+  position (its parallax); `moonrise/3`, `moonset/3` and the Odeh
+  crescent criterion correct for that.
+
+  Where the loaded JPL DE440s ephemeris covers the moment, the
+  Earth-to-Moon vector is read from it 1.282 s earlier, the light
+  time, and rotated from the ICRF to the true equator of date by IAU
+  1976 precession and IAU 1980 nutation. No annual aberration is
+  applied, because the Moon travels around the Sun with the Earth.
+  Elsewhere the Moon's ecliptic longitude, latitude and distance come
+  from the periodic terms of Meeus, *Astronomical Algorithms*, chapter
+  47, abridged from the ELP-2000/82 lunar theory, with nutation in
+  longitude added, and are converted to right ascension and
+  declination with the true obliquity of the ecliptic (chapter 13).
 
   ### Arguments
 
   * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`. A date is
+    taken at 00:00 UTC.
 
   ### Returns
 
   * a `t:Geo.PointZ.t/0` struct with coordinates
     `{right_ascension, declination, distance}` with properties
-    `%{reference: :celestial, object: :moon}`.
-    `distance` is in meters.
+    `%{reference: :celestial, object: :moon}`. Right ascension is in
+    degrees from −180° to 180°, declination in degrees and
+    `distance` in metres.
+
+  ### Accuracy
+
+  Inside the ephemeris, for Meeus's example 47.a (1992 April 12, 0h
+  TD) the result is within 2.1″ in right ascension, 0.3″ in
+  declination and 4 km of Meeus's own series, about the accuracy of
+  that series. Outside it the series agree with JPL over 1900–2100 to
+  2.7″ RMS in right ascension and 1.3″ in declination (10.1″ and 6.5″
+  at most), and to 2.9 km in distance. The Moon moves about 0.55″ a
+  second, so far from the present the uncertainty of ΔT dominates:
+  the 265 s uncertainty at the year 0 is about 2.4′ of position. The
+  [accuracy guide](accuracy.md) gives the details.
 
   ### Examples
 
@@ -410,6 +441,19 @@ defmodule Astro do
         properties: %{object: :moon, reference: :celestial},
         srid: nil
       }
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * Ryan S. Park and others, [The JPL Planetary and Lunar Ephemerides
+    DE440 and DE441](https://doi.org/10.3847/1538-3881/abd414),
+    *The Astronomical Journal* 161 (2021), 105.
+
+  * [Ephemeride Lunaire Parisienne](https://en.wikipedia.org/wiki/Ephemeride_Lunaire_Parisienne)
+    and [Orbit of the Moon](https://en.wikipedia.org/wiki/Orbit_of_the_Moon),
+    Wikipedia.
 
   """
   @doc since: "0.6.0"
@@ -439,20 +483,49 @@ defmodule Astro do
   end
 
   @doc """
-  Returns the illumination of the moon
-  as a float for a given date or date time.
+  Returns the fraction of the Moon's disc that is illuminated at a
+  date or date time.
+
+  The illuminated fraction k is the part of the Moon's apparent disc
+  lit by the Sun, as seen from the centre of the Earth: 0 at new moon
+  and 1 at full moon. It depends on the phase angle i, the angle at
+  the Moon between the directions to the Sun and to the Earth:
+
+      k = (1 + cos i) / 2
+
+  The phase angle is found from the Sun's and the Moon's apparent
+  positions (see `sun_position_at/1` and `moon_position_at/1`), as in
+  Meeus, *Astronomical Algorithms*, chapter 48: their elongation ψ
+  from
+
+      cos ψ = sin δ₀ sin δ + cos δ₀ cos δ cos(α₀ − α)
+
+  and then
+
+      tan i = R sin ψ / (Δ − R cos ψ)
+
+  where α₀ and δ₀ are the Sun's right ascension and declination, α
+  and δ the Moon's, R the Sun's distance and Δ the Moon's.
 
   ### Arguments
 
   * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`. A date is
+    taken at 00:00 UTC.
 
   ### Returns
 
   * a `float` value between `0.0` and `1.0`
     representing the fractional illumination of
     the moon.
+
+  ### Accuracy
+
+  For Meeus's example 48.a (1992 April 12, 0h TD) the result is
+  0.67856, against Meeus's 0.6786. Outside the ephemeris the series
+  agree with JPL over 1900–2100 to 0.0000045 RMS and 0.000018 at most.
+  The [accuracy guide](accuracy.md) gives the details.
 
   ### Examples
 
@@ -463,6 +536,15 @@ defmodule Astro do
       iex> fraction = Astro.illuminated_fraction_of_moon_at(~D[1992-04-12])
       iex> Float.round(fraction, 4)
       0.6786
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 48 (illuminated fraction of the Moon's disk).
+
+  * [Phase angle](https://en.wikipedia.org/wiki/Phase_angle_(astronomy))
+    and [Lunar phase](https://en.wikipedia.org/wiki/Lunar_phase),
+    Wikipedia.
 
   """
   @doc since: "0.6.0"
@@ -606,20 +688,38 @@ defmodule Astro do
   end
 
   @doc """
-  Returns the lunar phase as a
-  float number of degrees at a given
-  date or date time.
+  Returns the lunar phase in degrees at a date or date time.
+
+  The lunar phase is the Moon's apparent ecliptic longitude less the
+  Sun's, from 0° to 360°: 0° at new moon, 90° at first quarter, 180°
+  at full moon and 270° at last quarter. It is how far the Moon has
+  moved ahead of the Sun around the sky since the last new moon, and
+  grows by about 12.2° a day. It differs from the phase angle that
+  sets the illuminated fraction (see `illuminated_fraction_of_moon_at/1`),
+  because the Moon's orbit is tilted about 5° to the ecliptic.
+
+  Both longitudes are apparent ecliptic longitudes of the date (see
+  `sun_apparent_longitude/1` and `moon_position_at/1`): from the JPL
+  DE440s ephemeris where the loaded kernel covers the moment, and
+  from the analytical series elsewhere.
 
   ### Arguments
 
   * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`. A date is
+    taken at 00:00 UTC.
 
   ### Returns
 
-  * the lunar phase as a float number of
-    degrees.
+  * the lunar phase in degrees, from 0 to 360.
+
+  ### Accuracy
+
+  Outside the ephemeris the series agree with JPL over 1900–2100 to
+  2.8″ RMS and 11.5″ at most. The phase grows about 30″ a minute, so
+  2.8″ is about 6 s in the time a phase is reached. The
+  [accuracy guide](accuracy.md) gives the details.
 
   ### Examples
 
@@ -634,6 +734,14 @@ defmodule Astro do
 
       iex> Astro.lunar_phase_at(~D[1000-01-01]) |> Float.round(2)
       202.55
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon) and chapter 49 (phases of the
+    Moon).
+
+  * [Lunar phase](https://en.wikipedia.org/wiki/Lunar_phase), Wikipedia.
 
   """
 
@@ -660,14 +768,21 @@ defmodule Astro do
   Returns the moon phase as a UTF8 binary
   representing an emoji of the moon phase.
 
+  Unicode has eight moon phase symbols, U+1F311 to U+1F318, from
+  🌑 new moon through 🌓 first quarter, 🌕 full moon and 🌗 last
+  quarter. Each covers 45° of lunar phase centred on its own, so 🌑 is
+  returned from 337.5° to 22.5° and 🌒 from 22.5° to 67.5°. The
+  symbols show the Moon as it is seen from the northern hemisphere,
+  lit on the right while it waxes.
+
   ### Arguments
 
-  * `phase` is a moon phase between `0.0` and `360.0`.
+  * `phase` is a moon phase between `0.0` and `360.0`, as returned by
+    `lunar_phase_at/1`.
 
   ### Returns
 
-  * A single grapheme string representing the [Unicode
-    moon phase emoji](https://unicode-table.com/en/sets/moon/).
+  * A single grapheme string, one of the Unicode moon phase symbols.
 
   ### Examples
 
@@ -694,6 +809,12 @@ defmodule Astro do
       ...> |> Astro.lunar_phase_at()
       ...> |> Astro.lunar_phase_emoji()
       "🌕"
+
+  ### Reference
+
+  * The Unicode Consortium, [Miscellaneous Symbols and
+    Pictographs](https://www.unicode.org/charts/PDF/U1F300.pdf), the
+    chart that holds the moon phase symbols.
 
   """
   @spec lunar_phase_emoji(phase()) :: String.t()
