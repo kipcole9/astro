@@ -420,7 +420,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_new_moon_before(~D[2021-08-23])
-      {:ok, ~U[2021-08-08 13:50:07.877918Z]}
+      {:ok, ~U[2021-08-08 13:50:08.051937Z]}
 
   """
   @doc since: "0.5.0"
@@ -514,7 +514,7 @@ defmodule Astro do
   ### Examples
 
       iex> Astro.date_time_new_moon_at_or_after(~D[2021-08-23])
-      {:ok, ~U[2021-09-07 00:51:46.457240Z]}
+      {:ok, ~U[2021-09-07 00:51:46.307784Z]}
 
   """
   @doc since: "0.5.0"

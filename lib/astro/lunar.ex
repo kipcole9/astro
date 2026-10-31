@@ -110,13 +110,14 @@ defmodule Astro.Lunar do
   # the lunation nearest a moment is estimated in mean synodic months.
   @new_moon_zero 376.46287205875086
 
-  # A new moon is found by searching for the zero-phase crossing within this
-  # fraction of a mean synodic month either side of the Meeus chapter 49
-  # estimate. The estimate is within seconds of the crossing near the present
-  # and drifts as the square of the time from J2000 (about four hours at
-  # −10,000), so 0.4 of a month (about ±12 days, ±144° of phase) keeps exactly
-  # one crossing in the window far beyond any calendar's range.
-  @new_moon_search_months 0.4
+  # The lunar phase advances by 360° each mean synodic month, about 12.2° a
+  # day. The secant search for a new moon takes its first step at this rate.
+  @mean_phase_rate 360.0 / Astro.Time.mean_synodic_month()
+
+  # The secant search for a new moon stops when a step is shorter than this
+  # many days (about 9 ms), or after this many steps.
+  @new_moon_tolerance_days 1.0e-7
+  @new_moon_steps 20
 
   # IAU 2015 lunar radius in km
   @lunar_radius 1_737.4
@@ -591,7 +592,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_before 738390
-      738375.5764800685
+      738375.5764820826
 
   """
   @doc since: "0.5.0"
@@ -624,7 +625,7 @@ defmodule Astro.Lunar do
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_at_or_after(738390)
-      738405.0359543662
+      738405.0359526364
 
   """
   @doc since: "0.5.0"
@@ -663,16 +664,50 @@ defmodule Astro.Lunar do
 
   # The moment a lunation's new moon occurs: where the lunar phase passes 0°
   # near its Meeus chapter 49 estimate.
+  #
+  # The phase is smooth, so the secant method finds the crossing in a few
+  # steps. The first step assumes the mean rate of the phase; each later
+  # step draws the line through the last two phases and moves to where it
+  # meets zero. The estimate is within seconds of the crossing near the
+  # present and drifts as the square of the time from J2000 (about four
+  # hours at −10,000), well inside the half month either side in which the
+  # phase passes 0° only once.
   defp new_moon(lunation) do
     estimate = nth_new_moon(lunation)
-    half_width = @new_moon_search_months * mean_synodic_month()
+    estimate_phase = signed_phase(estimate)
+    first_step = estimate - estimate_phase / @mean_phase_rate
+    secant(estimate, estimate_phase, first_step, @new_moon_steps)
+  end
 
-    invert_angular(
-      &lunar_phase_at/1,
-      new_moon_phase(),
-      estimate - half_width,
-      estimate + half_width
-    )
+  defp secant(_previous, _previous_phase, current, 0) do
+    current
+  end
+
+  defp secant(previous, previous_phase, current, steps) do
+    current_phase = signed_phase(current)
+    secant_step(previous, previous_phase, current, current_phase, steps)
+  end
+
+  defp secant_step(_previous, previous_phase, current, current_phase, _steps)
+       when current_phase == previous_phase do
+    current
+  end
+
+  defp secant_step(previous, previous_phase, current, current_phase, steps) do
+    step = current_phase * (current - previous) / (current_phase - previous_phase)
+    next = current - step
+
+    if abs(step) < @new_moon_tolerance_days do
+      next
+    else
+      secant(current, current_phase, next, steps - 1)
+    end
+  end
+
+  # The lunar phase in the range -180° to 180°, so that it passes smoothly
+  # through zero at new moon.
+  defp signed_phase(t) do
+    mod(lunar_phase_at(t) + 180.0, 360.0) - 180.0
   end
 
   # The lunations whose Meeus chapter 49 estimates are the last before `t`

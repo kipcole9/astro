@@ -12,7 +12,7 @@
 
 ### Changed
 
-* New moons are the moments the lunar phase passes 0°, refined from the Meeus chapter 49 estimate: within a second of JPL, against up to 12 s. Far from the present they follow the analytical series, which drift from chapter 49 by about 1 s per century².
+* New moons are the moments the lunar phase passes 0°, refined from the Meeus chapter 49 estimate by the secant method, where chapter 49 alone was up to 12 s from JPL. Far from the present they follow the analytical series, which drift from chapter 49 by about 1 s per century².
 
 * `Astro.equinox/3` and `Astro.solstice/3` are the moments the Sun's apparent longitude reaches 0°, 90°, 180° or 270°: within a few seconds of published times, against about 30 for the Meeus closed form. They work for any year, so `{:error, :year_out_of_range}` is gone.
 
