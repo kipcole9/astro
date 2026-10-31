@@ -86,7 +86,7 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 * [x] **Speed up the new moon refinement** — the secant method on the signed phase replaces the bisection: 0.065 ms per search inside the ephemeris (from 0.40) and 0.19–0.36 ms outside it (from 1.3–1.5), with the phase at each new moon within 10⁻⁸° of zero (from 4×10⁻⁵°). Refining only the one new moon a caller needs was not needed. 2026-10-31.
 
-* [x] **Refine new moons to the zero-phase crossing** — `lunar_phase_at/1` is the plain longitude difference (its chapter 49 substitution misfired across 0°/360°); each lunation's new moon is refined from its own chapter 49 estimate, so a new moon is the same moment however it is reached. Chapter 49 is within 12 s of the JPL crossing over 1900–2100 and drifts from the series as about 1 s per century² outside it (96 s at 1000, 4 h at −10,000). 2026-10-31.
+* [x] **Refine new moons to the zero-phase crossing** — `lunar_phase_at/1` is the plain longitude difference (its chapter 49 substitution misfired across 0°/360°); each lunation's new moon is refined from its own chapter 49 estimate, so a new moon is the same moment however it is reached. Chapter 49 is within 17 s of the JPL crossing over 1900–2100 (4.5 s RMS) and drifts from the series as about 1 s per century² outside it (96 s at 1000, 4 h at −10,000). 2026-10-31.
 
 * [x] **Find equinoxes and solstices as longitude crossings** — seeded from the event's month rather than Ch.27, whose tables are gone; within a second of Meeus's full VSOP87 June 1962 solstice and within the ±30 s rounding of all 42 reference solstices; any year. 2026-10-31.
 

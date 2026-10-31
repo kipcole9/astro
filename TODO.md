@@ -4,13 +4,13 @@ Work planned for Astro. The detail of anything shipped is in the CHANGELOG.
 
 ## Open
 
-* [ ] **Documentation as a learning guide** — each primary function explains what it calculates, how and from which source, how accurate it is, and where to read more, with an accuracy guide covering JPL against the series, near and far term. Plan in [plans/learning-documentation.md](plans/learning-documentation.md).
-
 * [ ] **Answer every date from JPL or Meeus** — positions come from the JPL ephemeris where it covers the moment and from the Meeus series where it does not, so no consumer checks coverage or sees `{:error, :not_found}`. Design and tasks in [plans/jpl-meeus-fallback.md](plans/jpl-meeus-fallback.md).
 
 * [ ] **Remove `Astro.date_time_new_moon_at_or_before/1`** — deprecated in 2.6.2 in favour of `Astro.date_time_new_moon_before/1`; remove it in the next major release.
 
 ## Done
+
+* [x] **Documentation as a learning guide** — every primary function describes its calculation, accuracy and references, with an accuracy guide; see [plans/learning-documentation.md](plans/learning-documentation.md). 2026-10-31.
 
 * [x] **Review the ΔT model** — Espenak and Meeus before 1972, IERS 1972–2025, a smooth join to the long-term parabola after; see [plans/delta-t.md](plans/delta-t.md). 2026-10-31.
 

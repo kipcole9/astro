@@ -121,14 +121,20 @@ defmodule Astro.Lunar do
   @new_moon_tolerance_days 1.0e-8
   @new_moon_steps 20
 
+  # Consecutive new moons are never closer than about 29.27 days, so a new
+  # moon on the right side of a moment and within this of it is the nearest.
+  @shortest_lunation_days 29.0
+
   # A search for a lunar phase ends when its bracket is under a millisecond,
   # so that it finds a new moon at the same moment as the secant search.
   @phase_search_tolerance_days 1.0e-8
 
-  # New moons are found within this many years of J2000. There the chapter 49
-  # estimates are within about a day and a half of the zero-phase crossings;
-  # beyond about 75,000 years they can be more than half a month away, and a
-  # search can settle on a neighbouring lunation's new moon.
+  # New moons are found within this many years of J2000. The chapter 49
+  # estimates drift from the series' zero-phase crossings as the two
+  # theories' polynomials diverge: about 3 days at ±30,000 years and 11 to
+  # 12 days at ±40,000. Within the range each search still lands on the
+  # right crossing; beyond it the drift passes half a lunation and a search
+  # can settle on a neighbouring lunation's new moon.
   @new_moon_range_years 50_000
   @new_moon_range_days @new_moon_range_years * 365.2425
   @j2000_moment Astro.Time.j2000()
@@ -608,18 +614,37 @@ defmodule Astro.Lunar do
   * A `t:Astro.Time.moment/0` float number of days
     since `0000-01-01`.
 
+  ### Accuracy
+
+  Within a millisecond of the moment the phase passes 0°. Inside the
+  ephemeris this matches Meeus's correct time for the new moon of 18
+  February 1977 (example 49.a) to the second; outside it the series
+  place new moons within 6.0 s RMS of JPL over 1900–2100. See
+  `Astro.date_time_new_moon_before/1`.
+
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_before 738390
       738375.5764820824
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
 
   """
   @doc since: "0.5.0"
   @spec date_time_new_moon_before(t :: Time.moment()) :: Time.moment()
 
   def date_time_new_moon_before(t) when is_number(t) do
-    {before, _at_or_after} = new_moons_around(t)
-    before
+    {lunation, _next_lunation} = searchable_lunations_around(t)
+    new_moon = new_moon(lunation)
+
+    cond do
+      new_moon >= t -> new_moon(lunation - 1)
+      t - new_moon < @shortest_lunation_days -> new_moon
+      true -> latest_new_moon_before(t, new_moon, lunation + 1)
+    end
   end
 
   @doc """
@@ -646,18 +671,37 @@ defmodule Astro.Lunar do
   * a `t:Astro.Time.moment/0` which is a float number of days
     since `0000-01-01`.
 
+  ### Accuracy
+
+  Within a millisecond of the moment the phase passes 0°. Inside the
+  ephemeris this matches Meeus's correct time for the new moon of 18
+  February 1977 (example 49.a) to the second; outside it the series
+  place new moons within 6.0 s RMS of JPL over 1900–2100. See
+  `Astro.date_time_new_moon_before/1`.
+
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_at_or_after(738390)
       738405.0359526364
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
 
   """
   @doc since: "0.5.0"
   @spec date_time_new_moon_at_or_after(t :: Time.moment()) :: Time.moment()
 
   def date_time_new_moon_at_or_after(t) when is_number(t) do
-    {_before, at_or_after} = new_moons_around(t)
-    at_or_after
+    {_previous_lunation, lunation} = searchable_lunations_around(t)
+    new_moon = new_moon(lunation)
+
+    cond do
+      new_moon < t -> new_moon(lunation + 1)
+      new_moon - t < @shortest_lunation_days -> new_moon
+      true -> earliest_new_moon_at_or_after(t, new_moon, lunation - 1)
+    end
   end
 
   @doc false
@@ -673,37 +717,46 @@ defmodule Astro.Lunar do
     {:ok, t}
   end
 
-  # The new moons either side of `t`: the last one before it and the first one
-  # at or after it, each the moment the lunar phase passes 0°.
-  #
-  # The Meeus chapter 49 estimates of two consecutive lunations bracket `t`,
-  # and each is refined to its zero-phase crossing. When `t` falls between an
-  # estimate and its crossing, a refined new moon lands on the other side of
-  # `t`, and the neighbouring lunation completes the pair. A new moon is
-  # always refined from its own lunation's estimate, so the same new moon is
-  # the same moment however it is reached.
-  defp new_moons_around(t) when abs(t - @j2000_moment) > @new_moon_range_days do
+  # The new moon searches start from the lunations whose Meeus chapter 49
+  # estimates bracket `t`, and refine only the one they need to its
+  # zero-phase crossing. When `t` falls between an estimate and its
+  # crossing, the refined new moon lands on the other side of `t` and the
+  # neighbouring lunation is the answer. Consecutive new moons are more than
+  # 29 days apart, so a refined new moon on the right side of `t` and within
+  # that of it is the answer; only further away is the neighbour refined to
+  # check. A new moon is always refined from its own lunation's estimate,
+  # so the same new moon is the same moment however it is reached.
+  defp searchable_lunations_around(t) when abs(t - @j2000_moment) > @new_moon_range_days do
     raise ArgumentError,
           "new moons are found within #{@new_moon_range_years} years of J2000, " <>
             "where the Meeus chapter 49 estimates identify each lunation; " <>
             "moment #{inspect(t)} is outside that range"
   end
 
-  defp new_moons_around(t) do
-    {lunation_before, lunation_after} = lunations_around(t)
-    bracket(t, lunation_before, new_moon(lunation_before), new_moon(lunation_after))
+  defp searchable_lunations_around(t) do
+    lunations_around(t)
   end
 
-  defp bracket(t, lunation_before, before, _at_or_after) when before >= t do
-    {new_moon(lunation_before - 1), before}
+  # `new_moon` is before `t`; the next lunation's new moon may be too.
+  defp latest_new_moon_before(t, new_moon, next_lunation) do
+    next_new_moon = new_moon(next_lunation)
+
+    if next_new_moon < t do
+      next_new_moon
+    else
+      new_moon
+    end
   end
 
-  defp bracket(t, lunation_before, _before, at_or_after) when at_or_after < t do
-    {at_or_after, new_moon(lunation_before + 2)}
-  end
+  # `new_moon` is at or after `t`; the previous lunation's may be too.
+  defp earliest_new_moon_at_or_after(t, new_moon, previous_lunation) do
+    previous_new_moon = new_moon(previous_lunation)
 
-  defp bracket(_t, _lunation_before, before, at_or_after) do
-    {before, at_or_after}
+    if previous_new_moon >= t do
+      previous_new_moon
+    else
+      new_moon
+    end
   end
 
   # The moment a lunation's new moon occurs: where the lunar phase passes 0°
@@ -802,10 +855,23 @@ defmodule Astro.Lunar do
   * a `t:Astro.Time.moment/0` which is a float number of days
     since `0000-01-01`.
 
+  ### Accuracy
+
+  Within a millisecond of the moment the phase passes 0°. Inside the
+  ephemeris this matches Meeus's correct time for the new moon of 18
+  February 1977 (example 49.a) to the second; outside it the series
+  place new moons within 6.0 s RMS of JPL over 1900–2100. See
+  `Astro.date_time_new_moon_before/1`.
+
   ### Examples
 
       iex> Astro.Lunar.date_time_new_moon_nearest(738390)
       738375.5764820818
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
 
   """
   @doc since: "2.0.0"
@@ -841,6 +907,12 @@ defmodule Astro.Lunar do
   * the lunar phase as a float number of
     degrees.
 
+  ### Accuracy
+
+  Outside the ephemeris the series agree with JPL over 1900–2100 to
+  2.8″ RMS and 11.5″ at most, about 6 s in the time a phase is
+  reached. See `Astro.lunar_phase_at/1`.
+
   ### Examples
 
       iex> Astro.Lunar.lunar_phase_at(738389.5007195644)
@@ -848,6 +920,13 @@ defmodule Astro.Lunar do
 
       iex> Astro.Lunar.lunar_phase_at(738346.0544609067)
       0.014270322532084379
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Lunar phase](https://en.wikipedia.org/wiki/Lunar_phase), Wikipedia.
 
   """
   @doc since: "0.5.0"
@@ -876,10 +955,21 @@ defmodule Astro.Lunar do
   * A `t:Astro.Time.moment/0` float number of days
     since `0000-01-01`.
 
+  ### Accuracy
+
+  The search ends within a millisecond of the crossing. Outside the
+  ephemeris the series place the phases within about 6 s RMS of JPL
+  over 1900–2100. See `Astro.date_time_lunar_phase_at_or_after/2`.
+
   ### Examples
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_before(738368, Astro.Lunar.new_moon_phase())
       738346.0532093873
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
 
   """
   @doc since: "0.5.0"
@@ -912,10 +1002,21 @@ defmodule Astro.Lunar do
   * a `t:Astro.Time.moment/0` which is a float number of days
     since `0000-01-01`.
 
+  ### Accuracy
+
+  The search ends within a millisecond of the crossing. Outside the
+  ephemeris the series place the phases within about 6 s RMS of JPL
+  over 1900–2100. See `Astro.date_time_lunar_phase_at_or_after/2`.
+
   ### Examples
 
       iex> Astro.Lunar.date_time_lunar_phase_at_or_after(738368, Astro.Lunar.full_moon_phase())
       738389.5013675035
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 49 (phases of the Moon).
 
   """
   @doc since: "0.5.0"
@@ -944,11 +1045,22 @@ defmodule Astro.Lunar do
     right ascension and declination are in degrees and distance
     is in meters.
 
+  ### Accuracy
+
+  From JPL inside the loaded ephemeris; elsewhere from
+  `analytical_lunar_position/1`, within 2.7″ RMS in right ascension and
+  1.3″ in declination of JPL over 1900–2100. See `Astro.moon_position_at/1`.
+
   ### Examples
 
       iex> {ra, _dec, _dist} = Astro.Lunar.lunar_position(738390)
       iex> Float.round(ra, 2)
       -19.96
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
 
   """
   @doc since: "0.6.0"
@@ -1007,11 +1119,22 @@ defmodule Astro.Lunar do
   * The fractional illumination of the Moon as a float
     between `0.0` (new moon) and `1.0` (full moon).
 
+  ### Accuracy
+
+  For Meeus's example 48.a the result is 0.67856, against Meeus's
+  0.6786. Outside the ephemeris the series agree with JPL to 0.0000045
+  RMS over 1900–2100.
+
   ### Examples
 
       iex> Astro.Lunar.illuminated_fraction_of_moon(738390)
       ...> |> Float.round(4)
       0.9951
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 48 (illuminated fraction of the Moon's disk).
 
   """
   @doc since: "0.6.0"
@@ -1110,8 +1233,10 @@ defmodule Astro.Lunar do
   @spec lunar_ecliptic_longitude(Time.moment()) :: Astro.phase()
 
   def lunar_ecliptic_longitude(t) do
-    {longitude, _latitude, _distance} = apparent_moon_ecliptic_position(t)
-    longitude
+    case Astro.Ephemeris.moon_ecliptic_position(t) do
+      {:ok, {longitude, _latitude, _distance}} -> longitude
+      {:error, :not_found} -> analytical_lunar_longitude(t)
+    end
   end
 
   @doc """
@@ -1126,10 +1251,20 @@ defmodule Astro.Lunar do
 
   * The ecliptic latitude as a float in degrees.
 
+  ### Accuracy
+
+  From JPL inside the loaded ephemeris; elsewhere from the series,
+  within 1.1″ RMS and 4.9″ at most of JPL over 1900–2100.
+
   ### Examples
 
       iex> Astro.Lunar.lunar_latitude(738390) |> Float.round(4)
       -5.0095
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
 
   """
   @doc since: "0.6.0"
@@ -1156,11 +1291,25 @@ defmodule Astro.Lunar do
 
   * The geocentric altitude in degrees, ranging from -180.0 to 180.0.
 
+  ### Accuracy
+
+  As accurate as the Moon's position (see `lunar_position/1`). It is
+  geocentric and airless: seen from the Earth's surface the Moon is up
+  to about 1° lower, its parallax, and refraction raises it by about
+  34′ at the horizon.
+
   ### Examples
 
       iex> sydney = %Geo.PointZ{coordinates: {151.20666584, -33.8559799094, 0.0}}
       iex> Astro.Lunar.lunar_altitude(Astro.Time.j2000(), sydney) |> Float.round(4)
       -37.3277
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 13 (transformation of coordinates).
+
+  * [Horizontal coordinate system](https://en.wikipedia.org/wiki/Horizontal_coordinate_system), Wikipedia.
 
   """
   @doc since: "0.4.0"
@@ -1195,10 +1344,20 @@ defmodule Astro.Lunar do
 
   * The Earth-Moon distance as a float in meters.
 
+  ### Accuracy
+
+  From JPL inside the loaded ephemeris; elsewhere from the series,
+  within 2.9 km RMS and 11.7 km at most of JPL over 1900–2100.
+
   ### Examples
 
       iex> Astro.Lunar.lunar_distance(738390) |> trunc()
       381257780
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
 
   """
   @doc since: "0.6.0"
@@ -1305,11 +1464,23 @@ defmodule Astro.Lunar do
 
   * The equatorial horizontal parallax as a float in degrees.
 
+  ### Accuracy
+
+  It follows from the Moon's distance, which the series give within
+  2.9 km RMS of JPL; that changes it by under 0.03″.
+
   ### Examples
 
       iex> Astro.Lunar.equatorial_horizontal_parallax(738390)
       ...> |> Float.round(4)
       0.9586
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Lunar parallax](https://en.wikipedia.org/wiki/Lunar_parallax), Wikipedia.
 
   """
   @spec equatorial_horizontal_parallax(t :: Time.moment()) :: Astro.angle()
@@ -1339,11 +1510,23 @@ defmodule Astro.Lunar do
 
   * The topocentric parallax as a float in degrees.
 
+  ### Accuracy
+
+  It follows from the Moon's distance, which the series give within
+  2.9 km RMS of JPL; that changes it by under 0.03″.
+
   ### Examples
 
       iex> sydney = %Geo.PointZ{coordinates: {151.20666584, -33.8559799094, 0.0}}
       iex> Astro.Lunar.topocentric_lunar_parallax(Astro.Time.j2000(), sydney) |> Float.round(4)
       0.7221
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 40 (correction for parallax).
+
+  * [Lunar parallax](https://en.wikipedia.org/wiki/Lunar_parallax), Wikipedia.
 
   """
   @spec topocentric_lunar_parallax(t :: Time.moment(), location :: Geo.PointZ.t()) ::
@@ -1366,10 +1549,22 @@ defmodule Astro.Lunar do
 
   * The angular semi-diameter as a float in degrees.
 
+  ### Accuracy
+
+  It follows from the Moon's distance, which the series give within
+  2.9 km RMS of JPL; that changes it by under 0.03″.
+
   ### Examples
 
       iex> Astro.Lunar.angular_semi_diameter(Astro.Time.j2000()) |> Float.round(4)
       0.2473
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 55 (semidiameters of the Sun, Moon and planets).
+
+  * [Angular diameter](https://en.wikipedia.org/wiki/Angular_diameter), Wikipedia.
 
   """
   @spec angular_semi_diameter(t :: Time.moment()) :: Astro.angle()
@@ -1395,10 +1590,21 @@ defmodule Astro.Lunar do
     usually slightly positive, because its parallax exceeds refraction
     and its semi-diameter together.
 
+  ### Accuracy
+
+  It follows from the Moon's distance and the standard 34′ of
+  refraction; the refraction of the real atmosphere at the horizon
+  varies far more than the distance does.
+
   ### Examples
 
       iex> Astro.Lunar.horizontal_dip(Astro.Time.j2000()) |> Float.round(4)
       0.0941
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting).
 
   """
   @spec horizontal_dip(t :: Time.moment()) :: Astro.angle()
@@ -1425,10 +1631,24 @@ defmodule Astro.Lunar do
 
   * The mean longitude as a float in degrees, in the range 0 to 360.
 
+  ### Accuracy
+
+  This is a mean element, not a position: a polynomial in time on
+  which the periodic terms of Meeus's chapter 47 series are built.
+  The positions the series give are within 2.7″ RMS of JPL in
+  longitude over 1900–2100; see `analytical_lunar_ecliptic_position/1`.
+
   ### Examples
 
       iex> Astro.Lunar.mean_lunar_ecliptic_longitude(0.0)
       218.3164477
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Mean longitude](https://en.wikipedia.org/wiki/Mean_longitude), Wikipedia.
 
   """
   @spec mean_lunar_ecliptic_longitude(c :: Time.julian_centuries()) :: Astro.angle()
@@ -1454,10 +1674,24 @@ defmodule Astro.Lunar do
 
   * The mean elongation as a float in degrees, in the range 0 to 360.
 
+  ### Accuracy
+
+  This is a mean element, not a position: a polynomial in time on
+  which the periodic terms of Meeus's chapter 47 series are built.
+  The positions the series give are within 2.7″ RMS of JPL in
+  longitude over 1900–2100; see `analytical_lunar_ecliptic_position/1`.
+
   ### Examples
 
       iex> Astro.Lunar.lunar_elongation(0.0)
       297.8501921
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Elongation](https://en.wikipedia.org/wiki/Elongation_(astronomy)), Wikipedia.
 
   """
   @spec lunar_elongation(c :: Time.julian_centuries()) :: Astro.angle()
@@ -1479,10 +1713,24 @@ defmodule Astro.Lunar do
 
   * The mean solar anomaly as a float in degrees.
 
+  ### Accuracy
+
+  This is a mean element, not a position: a polynomial in time on
+  which the periodic terms of Meeus's chapter 47 series are built.
+  The positions the series give are within 2.7″ RMS of JPL in
+  longitude over 1900–2100; see `analytical_lunar_ecliptic_position/1`.
+
   ### Examples
 
       iex> Astro.Lunar.solar_anomaly(0.0)
       357.5291092
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Mean anomaly](https://en.wikipedia.org/wiki/Mean_anomaly), Wikipedia.
 
   """
   @spec solar_anomaly(c :: Time.julian_centuries()) :: Astro.angle()
@@ -1504,10 +1752,24 @@ defmodule Astro.Lunar do
 
   * The mean lunar anomaly as a float in degrees.
 
+  ### Accuracy
+
+  This is a mean element, not a position: a polynomial in time on
+  which the periodic terms of Meeus's chapter 47 series are built.
+  The positions the series give are within 2.7″ RMS of JPL in
+  longitude over 1900–2100; see `analytical_lunar_ecliptic_position/1`.
+
   ### Examples
 
       iex> Astro.Lunar.lunar_anomaly(0.0)
       134.9633964
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Mean anomaly](https://en.wikipedia.org/wiki/Mean_anomaly), Wikipedia.
 
   """
   @spec lunar_anomaly(c :: Time.julian_centuries()) :: Astro.angle()
@@ -1538,6 +1800,13 @@ defmodule Astro.Lunar do
       iex> Astro.Lunar.lunar_node(Astro.Time.j2000()) |> Float.round(6)
       -86.718131
 
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Lunar node](https://en.wikipedia.org/wiki/Lunar_node), Wikipedia.
+
   """
   @spec lunar_node(t :: Time.moment()) :: Astro.angle()
   def lunar_node(t) do
@@ -1564,10 +1833,24 @@ defmodule Astro.Lunar do
 
   * The mean argument of latitude as a float in degrees.
 
+  ### Accuracy
+
+  This is a mean element, not a position: a polynomial in time on
+  which the periodic terms of Meeus's chapter 47 series are built.
+  The positions the series give are within 2.7″ RMS of JPL in
+  longitude over 1900–2100; see `analytical_lunar_ecliptic_position/1`.
+
   ### Examples
 
       iex> Astro.Lunar.moon_node(0.0)
       93.272095
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Argument of latitude](https://en.wikipedia.org/wiki/Argument_of_latitude), Wikipedia.
 
   """
   @spec moon_node(c :: Time.julian_centuries()) :: Astro.angle()
@@ -1601,6 +1884,13 @@ defmodule Astro.Lunar do
     the range 0 to 360, `latitude` is in degrees and `distance` is in
     metres.
 
+  ### Accuracy
+
+  Against JPL over 1900–2100: longitude 2.7″ RMS and 13.5″ at most,
+  latitude 1.1″ RMS and 4.9″ at most, and distance 2.9 km RMS. The
+  [accuracy guide](accuracy.md) gives the details, and how the series
+  drift far from the present.
+
   ### Examples
 
   Meeus, *Astronomical Algorithms*, example 47.a, gives 133.167265°,
@@ -1611,6 +1901,13 @@ defmodule Astro.Lunar do
       iex> {longitude, latitude, distance} = Astro.Lunar.analytical_lunar_ecliptic_position(moment)
       iex> {Float.round(longitude, 6), Float.round(latitude, 6), Float.round(distance / 1000.0, 1)}
       {133.167263, -3.229131, 368409.7}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * [Ephemeride Lunaire Parisienne](https://en.wikipedia.org/wiki/Ephemeride_Lunaire_Parisienne), Wikipedia.
 
   """
   @doc since: "2.10.0"
@@ -1638,6 +1935,12 @@ defmodule Astro.Lunar do
     is in degrees in the range 0 to 360, `declination` is in degrees and
     `distance` is in metres.
 
+  ### Accuracy
+
+  Against JPL over 1900–2100: right ascension 2.7″ RMS and
+  declination 1.3″ RMS (10.1″ and 6.5″ at most). The
+  [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
   Meeus, *Astronomical Algorithms*, example 47.a, gives 134.688470° and
@@ -1647,6 +1950,14 @@ defmodule Astro.Lunar do
       iex> {right_ascension, declination, _distance} = Astro.Lunar.analytical_lunar_position(moment)
       iex> {Float.round(right_ascension, 6), Float.round(declination, 6)}
       {134.688466, 13.768364}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 47 (position of the Moon).
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 13 (transformation of coordinates).
 
   """
   @doc since: "2.10.0"
@@ -1668,11 +1979,24 @@ defmodule Astro.Lunar do
     {delta_psi, delta_epsilon, mean_obliquity} = Earth.nutation(c)
     arguments = fundamental_arguments(c)
 
-    longitude = mod(lunar_longitude_series(c, arguments) + Math.to_degrees(delta_psi), 360.0)
+    longitude = apparent_series_longitude(c, arguments, delta_psi)
     distance = lunar_distance_series(arguments) * Earth.meters_per_kilometer()
 
     {longitude, lunar_latitude_series(c, arguments), distance,
      Math.to_degrees(mean_obliquity + delta_epsilon)}
+  end
+
+  # The apparent longitude alone, for the lunar phase, which needs neither
+  # the latitude nor the distance series.
+  defp analytical_lunar_longitude(t) do
+    c = julian_centuries_from_moment(t)
+    {delta_psi, _delta_epsilon, _mean_obliquity} = Earth.nutation(c)
+    apparent_series_longitude(c, fundamental_arguments(c), delta_psi)
+  end
+
+  # The series longitude plus the nutation in longitude, from 0° to 360°.
+  defp apparent_series_longitude(c, arguments, delta_psi) do
+    mod(lunar_longitude_series(c, arguments) + Math.to_degrees(delta_psi), 360.0)
   end
 
   # The five fundamental arguments of Meeus 47.1 to 47.5, in degrees, and

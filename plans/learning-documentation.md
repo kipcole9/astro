@@ -1,6 +1,6 @@
 # Documentation as a learning guide
 
-**Status:** in progress, 2026-10-31
+**Status:** implemented (v2.10.0), 2026-10-31
 
 Astro's documentation should teach as well as describe. Someone using the library to learn astronomical calculation should be able to read a function's documentation and understand what is being calculated, how, from which ephemeris or series, how accurate the answer is, and where to read more. No other library does this, and it suits a codebase already arranged as a guide (Sun algorithms in `Astro.Solar`, Moon algorithms in `Astro.Lunar`).
 
@@ -95,9 +95,9 @@ Recommendation: do not add an accuracy-for-performance option. If a memory-const
 
 ## Tasks
 
-* [ ] **Add accuracy and references to the `Astro.Solar` and `Astro.Lunar` analytical functions.**
-
 ### Done
+
+* [x] **Add accuracy and references to the `Astro.Solar` and `Astro.Lunar` analytical functions** — 13 in `Astro.Solar` and 23 in `Astro.Lunar`. Measured: Meeus chapter 25's low-accuracy Sun from the orbital elements is 0.003° RMS from JPL (0.009° at most); the Moon series' latitude 1.1″ RMS; chapter 49 new moon estimates 4.5 s RMS, 17 s at most. 2026-10-31.
 
 * [x] **Document moonrise, moonset and crescent visibility** — the topocentric method, Skyfield and USNO agreement, the Yallop and Odeh formulas and Schaefer's model, with the Odeh paper dated 2004 (*Experimental Astronomy* 18) rather than 2006, its online date. The crescent categories are not compared with recorded sightings, and the docs say so. 2026-10-31.
 

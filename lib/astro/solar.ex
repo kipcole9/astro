@@ -272,6 +272,13 @@ defmodule Astro.Solar do
   lunisolar calendars, find their solar terms for dates of any era this
   way.
 
+  ### Accuracy
+
+  From JPL inside the loaded ephemeris; elsewhere from
+  `analytical_solar_ecliptic_position/1`, within 0.75″ RMS and about
+  2″ of JPL over 1900–2100. The [accuracy guide](accuracy.md) gives
+  the details.
+
   ### Examples
 
       iex> moment = Astro.Time.date_time_to_moment(~D[2024-03-20])
@@ -281,6 +288,11 @@ defmodule Astro.Solar do
       iex> moment = Astro.Time.date_time_to_moment(~D[1000-06-01])
       iex> Astro.Solar.solar_ecliptic_longitude(moment) |> Float.round(4)
       69.5898
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 25 (solar coordinates).
 
   """
   def solar_ecliptic_longitude(t) do
@@ -304,6 +316,12 @@ defmodule Astro.Solar do
   * the moment (fractional days since the epoch) when
     the solar ecliptic longitude reaches `lambda` degrees.
 
+  ### Accuracy
+
+  The search ends within a millisecond of the crossing, so the moment
+  is as accurate as the longitude: the Sun moves about 2.5″ a minute,
+  so 1″ of longitude is about 24 s.
+
   ### Examples
 
       # Find the June solstice (longitude 90°) in 2024
@@ -314,6 +332,11 @@ defmodule Astro.Solar do
       2024
       iex> dt.month
       6
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 27 (equinoxes and solstices).
 
   """
   @spec solar_ecliptic_longitude_after(number(), Time.time()) :: Time.time()
@@ -361,6 +384,11 @@ defmodule Astro.Solar do
       iex> dt.month
       6
 
+  ### Reference
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, `estimate-prior-solar-longitude`.
+
   """
   def estimate_prior_solar_ecliptic_longitude(lambda, t) do
     rate = Time.mean_tropical_year() / deg(360)
@@ -392,6 +420,12 @@ defmodule Astro.Solar do
 
   * the moment of solar noon.
 
+  ### Accuracy
+
+  The hour angle is solved to a millisecond, so solar noon is as
+  accurate as the Sun's right ascension and the sidereal time; see
+  `Astro.solar_noon/2`.
+
   ### Examples
 
       iex> midnight = Astro.Time.date_time_to_moment(~D[2019-12-06])
@@ -399,6 +433,11 @@ defmodule Astro.Solar do
       iex> {:ok, date_time} = Astro.Time.date_time_from_moment(noon)
       iex> DateTime.truncate(date_time, :second)
       ~U[2019-12-06 01:45:52Z]
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting).
 
   """
   @doc since: "2.10.0"
@@ -452,6 +491,10 @@ defmodule Astro.Solar do
   * solar noon as a `float` number of minutes since
     midnight UTC.
 
+  ### Accuracy
+
+  As for `solar_noon/2`.
+
   ### Examples
 
       iex> julian_day = Astro.Time.julian_day_from_date(~D[2000-01-01])
@@ -504,10 +547,27 @@ defmodule Astro.Solar do
   ascension, plus the nutation in right ascension (Δψ cos ε),
   converted to minutes at four minutes of time a degree.
 
+  ### Accuracy
+
+  Solar noon taken as 12:00 local mean time less this equation of
+  time agrees with the meridian transit to 0.2 s over 1850–2149. Far
+  from the present the mean Sun, in dynamical time, and the Earth's
+  rotation drift apart by ΔT, and the agreement falls to about 3 s at
+  the year 1000, which is why `solar_noon/2` solves for the transit
+  instead.
+
   ### Examples
 
       iex> Astro.Solar.equation_of_time(0.0) |> Float.round(4)
       -3.2815
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 28 (equation of time).
+
+  * [Equation of time](https://en.wikipedia.org/wiki/Equation_of_time),
+    Wikipedia.
 
   """
   @spec equation_of_time(float) :: float()
@@ -566,10 +626,27 @@ defmodule Astro.Solar do
   The difference between the two is the equation of the
   centre.
 
+  ### Accuracy
+
+  This is a mean element, not a position. Combined as in Meeus,
+  *Astronomical Algorithms*, chapter 25 (the Sun's true longitude is
+  the mean longitude plus the equation of the centre, then corrected
+  for aberration and nutation), the elements give the Sun's apparent
+  longitude to 0.003° RMS and 0.009° at most against JPL over
+  1900–2100, the 0.01° Meeus states for the method.
+
   ### Examples
 
       iex> Astro.Solar.sun_geometric_mean_longitude(0.0)
       280.46646
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 25 (solar coordinates).
+
+  * [Mean longitude](https://en.wikipedia.org/wiki/Mean_longitude),
+    Wikipedia.
 
   """
   @spec sun_geometric_mean_longitude(float) :: float()
@@ -599,10 +676,27 @@ defmodule Astro.Solar do
   uniformly with time, which makes it the natural argument for the
   equation of the centre.
 
+  ### Accuracy
+
+  This is a mean element, not a position. Combined as in Meeus,
+  *Astronomical Algorithms*, chapter 25 (the Sun's true longitude is
+  the mean longitude plus the equation of the centre, then corrected
+  for aberration and nutation), the elements give the Sun's apparent
+  longitude to 0.003° RMS and 0.009° at most against JPL over
+  1900–2100, the 0.01° Meeus states for the method.
+
   ### Examples
 
       iex> Astro.Solar.sun_geometric_mean_anomaly(0.0)
       357.52911
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 25 (solar coordinates).
+
+  * [Mean anomaly](https://en.wikipedia.org/wiki/Mean_anomaly),
+    Wikipedia.
 
   """
   @spec sun_geometric_mean_anomaly(Time.julian_centuries()) :: float()
@@ -625,10 +719,27 @@ defmodule Astro.Solar do
     between 0 and 1 are ellipses; the Earth's is about 0.0167 and slowly
     decreasing (Meeus, *Astronomical Algorithms*, equation 25.4).
 
+  ### Accuracy
+
+  This is a mean element, not a position. Combined as in Meeus,
+  *Astronomical Algorithms*, chapter 25 (the Sun's true longitude is
+  the mean longitude plus the equation of the centre, then corrected
+  for aberration and nutation), the elements give the Sun's apparent
+  longitude to 0.003° RMS and 0.009° at most against JPL over
+  1900–2100, the 0.01° Meeus states for the method.
+
   ### Examples
 
       iex> Astro.Solar.earth_orbit_eccentricity(0.0)
       0.016708634
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 25 (solar coordinates).
+
+  * [Orbital eccentricity](https://en.wikipedia.org/wiki/Orbital_eccentricity),
+    Wikipedia.
 
   """
   @spec earth_orbit_eccentricity(Time.julian_centuries()) :: float()
@@ -656,10 +767,27 @@ defmodule Astro.Solar do
   longitude gives the true longitude. This is the series of Meeus,
   *Astronomical Algorithms*, chapter 25, in the mean anomaly.
 
+  ### Accuracy
+
+  This is a mean element, not a position. Combined as in Meeus,
+  *Astronomical Algorithms*, chapter 25 (the Sun's true longitude is
+  the mean longitude plus the equation of the centre, then corrected
+  for aberration and nutation), the elements give the Sun's apparent
+  longitude to 0.003° RMS and 0.009° at most against JPL over
+  1900–2100, the 0.01° Meeus states for the method.
+
   ### Examples
 
       iex> Astro.Solar.sun_equation_of_center(0.0)
       -0.08430148943719645
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 25 (solar coordinates).
+
+  * [Equation of the center](https://en.wikipedia.org/wiki/Equation_of_the_center),
+    Wikipedia.
 
   """
   @spec sun_equation_of_center(Time.julian_centuries()) :: float()
@@ -695,12 +823,28 @@ defmodule Astro.Solar do
     the range 0 to 360, `latitude` is `0.0` and `distance` is in
     astronomical units.
 
+  ### Accuracy
+
+  Against JPL over 1900–2100: longitude 0.75″ RMS and 2.3″ at most,
+  with a mean bias of +0.56″, and distance 4,300 km RMS. Between −2000
+  and 3000 the series agrees with Meeus's chapter 25 series within
+  45″; at ±10,000 years they differ by more than a day of the Sun's
+  motion. The [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> {longitude, latitude, distance} =
       ...>   Astro.Solar.analytical_solar_ecliptic_position(Astro.Time.j2000())
       iex> {Float.round(longitude, 4), latitude, Float.round(distance, 6)}
       {280.369, 0.0, 0.983308}
+
+  ### Reference
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, for the series of Bretagnon and Simon.
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 25 (solar coordinates).
 
   """
   @doc since: "2.10.0"
@@ -728,12 +872,26 @@ defmodule Astro.Solar do
     is in degrees in the range 0 to 360, `declination` is in degrees and
     `distance` is in astronomical units.
 
+  ### Accuracy
+
+  Against JPL over 1900–2100: right ascension 0.76″ RMS and
+  declination 0.50″ RMS (2.2″ and 1.3″ at most). The
+  [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> {right_ascension, declination, distance} =
       ...>   Astro.Solar.analytical_solar_position(Astro.Time.j2000())
       iex> {Float.round(right_ascension, 4), Float.round(declination, 4), Float.round(distance, 6)}
       {281.2785, -23.0327, 0.983308}
+
+  ### Reference
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, for the series of Bretagnon and Simon.
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 13 (transformation of coordinates).
 
   """
   @doc since: "2.10.0"
@@ -881,6 +1039,12 @@ defmodule Astro.Solar do
   * `{:error, :year_out_of_range}` if `year` is more than 50,000
     years from 2000.
 
+  ### Accuracy
+
+  As for `Astro.equinox/3`: within a second of Meeus's full VSOP87
+  time for the June 1962 solstice inside the ephemeris, and 18 s RMS
+  from JPL with the series outside it.
+
   ### Examples
 
       iex> {:ok, dt} = Astro.Solar.equinox_and_solstice(2024, :march)
@@ -890,6 +1054,11 @@ defmodule Astro.Solar do
       iex> {:ok, dt} = Astro.Solar.equinox_and_solstice(-1000, :june)
       iex> {dt.year, dt.month}
       {-1000, 6}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 27 (equinoxes and solstices).
 
   """
   @spec equinox_and_solstice(integer(), :march | :june | :september | :december) ::
