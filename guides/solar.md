@@ -189,7 +189,21 @@ iex> length(hd(band.coordinates))
 397
 ```
 
-Longitudes run from −180° to 180°, so a path that crosses the antimeridian jumps from one end of the range to the other, and a map that draws it may need to split the line there. A partial eclipse has no path and returns `{:error, :no_path}`.
+The path also bounds the region in which the eclipse is seen at all, as a partial eclipse. It lies within the penumbral limits, `:penumbral_northern_limit` and `:penumbral_southern_limit`, where the edge of the penumbra just grazes a place, and the `:sunrise_limit`, where the eclipse ends just as the Sun rises, and `:sunset_limit`, where it begins just as the Sun sets. Inside it, `:maximum_at_sunrise` and `:maximum_at_sunset` are the places that have their greatest eclipse on the horizon, and `:first_contact` and `:last_contact` are where and when the penumbra first touches the Earth and finally leaves it. A curve on the horizon can have two branches at once, so each of those four is a list of lines, which a map draws as a `Geo.MultiLineString`:
+
+```elixir
+iex> {:ok, path} = Astro.solar_eclipse_path(~D[2024-04-01])
+iex> DateTime.truncate(path.first_contact.time, :second)
+~U[2024-04-08 15:42:14Z]
+iex> DateTime.truncate(path.last_contact.time, :second)
+~U[2024-04-08 20:52:21Z]
+iex> lines = Enum.map(path.sunrise_limit, fn line -> Enum.map(line, & &1.location.coordinates) end)
+iex> sunrise = %Geo.MultiLineString{coordinates: lines}
+iex> length(sunrise.coordinates)
+2
+```
+
+A partial eclipse has no central line or umbral limits, but has its region of partial eclipse. Longitudes run from −180° to 180°, so a line that crosses the antimeridian jumps from one end of the range to the other, and a map that draws it may need to split the line there.
 
 ## Position of the sun
 

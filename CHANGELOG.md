@@ -1,5 +1,17 @@
 # Changelog
 
+## Astro version 2.11.0
+
+This is the changelog for Astro version 2.11.0, released on November 1st, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)
+
+### Added
+
+* `Astro.solar_eclipse_path/2` also bounds the region where the partial eclipse is seen: the penumbral limits, the sunrise and sunset limits, the curves of maximum eclipse at sunrise and sunset, and first and last contact. First and last contact agree with NASA's within 0.3 s.
+
+### Changed
+
+* `Astro.solar_eclipse_path/2` returns the region of partial eclipse for a partial eclipse, with an empty central line and umbral limits, where it returned `{:error, :no_path}`.
+
 ## Astro version 2.10.0
 
 This is the changelog for Astro version 2.10.0, released on November 1st, 2026. For older changelogs please consult the release tag on [GitHub](https://github.com/kipcole9/astro/tags)

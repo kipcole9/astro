@@ -1629,14 +1629,18 @@ defmodule Astro do
   @doc """
   Returns the path of a solar eclipse: its central line and the
   northern and southern limits of the band in which it is total or
-  annular.
+  annular, and the bounds of the region in which it is seen as a
+  partial eclipse.
 
   The central line is where the shadow axis meets the Earth, and a
   limit is where the edge of the umbra, or of the antumbra for an
   annular eclipse, just grazes an observer. Each is computed from the
   eclipse's Besselian elements at a sequence of moments while the
-  shadow is on the Earth. `Astro.Solar.Eclipse.Path` describes the
-  geometry.
+  shadow is on the Earth. The partial eclipse is seen within the
+  penumbral limits, where the edge of the penumbra grazes an observer,
+  and the sunrise and sunset limits, where the eclipse ends just as the
+  Sun rises or begins just as it sets. `Astro.Solar.Eclipse.Path`
+  describes the geometry.
 
   The lines are drawn on a map by joining their points in order, and
   the band by joining the northern limit to the southern limit taken
@@ -1668,18 +1672,33 @@ defmodule Astro do
 
   ### Returns
 
-  * `{:ok, path}`, an `t:Astro.Solar.Eclipse.Path.t/0` with the
-    eclipse's type and its `:central_line`, `:northern_limit` and
-    `:southern_limit`, lists of points in time order. Every point has
-    its `:time`, a UTC `t:DateTime.t/0` to the millisecond, and its
-    `:location`, a `t:Geo.Point.t/0`. A point of the central line also
-    has the eclipse there (`:total` or `:annular`), the path's `:width`
-    in kilometres, the `:duration` of totality or annularity in
-    seconds, and the Sun's geometric altitude in degrees. The central
-    line is empty for an eclipse whose shadow axis misses the Earth.
+  * `{:ok, path}`, an `t:Astro.Solar.Eclipse.Path.t/0` with:
 
-  * `{:error, :no_path}` for a partial eclipse, whose umbra and
-    antumbra miss the Earth.
+    * The eclipse's `:type`.
+
+    * `:central_line`, `:northern_limit` and `:southern_limit`, lists
+      of points in time order. The central line is empty for an eclipse
+      whose shadow axis misses the Earth, and all three for a partial
+      eclipse.
+
+    * `:penumbral_northern_limit` and `:penumbral_southern_limit`,
+      lists of points in time order, empty where the limit is never on
+      the Earth with the Sun up.
+
+    * `:sunrise_limit`, `:sunset_limit`, `:maximum_at_sunrise` and
+      `:maximum_at_sunset`, each a list of lines in the order they
+      begin, each line a list of points in time order: a curve on the
+      horizon can have two branches at once.
+
+    * `:first_contact` and `:last_contact`, the points where and when
+      the penumbra first touches the Earth and last leaves it.
+
+    Every point has its `:time`, a UTC `t:DateTime.t/0` to the
+    millisecond, and its `:location`, a `t:Geo.Point.t/0`. A point of
+    the central line also has the eclipse there (`:total` or
+    `:annular`), the path's `:width` in kilometres, the `:duration` of
+    totality or annularity in seconds, and the Sun's geometric altitude
+    in degrees.
 
   * `{:error, :invalid_date}` if `eclipse` is neither an eclipse nor a
     valid date or date time in its calendar.
@@ -1712,6 +1731,18 @@ defmodule Astro do
   ΔT's uncertainty: a second of ΔT moves it 0.46 km east or west at the
   equator.
 
+  First and last contact agree with NASA's, as EclipseWise publishes
+  them, within 0.3 s in Terrestrial Time for eight eclipses from 2014
+  to 2026, total, annular, hybrid and partial. Within each line of the
+  sunrise and sunset limits and of the curves of maximum eclipse on the
+  horizon, every point is where `solar_eclipse_at/3` puts that contact,
+  or maximum, within 0.01 s and with the Sun on the horizon within
+  0.001°; and a point 0.05° inside a penumbral limit sees a partial
+  eclipse of magnitude under 0.003 where a point 0.05° outside sees
+  none. Where lines meet, at first and last contact and where a limit
+  reaches the horizon, the penumbra touches a place for an instant and
+  there is no eclipse to see.
+
   ### Examples
 
       iex> {:ok, path} = Astro.solar_eclipse_path(~D[2024-04-01])
@@ -1724,8 +1755,14 @@ defmodule Astro do
       iex> {Float.round(longitude, 2), Float.round(latitude, 2), Float.round(point.width, 0)}
       {-104.24, 25.19, 198.0}
 
-      iex> Astro.solar_eclipse_path(~D[2025-03-01])
-      {:error, :no_path}
+  A partial eclipse has no central line, but has a region in which it
+  is seen:
+
+      iex> {:ok, path} = Astro.solar_eclipse_path(~D[2025-03-01])
+      iex> {path.type, path.central_line}
+      {:partial, []}
+      iex> DateTime.truncate(path.first_contact.time, :second)
+      ~U[2025-03-29 08:50:43Z]
 
   ### Reference
 
@@ -1745,8 +1782,7 @@ defmodule Astro do
   @spec solar_eclipse_path(Astro.Solar.Eclipse.t() | date(), options()) ::
           {:ok, Astro.Solar.Eclipse.Path.t()}
           | {:error,
-             :no_path
-             | :invalid_date
+             :invalid_date
              | :year_out_of_range
              | :invalid_options
              | :invalid_interval}
@@ -1762,7 +1798,15 @@ defmodule Astro do
          type: path.type,
          central_line: path_points(path.central_line),
          northern_limit: path_points(path.northern_limit),
-         southern_limit: path_points(path.southern_limit)
+         southern_limit: path_points(path.southern_limit),
+         penumbral_northern_limit: path_points(path.penumbral_northern_limit),
+         penumbral_southern_limit: path_points(path.penumbral_southern_limit),
+         sunrise_limit: Enum.map(path.sunrise_limit, &path_points/1),
+         sunset_limit: Enum.map(path.sunset_limit, &path_points/1),
+         maximum_at_sunrise: Enum.map(path.maximum_at_sunrise, &path_points/1),
+         maximum_at_sunset: Enum.map(path.maximum_at_sunset, &path_points/1),
+         first_contact: path_point(path.first_contact),
+         last_contact: path_point(path.last_contact)
        }}
     end
   end
@@ -1985,15 +2029,17 @@ defmodule Astro do
   # nearest millisecond, which the points at whole multiples of the
   # interval fall on.
   defp path_points(points) do
-    Enum.map(points, fn %{time: moment} = point ->
-      date_time =
-        (moment + @half_millisecond_days)
-        |> Time.date_time_from_moment()
-        |> utc_date_time()
-        |> DateTime.truncate(:millisecond)
+    Enum.map(points, &path_point/1)
+  end
 
-      %{point | time: date_time}
-    end)
+  defp path_point(%{time: moment} = point) do
+    date_time =
+      (moment + @half_millisecond_days)
+      |> Time.date_time_from_moment()
+      |> utc_date_time()
+      |> DateTime.truncate(:millisecond)
+
+    %{point | time: date_time}
   end
 
   # The eclipse with its instants as UTC date times.

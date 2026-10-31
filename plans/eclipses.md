@@ -1,6 +1,6 @@
 # Eclipses
 
-**Status:** implemented (v2.10.0), 2026-11-01
+**Status:** implemented (v2.11.0), 2026-11-01
 
 Astro 2.10 adds solar and lunar eclipses: finding them, classifying them, and giving their circumstances, globally and for a solar eclipse at a place. Like the rest of Astro they are computed from the Sun's and the Moon's apparent positions (the JPL ephemeris where it covers a date, the analytical series beyond it), so an eclipse is answered for any date within 50,000 years of 2000, and the implementation is written to be read as a guide to how eclipses are calculated.
 
@@ -83,6 +83,8 @@ Within the JPL ephemeris, instants of greatest eclipse should agree with NASA's 
 ## Tasks
 
 ### Done
+
+* [x] **Region of partial eclipse** — `Astro.solar_eclipse_path/2` adds the penumbral limits, the sunrise and sunset limits (lists of lines, two branches possible), the curves of maximum eclipse at sunrise and sunset, and first and last contact; a partial eclipse returns its region. First and last contact within 0.3 s of NASA (EclipseWise, TD) for eight eclipses; the curves agree with the local circumstances within 0.01 s with the Sun on the horizon. 2026-11-01, v2.11.0.
 
 * [x] **Saros series** — `:saros` on solar and lunar eclipses (`Astro.Saros`), from the lunation (`Astro.Lunar.lunation_at/1`) by `s ≡ 38 (n − c) (mod 223)` and a fitted band of series in progress; NASA's number for all 694 solar and 703 lunar eclipses tested, with the lunation. 2026-11-01, v2.10.0.
 

@@ -150,6 +150,8 @@ Against NASA's path tables for eight eclipses from 1999 to 2027 (total, annular,
 
 The differences follow those of the shadow's position, up to about 0.7 km between the two ephemerides, and grow where the Sun is low because the ground is tilted to the shadow. Near sunrise and sunset the shadow crosses the ground at hundreds of kilometres a second, so a point at a given instant can differ by tens of kilometres along the path while the path itself is the same; the comparison therefore separates the distance across the path from the time along it.
 
+The region of partial eclipse has no published table to test against, so it is tested two ways. First and last contact, the moments the penumbra first touches the Earth and finally leaves it, are purely geometric, and agree with NASA's (as EclipseWise publishes them, in Terrestrial Time) within 0.3 s for eight eclipses from 2014 to 2026, total, annular, hybrid and partial. And the lines are tested against `Astro.solar_eclipse_at/3`, which agrees with the USNO: within each line, every point of the sunrise and sunset limits and of the curves of maximum eclipse on the horizon is where the local circumstances put that contact or maximum, within 0.01 s and with the Sun on the horizon within 0.001°, and a place 0.05° inside a penumbral limit sees a partial eclipse where one 0.05° outside sees none.
+
 In Universal Time an eclipse's places carry ΔT's uncertainty: a second of ΔT moves the path 0.46 km east or west at the equator and every local contact by about a second. In 1900 that is 0.05 km; at the year 0, where ΔT is uncertain by 265 s, it is about 1.1° of longitude, and in −2000 more than 15°, so the path of an ancient eclipse is known in shape and latitude far better than in longitude.
 
 ## Speed

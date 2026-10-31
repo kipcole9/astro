@@ -41,6 +41,42 @@ defmodule Astro.SolarEclipsePathTest do
   # radius, so where it is total NASA's northern limit is the southern.
   @hybrid "2023-04-20"
 
+  # First and last contact of the penumbra with the Earth in Terrestrial
+  # Time, as EclipseWise (Espenak) publishes them and Wikipedia's eclipse
+  # articles repeat them.
+  @contacts [
+    {"2014-04-29", "03:53:46.0", "08:15:37.1"},
+    {"2021-12-04", "05:30:26.5", "09:38:39.3"},
+    {"2023-04-20", "01:35:34.3", "07:00:31.9"},
+    {"2023-10-14", "15:04:58.2", "20:56:26.7"},
+    {"2024-04-08", "15:43:23.3", "20:53:30.4"},
+    {"2025-03-29", "08:51:52.5", "12:44:54.0"},
+    {"2025-09-21", "17:30:51.3", "21:54:55.1"},
+    {"2026-02-17", "09:57:35.9", "14:28:51.0"}
+  ]
+
+  # A total, a hybrid, a partial and a polar total eclipse, whose regions
+  # are checked against the local circumstances at ten-minute points.
+  @region_eclipses ["2024-04-01", "2023-04-01", "2025-03-01", "2026-08-01"]
+  @region_interval 10 / 1_440
+
+  # The contact each curve on the horizon names.
+  @horizon_contacts [
+    sunrise_limit: :partial_ends,
+    sunset_limit: :partial_begins,
+    maximum_at_sunrise: :maximum,
+    maximum_at_sunset: :maximum
+  ]
+
+  # The ends of each line are where it meets another, at first or last
+  # contact, the horizon or the other branch, where the penumbra touches
+  # a place for an instant and there is no eclipse to see there, so the
+  # points within each line are checked.
+  @contact_seconds 0.1
+  @horizon_degrees 0.01
+  @inside_degrees 0.05
+  @grazing_magnitude 0.003
+
   test "agrees with NASA's path tables" do
     for row <- nasa_rows(), {line, nasa} <- row.points do
       assert_on_path(row, line, nasa)
@@ -98,8 +134,71 @@ defmodule Astro.SolarEclipsePathTest do
     assert_near(List.last(path.northern_limit), List.last(path.southern_limit))
   end
 
-  test "a partial eclipse has no path" do
-    assert Astro.solar_eclipse_path(~D[2025-03-01]) == {:error, :no_path}
+  test "a partial eclipse has a region of partial eclipse and no central path" do
+    {:ok, path} = Astro.solar_eclipse_path(~D[2025-03-01])
+
+    assert path.type == :partial
+    assert path.central_line == [] and path.northern_limit == [] and path.southern_limit == []
+    assert match?([_ | _], path.penumbral_southern_limit)
+    assert match?([_ | _], path.sunrise_limit) and match?([_ | _], path.sunset_limit)
+    assert DateTime.before?(path.first_contact.time, path.last_contact.time)
+  end
+
+  test "first and last contact agree with NASA's in Terrestrial Time" do
+    for {date, first, last} <- @contacts do
+      {:ok, eclipse} = Astro.Solar.Eclipse.eclipse_at_or_after(moment(date, "00:00") - 1.0)
+      {:ok, path} = Astro.Solar.Eclipse.Path.path(eclipse, @region_interval)
+
+      assert_in_delta terrestrial_seconds(path.first_contact.time, date),
+                      seconds(first),
+                      0.5,
+                      date
+
+      assert_in_delta terrestrial_seconds(path.last_contact.time, date), seconds(last), 0.5, date
+    end
+  end
+
+  test "the curves on the horizon are where the local circumstances put their contacts" do
+    for date <- @region_eclipses do
+      {:ok, eclipse} = Astro.Solar.Eclipse.eclipse_at_or_after(moment(date, "00:00"))
+      {:ok, path} = Astro.Solar.Eclipse.Path.path(eclipse, @region_interval)
+
+      for {curve, contact} <- @horizon_contacts,
+          line <- Map.fetch!(path, curve),
+          point <- interior(line, 1) do
+        assert_local_contact(eclipse.greatest, point, contact, "#{date} #{curve}")
+      end
+    end
+  end
+
+  test "a place just inside a penumbral limit sees a partial eclipse, and just outside none" do
+    for date <- @region_eclipses do
+      {:ok, eclipse} = Astro.Solar.Eclipse.eclipse_at_or_after(moment(date, "00:00"))
+      {:ok, path} = Astro.Solar.Eclipse.Path.path(eclipse, @region_interval)
+
+      for {limit, inward} <- [penumbral_northern_limit: -1.0, penumbral_southern_limit: 1.0],
+          [before, point, later] <-
+            Enum.chunk_every(interior(Map.fetch!(path, limit), 1), 3, 1, :discard),
+          east_west?(before, later) do
+        assert_grazes(eclipse.greatest, point, inward, "#{date} #{limit}")
+      end
+    end
+  end
+
+  test "every line of the region is in time order" do
+    {:ok, path} = Astro.solar_eclipse_path(~D[2024-04-01])
+
+    lines =
+      [path.penumbral_northern_limit, path.penumbral_southern_limit] ++
+        path.sunrise_limit ++
+        path.sunset_limit ++ path.maximum_at_sunrise ++ path.maximum_at_sunset
+
+    for line <- lines do
+      times = Enum.map(line, & &1.time)
+      assert times == Enum.sort(times, DateTime)
+    end
+
+    assert DateTime.before?(path.first_contact.time, path.last_contact.time)
   end
 
   test "the points are at whole multiples of the interval, longitude first" do
@@ -197,6 +296,50 @@ defmodule Astro.SolarEclipsePathTest do
       longitude_change * prime_vertical * :math.cos(radians) * :math.pi() / 180,
       (latitude - from_latitude) * meridian * :math.pi() / 180
     }
+  end
+
+  defp assert_local_contact(greatest, point, contact, label) do
+    %{time: t, location: %Geo.Point{coordinates: {longitude, latitude}}} = point
+    location = %Geo.PointZ{coordinates: {longitude, latitude, 0.0}}
+
+    {:ok, local} = Astro.Solar.Eclipse.Local.circumstances(greatest, location)
+    assert_in_delta (Map.fetch!(local, contact) - t) * 86_400, 0.0, @contact_seconds, label
+    assert_in_delta Map.fetch!(local.sun_altitudes, contact), 0.0, @horizon_degrees, label
+  end
+
+  defp assert_grazes(greatest, point, inward, label) do
+    {longitude, latitude} = point.location.coordinates
+    inside = %Geo.PointZ{coordinates: {longitude, latitude + inward * @inside_degrees, 0.0}}
+    outside = %Geo.PointZ{coordinates: {longitude, latitude - inward * @inside_degrees, 0.0}}
+
+    assert {:ok, local} = Astro.Solar.Eclipse.Local.circumstances(greatest, inside), label
+    assert local.magnitude < @grazing_magnitude, label
+
+    assert Astro.Solar.Eclipse.Local.circumstances(greatest, outside) == {:error, :not_visible},
+           label
+  end
+
+  defp interior(line, count) do
+    line
+    |> Enum.drop(count)
+    |> Enum.drop(-count)
+  end
+
+  # Where a limit runs more east and west than north and south, a step in
+  # latitude crosses it.
+  defp east_west?(%{location: %{coordinates: from}}, %{location: %{coordinates: to}}) do
+    {east, north} = kilometres(to, from)
+    abs(north) < abs(east)
+  end
+
+  defp terrestrial_seconds(moment, date) do
+    days = Date.to_gregorian_days(Date.from_iso8601!(date))
+    (730_485.5 + Astro.Time.dynamical_time_from_moment(moment) / 86_400 - days) * 86_400
+  end
+
+  defp seconds(time) do
+    [hours, minutes, seconds] = String.split(time, ":")
+    String.to_integer(hours) * 3_600 + String.to_integer(minutes) * 60 + String.to_float(seconds)
   end
 
   defp assert_near(%{location: %{coordinates: a}}, %{location: %{coordinates: b}}) do
