@@ -74,8 +74,6 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 ## Tasks
 
-* [ ] **Point the rise and set searches at `Astro.Solar` and `Astro.Lunar`** — `Astro.Solar.SunRiseSet` and `Astro.Lunar.MoonRiseSet` read positions from `Astro.Ephemeris` directly today.
-
 * [ ] **Remove the coverage checks** — from the `Astro` functions, sunrise and sunset, moonrise and moonset, solar noon and crescent visibility; update specs, docs, README and guides; tests for far past and far future dates.
 
 * [ ] **Find equinoxes and solstices as longitude crossings** — seeded by the Ch.27 estimate, with the 1000–3000 refusal removed.
@@ -89,6 +87,8 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 * [ ] **Calendrical follow-up** — once released, remove `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error from `Calendrical.Islamic.Visibility`, and raise Calendrical's Astro requirement. In the Calendrical repository, by its maintainer.
 
 ### Done
+
+* [x] **Point the rise and set searches at `Astro.Solar` and `Astro.Lunar`** — `Astro.Solar.SunRiseSet` and `Astro.Lunar.MoonRiseSet` read positions through `solar_position/1` and `lunar_position/1`; every result is unchanged to the microsecond and the searches cost the same. 2026-10-31.
 
 * [x] **Choose JPL or the series in `Astro.Solar` and `Astro.Lunar`** — each module chooses in two private functions that every position goes through; `lunar_phase_at/1` takes the Sun from `Astro.Solar`; the private Ch.25 Sun series is gone. 2026-10-31.
 

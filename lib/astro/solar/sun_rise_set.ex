@@ -110,7 +110,7 @@ defmodule Astro.Solar.SunRiseSet do
 
   """
 
-  alias Astro.{Coordinates, Ephemeris, Time}
+  alias Astro.{Coordinates, Ephemeris, Solar, Time}
 
   # Coarse scan step (seconds). The Sun is always visible for at least a few
   # minutes when it rises, so 24-minute steps bracket the event reliably.
@@ -518,7 +518,8 @@ defmodule Astro.Solar.SunRiseSet do
   # Positive f: Sun above the event threshold.
   # Negative f: Sun below the event threshold.
   defp altitude_f(dynamical_time, lat, lng, h0) do
-    {:ok, {ra, dec, _dist}} = Ephemeris.sun_position_dt(dynamical_time)
+    moment = Time.dynamical_time_to_moment(dynamical_time)
+    {ra, dec, _distance} = Solar.solar_position(moment)
 
     gast = Coordinates.gast(dynamical_time)
     h = fmod(gast + lng - ra, 360.0)

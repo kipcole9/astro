@@ -98,7 +98,7 @@ defmodule Astro.Lunar.MoonRiseSet do
 
   """
 
-  alias Astro.{Coordinates, Ephemeris, Time}
+  alias Astro.{Coordinates, Ephemeris, Lunar, Time}
 
   # WGS-84 geodetic → geocentric latitude conversion factor.
   @geodetic_factor 0.99664719
@@ -515,7 +515,7 @@ defmodule Astro.Lunar.MoonRiseSet do
   defp validate_limb(_limb), do: {:error, :invalid_limb}
 
   defp topocentric_f(dynamical_time, lat, lng, rho_sin_phi, rho_cos_phi, limb) do
-    {:ok, {ra_geo, dec_geo, dist_km}} = Ephemeris.moon_position_dt(dynamical_time)
+    {ra_geo, dec_geo, dist_km} = moon_position(dynamical_time)
 
     semi_diam = :math.asin(@moon_radius_km / dist_km) * 180.0 / :math.pi()
 
@@ -558,6 +558,15 @@ defmodule Astro.Lunar.MoonRiseSet do
     end
   end
 
+  # The Moon's geocentric right ascension and declination in degrees and its
+  # distance in kilometres, from `Astro.Lunar`, which answers from the JPL
+  # ephemeris or from the analytical series.
+  defp moon_position(dynamical_time) do
+    moment = Time.dynamical_time_to_moment(dynamical_time)
+    {right_ascension, declination, distance_m} = Lunar.lunar_position(moment)
+    {right_ascension, declination, distance_m / 1000.0}
+  end
+
   # ── Lagrange interpolation ───────────────────────────────────────────────────
 
   # Build a Lagrange interpolator from 3 tabular positions.
@@ -567,9 +576,9 @@ defmodule Astro.Lunar.MoonRiseSet do
     dt0 = dt_center - @lagrange_interval_s
     dt2 = dt_center + @lagrange_interval_s
 
-    {:ok, {ra0, dec0, dist0}} = Ephemeris.moon_position_dt(dt0)
-    {:ok, {ra1, dec1, dist1}} = Ephemeris.moon_position_dt(dt_center)
-    {:ok, {ra2, dec2, dist2}} = Ephemeris.moon_position_dt(dt2)
+    {ra0, dec0, dist0} = moon_position(dt0)
+    {ra1, dec1, dist1} = moon_position(dt_center)
+    {ra2, dec2, dist2} = moon_position(dt2)
 
     # Fix RA discontinuities near 0/360 boundary
     {ra0, ra1, ra2} = fix_ra_wrap(ra0, ra1, ra2)
