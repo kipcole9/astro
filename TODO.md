@@ -4,6 +4,8 @@ Work planned for Astro. The detail of anything shipped is in the CHANGELOG.
 
 ## Open
 
+* [ ] **Documentation as a learning guide** — each primary function explains what it calculates, how and from which source, how accurate it is, and where to read more, with an accuracy guide covering JPL against the series, near and far term. Plan in [plans/learning-documentation.md](plans/learning-documentation.md).
+
 * [ ] **Answer every date from JPL or Meeus** — positions come from the JPL ephemeris where it covers the moment and from the Meeus series where it does not, so no consumer checks coverage or sees `{:error, :not_found}`. Design and tasks in [plans/jpl-meeus-fallback.md](plans/jpl-meeus-fallback.md).
 
 * [ ] **Return errors rather than raise on invalid input** — the public functions guard their arguments, so a malformed location, date, phase or option value raises `FunctionClauseError` or `ArgumentError` rather than returning `{:error, reason}`. Returning errors changes the return types of the functions that return bare values, such as `Astro.lunar_phase_at/1`, so it belongs in a major release.
