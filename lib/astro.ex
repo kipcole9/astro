@@ -1153,9 +1153,19 @@ defmodule Astro do
     * `:astronomical` is 108°. Beyond this, astronomical observation
       becomes impractical.
 
+  * `:limb` is `:upper`, the default, for the moment the Sun's upper
+    limb is on the horizon, or `:center` for its centre (34′ of
+    refraction alone). It applies to `:geometric` only.
+
   * `:time_zone` is the time zone of the returned date time: `:default`,
     the time zone of the location, which is the default; `:utc`; or a
     time zone name.
+
+  * `:utc_offset` is a whole number of seconds from UTC, from −50,400
+    to 50,400. When it is given, the event is the one whose date at
+    that offset is `date`, whatever time zone it is returned in: the
+    location's own day, for a calendar that keeps local mean time.
+    Otherwise the date is taken in the requested time zone.
 
   * `:time_zone_database` is the module implementing the
     `Calendar.TimeZoneDatabase` behaviour. The default is the configured
@@ -1178,6 +1188,11 @@ defmodule Astro do
     calendar.
 
   * `{:error, :invalid_options}` if `options` is not a list.
+
+  * `{:error, :invalid_utc_offset}` if `:utc_offset` is not a whole
+    number of seconds from −50,400 to 50,400.
+
+  * `{:error, :invalid_limb}` if `:limb` is not `:upper` or `:center`.
 
   * `{:error, :no_time}` if there is no sunrise on that date at that
     location, as happens at very high latitudes in summer and winter.
@@ -1253,6 +1268,8 @@ defmodule Astro do
              | :invalid_location
              | :invalid_date
              | :invalid_options
+             | :invalid_utc_offset
+             | :invalid_limb
              | :invalid_solar_elevation
              | :time_zone_not_found
              | :time_zone_not_resolved
@@ -1319,9 +1336,19 @@ defmodule Astro do
     * `:astronomical` is 108°. Beyond this, astronomical observation
       becomes impractical.
 
+  * `:limb` is `:upper`, the default, for the moment the Sun's upper
+    limb is on the horizon, or `:center` for its centre (34′ of
+    refraction alone). It applies to `:geometric` only.
+
   * `:time_zone` is the time zone of the returned date time: `:default`,
     the time zone of the location, which is the default; `:utc`; or a
     time zone name.
+
+  * `:utc_offset` is a whole number of seconds from UTC, from −50,400
+    to 50,400. When it is given, the event is the one whose date at
+    that offset is `date`, whatever time zone it is returned in: the
+    location's own day, for a calendar that keeps local mean time.
+    Otherwise the date is taken in the requested time zone.
 
   * `:time_zone_database` is the module implementing the
     `Calendar.TimeZoneDatabase` behaviour. The default is the configured
@@ -1344,6 +1371,11 @@ defmodule Astro do
     calendar.
 
   * `{:error, :invalid_options}` if `options` is not a list.
+
+  * `{:error, :invalid_utc_offset}` if `:utc_offset` is not a whole
+    number of seconds from −50,400 to 50,400.
+
+  * `{:error, :invalid_limb}` if `:limb` is not `:upper` or `:center`.
 
   * `{:error, :no_time}` if there is no sunset on that date at that
     location, as happens at very high latitudes in summer and winter.
@@ -1419,6 +1451,8 @@ defmodule Astro do
              | :invalid_location
              | :invalid_date
              | :invalid_options
+             | :invalid_utc_offset
+             | :invalid_limb
              | :invalid_solar_elevation
              | :time_zone_not_found
              | :time_zone_not_resolved
@@ -1494,6 +1528,12 @@ defmodule Astro do
     the time zone of the location, which is the default; `:utc`; or a
     time zone name.
 
+  * `:utc_offset` is a whole number of seconds from UTC, from −50,400
+    to 50,400. When it is given, the event is the one whose date at
+    that offset is `date`, whatever time zone it is returned in: the
+    location's own day, for a calendar that keeps local mean time.
+    Otherwise the date is taken in the requested time zone.
+
   * `:time_zone_database` is the module implementing the
     `Calendar.TimeZoneDatabase` behaviour. The default is the configured
     Elixir time zone database.
@@ -1515,6 +1555,9 @@ defmodule Astro do
     calendar.
 
   * `{:error, :invalid_options}` if `options` is not a list.
+
+  * `{:error, :invalid_utc_offset}` if `:utc_offset` is not a whole
+    number of seconds from −50,400 to 50,400.
 
   * `{:error, :no_time}` if the Moon does not rise on that date at that
     location, as it can stay below the horizon for a whole day.
@@ -1593,6 +1636,7 @@ defmodule Astro do
              | :invalid_location
              | :invalid_date
              | :invalid_options
+             | :invalid_utc_offset
              | :invalid_limb
              | :invalid_interpolation
              | :time_zone_not_found
@@ -1671,6 +1715,12 @@ defmodule Astro do
     the time zone of the location, which is the default; `:utc`; or a
     time zone name.
 
+  * `:utc_offset` is a whole number of seconds from UTC, from −50,400
+    to 50,400. When it is given, the event is the one whose date at
+    that offset is `date`, whatever time zone it is returned in: the
+    location's own day, for a calendar that keeps local mean time.
+    Otherwise the date is taken in the requested time zone.
+
   * `:time_zone_database` is the module implementing the
     `Calendar.TimeZoneDatabase` behaviour. The default is the configured
     Elixir time zone database.
@@ -1692,6 +1742,9 @@ defmodule Astro do
     calendar.
 
   * `{:error, :invalid_options}` if `options` is not a list.
+
+  * `{:error, :invalid_utc_offset}` if `:utc_offset` is not a whole
+    number of seconds from −50,400 to 50,400.
 
   * `{:error, :no_time}` if the Moon does not set on that date at that
     location, as it can stay above the horizon for a whole day.
@@ -1770,6 +1823,7 @@ defmodule Astro do
              | :invalid_location
              | :invalid_date
              | :invalid_options
+             | :invalid_utc_offset
              | :invalid_limb
              | :invalid_interpolation
              | :time_zone_not_found
@@ -1935,7 +1989,7 @@ defmodule Astro do
   def new_visible_crescent(location, date, method) when method in [:yallop, :odeh, :schaefer] do
     with {:ok, location} <- Location.validate_location(location),
          {:ok, moment} <- Time.checked_moment(date) do
-      crescent_visibility(location, moment, method)
+      crescent_visibility(location, moment, method, [])
     end
   end
 
@@ -1943,25 +1997,26 @@ defmodule Astro do
     {:error, :invalid_method}
   end
 
-  defp crescent_visibility(location, moment, :yallop) do
-    Lunar.CrescentVisibility.yallop_new_visible_crescent(location, moment)
+  defp crescent_visibility(location, moment, :yallop, options) do
+    Lunar.CrescentVisibility.yallop_new_visible_crescent(location, moment, options)
   end
 
-  defp crescent_visibility(location, moment, :odeh) do
-    Lunar.CrescentVisibility.odeh_new_visible_crescent(location, moment)
+  defp crescent_visibility(location, moment, :odeh, options) do
+    Lunar.CrescentVisibility.odeh_new_visible_crescent(location, moment, options)
   end
 
-  defp crescent_visibility(location, moment, :schaefer) do
-    Lunar.CrescentVisibility.schaefer_new_visible_crescent(location, moment)
+  defp crescent_visibility(location, moment, :schaefer, options) do
+    Lunar.CrescentVisibility.schaefer_new_visible_crescent(location, moment, options)
   end
 
   @doc """
-  Predicts the visibility of the new crescent moon with Schaefer's
-  method, adjusted for the atmosphere.
+  Predicts the visibility of the new crescent moon, with options.
 
-  This is `new_visible_crescent/3` with the `:schaefer` method, taking
-  the same location and date and returning the same classes. See
-  `new_visible_crescent/3` for how the methods compare.
+  This is `new_visible_crescent/3` with options: the evening of a
+  location's own day, and for Schaefer's method the clarity of the
+  atmosphere. It takes the same location, date and method and returns
+  the same classes; see `new_visible_crescent/3` for how the methods
+  compare.
 
   ### Arguments
 
@@ -1972,16 +2027,21 @@ defmodule Astro do
   * `date` is a `t:Date.t/0` or `t:DateTime.t/0` indicating the evening
     on which crescent visibility is to be evaluated.
 
-  * `method` is `:schaefer`, the only method that takes options.
+  * `method` is `:odeh`, `:yallop` or `:schaefer`.
 
   * `options` is a keyword list of options.
 
   ### Options
 
-  * `:extinction` is the V-band zenith extinction coefficient. The
-    default is `0.172`, a clean sea-level site. Typical values are
-    `0.12` on a high mountain, `0.17` at sea level and `0.25` in hazy
-    conditions.
+  * `:utc_offset` is a whole number of seconds from UTC, from −50,400
+    to 50,400. When it is given, the evening is that of `date` at the
+    offset, as for `sunset/3`; otherwise it is the evening of the UTC
+    date.
+
+  * `:extinction` is the V-band zenith extinction coefficient, for
+    `:schaefer`. The default is `0.172`, a clean sea-level site.
+    Typical values are `0.12` on a high mountain, `0.17` at sea level
+    and `0.25` in hazy conditions.
 
   ### Returns
 
@@ -1997,10 +2057,13 @@ defmodule Astro do
   * `{:error, :invalid_date}` if `date` is not a valid date in its
     calendar.
 
-  * `{:error, :invalid_method}` if `method` is not `:schaefer`, the only
-    method that takes options.
+  * `{:error, :invalid_method}` if `method` is not `:yallop`, `:odeh`
+    or `:schaefer`.
 
   * `{:error, :invalid_options}` if `options` is not a list.
+
+  * `{:error, :invalid_utc_offset}` if `:utc_offset` is not a whole
+    number of seconds from −50,400 to 50,400.
 
   ### Examples
 
@@ -2016,23 +2079,208 @@ defmodule Astro do
 
   """
   @doc since: "2.1.0"
-  @spec new_visible_crescent(location(), date(), :schaefer, keyword()) ::
+  @spec new_visible_crescent(location(), date(), method(), keyword()) ::
           {:ok, Lunar.CrescentVisibility.visibility()}
           | {:error,
-             :no_sunset | :invalid_location | :invalid_date | :invalid_method | :invalid_options}
+             :no_sunset
+             | :invalid_location
+             | :invalid_date
+             | :invalid_method
+             | :invalid_options
+             | :invalid_utc_offset}
 
   def new_visible_crescent(location, date, method, options)
 
-  def new_visible_crescent(location, date, :schaefer, options) do
+  def new_visible_crescent(location, date, method, options)
+      when method in [:yallop, :odeh, :schaefer] do
     with {:ok, location} <- Location.validate_location(location),
          {:ok, moment} <- Time.checked_moment(date),
          {:ok, options} <- validate_options(options) do
-      Lunar.CrescentVisibility.schaefer_new_visible_crescent(location, moment, options)
+      crescent_visibility(location, moment, method, options)
     end
   end
 
   def new_visible_crescent(_location, _date, _method, _options) do
     {:error, :invalid_method}
+  end
+
+  @doc """
+  Returns the evening on which the last new crescent was first seen,
+  on or before a date.
+
+  A lunar month that begins at the first sighting of the new crescent,
+  as an observational Islamic calendar's does, begins the day after the
+  evening it is first seen. A lunation's crescent is first seen on the
+  first evening, from the evening before the day of its new moon, on
+  which `new_visible_crescent/4` classes it visible (`:A`, `:B` or `:C`
+  by default). This is the latest such evening on or before `date`:
+  the month `date` falls in began the day after it.
+
+  ### Arguments
+
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0`.
+    Longitude comes first.
+
+  * `date` is a `t:Date.t/0`, the evening to search back from.
+
+  * `method` is `:odeh` (the default), `:yallop` or `:schaefer`; see
+    `new_visible_crescent/3`.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:visible` is the list of categories that count as a sighting. The
+    default is `[:A, :B, :C]`.
+
+  * `:utc_offset` and `:extinction` are as for `new_visible_crescent/4`.
+
+  ### Returns
+
+  * `{:ok, date}`, the evening of the first sighting.
+
+  * `{:error, :no_visible_crescent}` if a lunation's crescent is not
+    seen within 30 evenings of its new moon, as at high latitudes.
+
+  * `{:error, :invalid_location}`, `{:error, :invalid_date}`,
+    `{:error, :invalid_method}`, `{:error, :invalid_options}`,
+    `{:error, :invalid_visible}` or `{:error, :invalid_utc_offset}` for
+    an invalid argument or option.
+
+  * `{:error, :year_out_of_range}` if `date` is more than 50,000 years
+    from J2000.
+
+  ### Accuracy
+
+  As for `new_visible_crescent/3`: the evening is the one the criterion
+  predicts, which can differ from an actual sighting by a day when the
+  crescent is near the criterion's boundary.
+
+  ### Examples
+
+      iex> Astro.first_visible_crescent_on_or_before({39.8262, 21.4225}, ~D[2024-12-20])
+      {:ok, ~D[2024-12-02]}
+
+  ### Reference
+
+  * Mohammad Sh. Odeh, [New Criterion for Lunar Crescent
+    Visibility](https://doi.org/10.1007/s10686-005-9002-5),
+    *Experimental Astronomy* 18 (2004), 39–64.
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, `phasis-on-or-before`.
+
+  """
+  @doc since: "2.10.0"
+  @spec first_visible_crescent_on_or_before(location(), date(), method(), keyword()) ::
+          {:ok, Date.t()} | {:error, atom()}
+
+  def first_visible_crescent_on_or_before(location, date, method \\ :odeh, options \\ [])
+
+  def first_visible_crescent_on_or_before(location, date, method, options)
+      when method in [:yallop, :odeh, :schaefer] do
+    first_visible_crescent(
+      &Lunar.CrescentVisibility.first_visible_crescent_on_or_before/4,
+      location,
+      date,
+      method,
+      options
+    )
+  end
+
+  def first_visible_crescent_on_or_before(_location, _date, _method, _options) do
+    {:error, :invalid_method}
+  end
+
+  @doc """
+  Returns the evening on which the next new crescent is first seen,
+  on or after a date.
+
+  See `first_visible_crescent_on_or_before/4` for the first sighting.
+  The month after the one `date` falls in begins the day after the
+  first sighting on or after the day after `date`.
+
+  ### Arguments
+
+  * `location` is the observer's position as a `{longitude, latitude}`
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0`.
+    Longitude comes first.
+
+  * `date` is a `t:Date.t/0`, the evening to search forward from.
+
+  * `method` is `:odeh` (the default), `:yallop` or `:schaefer`.
+
+  * `options` is a keyword list of options, as for
+    `first_visible_crescent_on_or_before/4`.
+
+  ### Returns
+
+  * `{:ok, date}`, the evening of the first sighting, or the errors of
+    `first_visible_crescent_on_or_before/4`.
+
+  ### Accuracy
+
+  As for `first_visible_crescent_on_or_before/4`.
+
+  ### Examples
+
+      iex> Astro.first_visible_crescent_on_or_after({39.8262, 21.4225}, ~D[2024-12-20])
+      {:ok, ~D[2025-01-01]}
+
+  ### Reference
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, `phasis-on-or-after`.
+
+  """
+  @doc since: "2.10.0"
+  @spec first_visible_crescent_on_or_after(location(), date(), method(), keyword()) ::
+          {:ok, Date.t()} | {:error, atom()}
+
+  def first_visible_crescent_on_or_after(location, date, method \\ :odeh, options \\ [])
+
+  def first_visible_crescent_on_or_after(location, date, method, options)
+      when method in [:yallop, :odeh, :schaefer] do
+    first_visible_crescent(
+      &Lunar.CrescentVisibility.first_visible_crescent_on_or_after/4,
+      location,
+      date,
+      method,
+      options
+    )
+  end
+
+  def first_visible_crescent_on_or_after(_location, _date, _method, _options) do
+    {:error, :invalid_method}
+  end
+
+  defp first_visible_crescent(search, location, date, method, options) do
+    with {:ok, location} <- Location.validate_location(location),
+         {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment),
+         {:ok, options} <- validate_crescent_options(options),
+         {:ok, evening} <- search.(location, floor(moment), method, options) do
+      {:ok, Date.from_gregorian_days(evening)}
+    end
+  end
+
+  defp validate_crescent_options(options) when is_list(options) do
+    case Keyword.get(options, :visible, [:A, :B, :C]) do
+      [_ | _] = visible ->
+        if Enum.all?(visible, &(&1 in [:A, :B, :C, :D, :E])) do
+          {:ok, options}
+        else
+          {:error, :invalid_visible}
+        end
+
+      _other ->
+        {:error, :invalid_visible}
+    end
+  end
+
+  defp validate_crescent_options(_options) do
+    {:error, :invalid_options}
   end
 
   @doc """

@@ -144,7 +144,8 @@ defmodule Astro.InvalidInputTest do
         assert Astro.new_visible_crescent(@location, @date, method) == {:error, :invalid_method}
       end
 
-      assert Astro.new_visible_crescent(@location, @date, :odeh, []) == {:error, :invalid_method}
+      assert Astro.new_visible_crescent(@location, @date, :odeh_2006, []) ==
+               {:error, :invalid_method}
 
       for options <- @not_options do
         assert Astro.new_visible_crescent(@location, @date, :schaefer, options) ==

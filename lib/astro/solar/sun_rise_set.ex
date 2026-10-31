@@ -122,6 +122,9 @@ defmodule Astro.Solar.SunRiseSet do
   @scan_pre_window_s 14 * 3_600
   @scan_window_s 52 * 3_600
 
+  # The largest `:utc_offset`, in seconds, whose local days the scan covers.
+  @largest_utc_offset_seconds 14 * 3_600
+
   # Bisection precision target (seconds).
   @bisect_tol_s 0.01
 
@@ -135,6 +138,9 @@ defmodule Astro.Solar.SunRiseSet do
   # The solar semi-diameter is nearly constant (≈15.8′–16.3′); the
   # traditional round value of 16′ is used by USNO and timeanddate.com.
   @h0_deg -(50.0 / 60.0)
+
+  # The Sun's centre on the horizon: refraction alone, 34′.
+  @h0_center_deg -(34.0 / 60.0)
 
   # ── Public API ───────────────────────────────────────────────────────────────
 
@@ -380,6 +386,9 @@ defmodule Astro.Solar.SunRiseSet do
       {:error, :invalid_solar_elevation} ->
         raise ArgumentError,
               "invalid :solar_elevation #{inspect(Keyword.get(options, :solar_elevation))}"
+
+      {:error, :invalid_limb} ->
+        raise ArgumentError, "invalid :limb #{inspect(Keyword.get(options, :limb))}"
     end
   end
 
@@ -395,7 +404,8 @@ defmodule Astro.Solar.SunRiseSet do
     dt_start = dt_midnight - @scan_pre_window_s
     dt_end = dt_start + @scan_window_s
 
-    with {:ok, h0} <- h0_from_options(options) do
+    with {:ok, h0} <- h0_from_options(options),
+         :ok <- validate_utc_offset(options) do
       site = %{lat: lat, lng: lng, h0: h0}
       find_sun_event(dt_start, dt_end, event, date, location, site, options)
     end
@@ -456,18 +466,40 @@ defmodule Astro.Solar.SunRiseSet do
   defp event_on_date(dt_event, date, time_zone, options) do
     with {:ok, utc_dt} <- Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event)),
          {:ok, local_dt} <- to_requested_zone(utc_dt, time_zone, options) do
-      on_date(local_dt, date)
+      utc_dt
+      |> event_date(local_dt, Keyword.get(options, :utc_offset))
+      |> on_date(local_dt, date)
     end
   end
 
-  defp on_date(%{year: year, month: month, day: day} = local_dt, %{
-         year: year,
-         month: month,
-         day: day
-       }),
-       do: {:ok, local_dt}
+  # The date an event falls on: at `:utc_offset` seconds from UTC when the
+  # option is given, and otherwise in the requested time zone.
+  defp event_date(_utc_dt, local_dt, nil) do
+    {local_dt.year, local_dt.month, local_dt.day}
+  end
 
-  defp on_date(_local_dt, _date), do: nil
+  defp event_date(utc_dt, _local_dt, utc_offset) do
+    %{year: year, month: month, day: day} = DateTime.add(utc_dt, utc_offset, :second)
+    {year, month, day}
+  end
+
+  defp on_date({year, month, day}, local_dt, %{year: year, month: month, day: day}) do
+    {:ok, local_dt}
+  end
+
+  defp on_date(_event_date, _local_dt, _date) do
+    nil
+  end
+
+  # A `:utc_offset` is whole seconds within the 14 hours either side of UTC
+  # that the scan around a date covers.
+  defp validate_utc_offset(options) do
+    case Keyword.get(options, :utc_offset) do
+      nil -> :ok
+      seconds when is_integer(seconds) and abs(seconds) <= @largest_utc_offset_seconds -> :ok
+      _other -> {:error, :invalid_utc_offset}
+    end
+  end
 
   # Convert the :solar_elevation option to an altitude threshold in degrees.
   #
@@ -477,15 +509,47 @@ defmodule Astro.Solar.SunRiseSet do
   #   :nautical (102°)       → h0 = −12°
   #   :astronomical (108°)   → h0 = −18°
   #   custom number N        → h0 = −(N − 90°)
+  #
+  # `limb: :center` puts the Sun's centre, rather than its upper limb, on
+  # the horizon for `:geometric`: h0 = −34′, refraction alone. It does not
+  # change the twilights, which are defined by the centre already.
   defp h0_from_options(options) do
-    case Keyword.get(options, :solar_elevation, :geometric) do
-      :geometric -> {:ok, @h0_deg}
-      :civil -> {:ok, -6.0}
-      :nautical -> {:ok, -12.0}
-      :astronomical -> {:ok, -18.0}
-      n when is_number(n) -> {:ok, -(n - 90.0)}
-      _other -> {:error, :invalid_solar_elevation}
+    limb = Keyword.get(options, :limb, :upper)
+    elevation = Keyword.get(options, :solar_elevation, :geometric)
+
+    if limb in [:upper, :center] do
+      h0_for(elevation, limb)
+    else
+      {:error, :invalid_limb}
     end
+  end
+
+  defp h0_for(:geometric, :upper) do
+    {:ok, @h0_deg}
+  end
+
+  defp h0_for(:geometric, :center) do
+    {:ok, @h0_center_deg}
+  end
+
+  defp h0_for(:civil, _limb) do
+    {:ok, -6.0}
+  end
+
+  defp h0_for(:nautical, _limb) do
+    {:ok, -12.0}
+  end
+
+  defp h0_for(:astronomical, _limb) do
+    {:ok, -18.0}
+  end
+
+  defp h0_for(degrees, _limb) when is_number(degrees) do
+    {:ok, -(degrees - 90.0)}
+  end
+
+  defp h0_for(_other, _limb) do
+    {:error, :invalid_solar_elevation}
   end
 
   # ── Altitude function ────────────────────────────────────────────────────────

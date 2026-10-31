@@ -82,6 +82,11 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   @type visibility :: :A | :B | :C | :D | :E
 
+  # The categories that count as a sighting, and how many evenings after a
+  # new moon a first sighting is looked for.
+  @visible_categories [:A, :B, :C]
+  @first_sighting_evenings 30
+
   # ── Shared constants ──────────────────────────────────────────────────────────
 
   # Polynomial coefficients shared by Yallop and Odeh (W in arcminutes)
@@ -165,11 +170,11 @@ defmodule Astro.Lunar.CrescentVisibility do
       {:ok, :E}
 
   """
-  @spec yallop_new_visible_crescent(Geo.PointZ.t(), Time.moment()) ::
+  @spec yallop_new_visible_crescent(Geo.PointZ.t(), Time.moment(), keyword()) ::
           {:ok, visibility()} | {:error, atom()}
 
-  def yallop_new_visible_crescent(location, moment) do
-    with_best_time(location, moment, fn best_time ->
+  def yallop_new_visible_crescent(location, moment, options \\ []) do
+    with_best_time(location, moment, options, fn best_time ->
       {sun_alt, moon_alt, _arcl, w} = geocentric_parameters(best_time, location)
 
       arcv = moon_alt - sun_alt
@@ -218,11 +223,11 @@ defmodule Astro.Lunar.CrescentVisibility do
       {:ok, :E}
 
   """
-  @spec odeh_new_visible_crescent(Geo.PointZ.t(), Time.moment()) ::
+  @spec odeh_new_visible_crescent(Geo.PointZ.t(), Time.moment(), keyword()) ::
           {:ok, visibility()} | {:error, atom()}
 
-  def odeh_new_visible_crescent(location, moment) do
-    with_best_time(location, moment, fn best_time ->
+  def odeh_new_visible_crescent(location, moment, options \\ []) do
+    with_best_time(location, moment, options, fn best_time ->
       {sun_alt, _moon_alt_geo, arcl, w} = geocentric_parameters(best_time, location)
 
       # Odeh uses topocentric moon altitude
@@ -293,8 +298,8 @@ defmodule Astro.Lunar.CrescentVisibility do
   def schaefer_new_visible_crescent(location, moment, options \\ []) do
     k = Keyword.get(options, :extinction, @default_extinction)
 
-    sunset_result = Solar.SunRiseSet.sunset(location, moment, time_zone: :utc)
-    moonset_result = Lunar.MoonRiseSet.moonset(location, moment, time_zone: :utc)
+    sunset_result = Solar.SunRiseSet.sunset(location, moment, rise_set_options(options))
+    moonset_result = Lunar.MoonRiseSet.moonset(location, moment, rise_set_options(options))
 
     case {sunset_result, moonset_result} do
       {{:ok, sunset_dt}, {:ok, moonset_dt}} ->
@@ -314,8 +319,11 @@ defmodule Astro.Lunar.CrescentVisibility do
         rs = scan_best_rs(sunset_moment, end_moment, location, k)
         {:ok, classify_schaefer(rs)}
 
-      {{:error, _}, _} ->
+      {{:error, :no_time}, _} ->
         {:error, :no_sunset}
+
+      {{:error, _reason} = error, _moonset} ->
+        error
     end
   end
 
@@ -450,9 +458,181 @@ defmodule Astro.Lunar.CrescentVisibility do
 
   # Compute best time and evaluate a visibility function.
   # Best time = sunset + 4/9 * (moonset - sunset) [Yallop / Odeh].
-  defp with_best_time(location, moment, fun) do
-    sunset_result = Solar.SunRiseSet.sunset(location, moment, time_zone: :utc)
-    moonset_result = Lunar.MoonRiseSet.moonset(location, moment, time_zone: :utc)
+  # ════════════════════════════════════════════════════════════════════════════════
+  # First visibility
+  # ════════════════════════════════════════════════════════════════════════════════
+
+  @doc """
+  Returns the evening of the last first sighting of a new crescent on
+  or before an evening.
+
+  A lunation's crescent is first seen on the first evening, from the
+  evening before the day of its new moon, on which `method` classes it
+  visible. This is the latest such evening on or before `day`: the
+  evening a lunar month that begins at first sighting began on.
+
+  ### Arguments
+
+  * `location` is a `t:Geo.PointZ.t/0` struct (already normalized).
+
+  * `day` is the evening as an integer number of days since
+    `0000-01-01`.
+
+  * `method` is `:odeh`, `:yallop` or `:schaefer`.
+
+  * `options` is a keyword list of options.
+
+  ### Options
+
+  * `:visible` is the list of categories that count as a sighting. The
+    default is `[:A, :B, :C]`.
+
+  * `:utc_offset` and `:extinction` are as for the criteria.
+
+  ### Returns
+
+  * `{:ok, day}`, the evening as an integer number of days since
+    `0000-01-01`.
+
+  * `{:error, :no_visible_crescent}` if a lunation's crescent is not
+    seen within 30 evenings of its new moon, as at high latitudes.
+
+  Raises `ArgumentError` for a day more than 50,000 years from J2000.
+
+  ### Examples
+
+      iex> mecca = %Geo.PointZ{coordinates: {39.8262, 21.4225, 277.0}}
+      iex> day = Date.to_gregorian_days(~D[2024-12-20])
+      iex> {:ok, evening} = Astro.Lunar.CrescentVisibility.first_visible_crescent_on_or_before(mecca, day, :odeh)
+      iex> Date.from_gregorian_days(evening)
+      ~D[2024-12-02]
+
+  """
+  @doc since: "2.10.0"
+  @spec first_visible_crescent_on_or_before(Geo.PointZ.t(), integer(), atom(), keyword()) ::
+          {:ok, integer()} | {:error, atom()}
+  def first_visible_crescent_on_or_before(location, day, method, options \\ []) do
+    new_moon = Lunar.date_time_new_moon_before(end_of_evening(day, options))
+
+    with {:ok, evening} <- first_visible_evening(location, new_moon, method, options) do
+      if evening <= day do
+        {:ok, evening}
+      else
+        first_visible_evening(
+          location,
+          Lunar.date_time_new_moon_before(new_moon),
+          method,
+          options
+        )
+      end
+    end
+  end
+
+  @doc """
+  Returns the evening of the next first sighting of a new crescent on
+  or after an evening.
+
+  See `first_visible_crescent_on_or_before/4` for the first sighting.
+
+  ### Arguments
+
+  * `location` is a `t:Geo.PointZ.t/0` struct (already normalized).
+
+  * `day` is the evening as an integer number of days since
+    `0000-01-01`.
+
+  * `method` is `:odeh`, `:yallop` or `:schaefer`.
+
+  * `options` is a keyword list of options, as for
+    `first_visible_crescent_on_or_before/4`.
+
+  ### Returns
+
+  * `{:ok, day}`, the evening as an integer number of days since
+    `0000-01-01`.
+
+  * `{:error, :no_visible_crescent}` if a lunation's crescent is not
+    seen within 30 evenings of its new moon.
+
+  Raises `ArgumentError` for a day more than 50,000 years from J2000.
+
+  ### Examples
+
+      iex> mecca = %Geo.PointZ{coordinates: {39.8262, 21.4225, 277.0}}
+      iex> day = Date.to_gregorian_days(~D[2024-12-20])
+      iex> {:ok, evening} = Astro.Lunar.CrescentVisibility.first_visible_crescent_on_or_after(mecca, day, :odeh)
+      iex> Date.from_gregorian_days(evening)
+      ~D[2025-01-01]
+
+  """
+  @doc since: "2.10.0"
+  @spec first_visible_crescent_on_or_after(Geo.PointZ.t(), integer(), atom(), keyword()) ::
+          {:ok, integer()} | {:error, atom()}
+  def first_visible_crescent_on_or_after(location, day, method, options \\ []) do
+    new_moon = Lunar.date_time_new_moon_before(end_of_evening(day, options))
+
+    with {:ok, evening} <- first_visible_evening(location, new_moon, method, options) do
+      if evening >= day do
+        {:ok, evening}
+      else
+        next_new_moon = Lunar.date_time_new_moon_at_or_after(new_moon + 1.0)
+        first_visible_evening(location, next_new_moon, method, options)
+      end
+    end
+  end
+
+  # The moment the local day of `day`'s evening ends: a new moon after it
+  # cannot be seen that evening.
+  defp end_of_evening(day, options) do
+    day + 1 - Keyword.get(options, :utc_offset, 0) / 86_400
+  end
+
+  # The first evening, from the evening before the local day of the new
+  # moon, on which the crescent is classed visible.
+  defp first_visible_evening(location, new_moon, method, options) do
+    first = floor(new_moon + Keyword.get(options, :utc_offset, 0) / 86_400) - 1
+    find_visible_evening(location, first, first + @first_sighting_evenings, method, options)
+  end
+
+  defp find_visible_evening(_location, day, last, _method, _options) when day > last do
+    {:error, :no_visible_crescent}
+  end
+
+  defp find_visible_evening(location, day, last, method, options) do
+    case sighting(location, day, method, options) do
+      {:ok, true} -> {:ok, day}
+      {:ok, false} -> find_visible_evening(location, day + 1, last, method, options)
+      {:error, _reason} = error -> error
+    end
+  end
+
+  # Whether the crescent is classed visible on `day`'s evening. An evening
+  # with no sunset has no sighting.
+  defp sighting(location, day, method, options) do
+    visible = Keyword.get(options, :visible, @visible_categories)
+
+    case classify(location, day, method, options) do
+      {:ok, category} -> {:ok, category in visible}
+      {:error, :no_sunset} -> {:ok, false}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp classify(location, day, :odeh, options) do
+    odeh_new_visible_crescent(location, day, options)
+  end
+
+  defp classify(location, day, :yallop, options) do
+    yallop_new_visible_crescent(location, day, options)
+  end
+
+  defp classify(location, day, :schaefer, options) do
+    schaefer_new_visible_crescent(location, day, options)
+  end
+
+  defp with_best_time(location, moment, options, fun) do
+    sunset_result = Solar.SunRiseSet.sunset(location, moment, rise_set_options(options))
+    moonset_result = Lunar.MoonRiseSet.moonset(location, moment, rise_set_options(options))
 
     case {sunset_result, moonset_result} do
       {{:ok, sunset_dt}, {:ok, moonset_dt}} ->
@@ -472,8 +652,20 @@ defmodule Astro.Lunar.CrescentVisibility do
         best_time = sunset_moment + 40.0 / 1440.0
         fun.(best_time)
 
-      {{:error, _}, _} ->
+      {{:error, :no_time}, _} ->
         {:error, :no_sunset}
+
+      {{:error, _reason} = error, _moonset} ->
+        error
+    end
+  end
+
+  # Sunset and moonset in UTC, on the evening of the date at `:utc_offset`
+  # when it is given and of the UTC date otherwise.
+  defp rise_set_options(options) do
+    case Keyword.get(options, :utc_offset) do
+      nil -> [time_zone: :utc]
+      utc_offset -> [time_zone: :utc, utc_offset: utc_offset]
     end
   end
 

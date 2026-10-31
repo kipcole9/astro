@@ -138,6 +138,9 @@ defmodule Astro.Lunar.MoonRiseSet do
   # total scan duration
   @scan_window_s 52 * 3_600
 
+  # The largest `:utc_offset`, in seconds, whose local days the scan covers.
+  @largest_utc_offset_seconds 14 * 3_600
+
   # Bisection precision target (seconds).  Sub-second precision is needed
   # for the Umm al-Qura calendar where moonset-sunset gaps can be < 10 s.
   @bisect_tol_s 0.01
@@ -380,7 +383,8 @@ defmodule Astro.Lunar.MoonRiseSet do
     dt_end = dt_start + @scan_window_s
 
     with :ok <- validate_interpolation(interpolation),
-         :ok <- validate_limb(limb) do
+         :ok <- validate_limb(limb),
+         :ok <- validate_utc_offset(options) do
       find_moon_event(dt_start, dt_end, direct_fn, event, interpolation, limb, date, %{
         lat: lat,
         lng: lng,
@@ -461,18 +465,40 @@ defmodule Astro.Lunar.MoonRiseSet do
   defp event_on_date(dt_event, date, time_zone, options) do
     with {:ok, utc_dt} <- Time.date_time_from_moment(Time.dynamical_time_to_moment(dt_event)),
          {:ok, local_dt} <- to_requested_zone(utc_dt, time_zone, options) do
-      on_date(local_dt, date)
+      utc_dt
+      |> event_date(local_dt, Keyword.get(options, :utc_offset))
+      |> on_date(local_dt, date)
     end
   end
 
-  defp on_date(%{year: year, month: month, day: day} = local_dt, %{
-         year: year,
-         month: month,
-         day: day
-       }),
-       do: {:ok, local_dt}
+  # The date an event falls on: at `:utc_offset` seconds from UTC when the
+  # option is given, and otherwise in the requested time zone.
+  defp event_date(_utc_dt, local_dt, nil) do
+    {local_dt.year, local_dt.month, local_dt.day}
+  end
 
-  defp on_date(_local_dt, _date), do: nil
+  defp event_date(utc_dt, _local_dt, utc_offset) do
+    %{year: year, month: month, day: day} = DateTime.add(utc_dt, utc_offset, :second)
+    {year, month, day}
+  end
+
+  defp on_date({year, month, day}, local_dt, %{year: year, month: month, day: day}) do
+    {:ok, local_dt}
+  end
+
+  defp on_date(_event_date, _local_dt, _date) do
+    nil
+  end
+
+  # A `:utc_offset` is whole seconds within the 14 hours either side of UTC
+  # that the scan around a date covers.
+  defp validate_utc_offset(options) do
+    case Keyword.get(options, :utc_offset) do
+      nil -> :ok
+      seconds when is_integer(seconds) and abs(seconds) <= @largest_utc_offset_seconds -> :ok
+      _other -> {:error, :invalid_utc_offset}
+    end
+  end
 
   # ── Altitude function ────────────────────────────────────────────────────────
 

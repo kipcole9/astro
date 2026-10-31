@@ -745,8 +745,8 @@ defmodule Astro.Time do
 
   ### Arguments
 
-  * `longitude` is either a `Geo.PointZ` struct or a numeric
-    longitude in degrees (west negative, east positive).
+  * `longitude` is a `t:Geo.Point.t/0` or `t:Geo.PointZ.t/0`, or a
+    numeric longitude in degrees (west negative, east positive).
 
   ### Returns
 
@@ -761,9 +761,18 @@ defmodule Astro.Time do
       iex> Astro.Time.offset_from_longitude(180.0)
       0.5
 
+      iex> Astro.Time.offset_from_longitude(%Geo.Point{coordinates: {35.2137, 31.7683}})
+      ...> |> Kernel.*(86_400)
+      ...> |> round()
+      8451
+
   """
-  @spec offset_from_longitude(Geo.PointZ.t() | Astro.longitude()) :: moment()
+  @spec offset_from_longitude(Geo.Point.t() | Geo.PointZ.t() | Astro.longitude()) :: moment()
   def offset_from_longitude(%Geo.PointZ{coordinates: {longitude, _latitude, _altitude}}) do
+    offset_from_longitude(longitude)
+  end
+
+  def offset_from_longitude(%Geo.Point{coordinates: {longitude, _latitude}}) do
     offset_from_longitude(longitude)
   end
 

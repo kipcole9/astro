@@ -10,6 +10,12 @@
 
 * `Astro.Coordinates.ecliptic_to_equatorial/3` converts ecliptic longitude and latitude to right ascension and declination.
 
+* `Astro.Time.offset_from_longitude/1` accepts a `Geo.Point` as well as a `Geo.PointZ` or a number.
+
+* `Astro.first_visible_crescent_on_or_before/4` and `first_visible_crescent_on_or_after/4` return the evening a lunation's new crescent is first seen, for calendars whose months begin at first sighting; `new_visible_crescent/4` takes options for every method, including `:utc_offset`.
+
+* `Astro.sunrise/3`, `sunset/3`, `moonrise/3` and `moonset/3` take `:utc_offset`, choosing the event on the local day at that offset (west of Greenwich a local evening's sunset is the next UTC day), and the Sun's take `limb: :center`, the Sun's centre on the horizon.
+
 * `Astro.Solar.solar_longitude_day_on_or_after/3` and `solar_longitude_day_on_or_before/3` return the local day the Sun reaches a longitude, such as a solar term or the December solstice, deciding the day from the Sun's rate; about 15 times faster than finding the moment.
 
 * `Astro.Lunar.new_moon_day_before/2` and `new_moon_day_on_or_after/2` return the local day of a new moon for an offset or an offset function, refining only new moons near local midnight; about twice as fast as the moment searches.
