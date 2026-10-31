@@ -177,34 +177,75 @@ defmodule Astro do
   defguard is_lunar_phase(phase) when phase >= 0.0 and phase <= 360.0
 
   @doc """
-  Returns the sun's azimuth and elevation as seen from a location at a
+  Returns the Sun's azimuth and elevation as seen from a location at a
   date time.
+
+  Azimuth and elevation are the Sun's horizontal coordinates: its
+  direction around the horizon and its height above it. They are
+  calculated from the Sun's apparent right ascension α and
+  declination δ (see `sun_position_at/1`) and the local hour angle
+  H, the local apparent sidereal time less α, by the transformation
+  of Meeus, *Astronomical Algorithms*, chapter 13:
+
+      tan A = sin H / (cos H sin φ − tan δ cos φ)
+      sin h = sin φ sin δ + cos φ cos δ cos H
+
+  where φ is the observer's latitude, A is measured from the south
+  and is returned measured from the north, and h is the elevation.
+
+  The position is geocentric and airless: it omits the Sun's parallax
+  (at most 8.8″) and atmospheric refraction, which raises the Sun by
+  about 34′ at the horizon and by less than 1′ above an elevation of
+  45°.
 
   ### Arguments
 
   * `location` is the observer's position as a `{longitude, latitude}`
-    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
-    also carries an elevation in metres. Longitude comes first.
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0`.
+    Longitude comes first. An elevation does not change the result.
 
   * `date_time` is a `t:DateTime.t/0`, or any map that meets
     `t:Calendar.datetime/0`.
 
   ### Returns
 
-  * `{azimuth, elevation}` in degrees. Azimuth is measured clockwise from
-    north, and elevation above the horizon.
+  * `{azimuth, elevation}` in degrees. Azimuth is measured clockwise
+    from north, from 0° to 360°, and elevation above the horizon, from
+    −90° to 90°.
+
+  ### Accuracy
+
+  Inside the loaded JPL ephemeris the Sun's apparent position is
+  accurate to a small fraction of an arcsecond, so the result is
+  limited by what it leaves out: for the reference case of NREL's
+  solar position algorithm (Golden, Colorado, 2003-10-17 19:30:30
+  UTC) it agrees to 0.05″ in azimuth and is 0.87′ lower, the
+  refraction NREL includes.
+  Outside the ephemeris the analytical series agree with JPL to 0.8″
+  RMS in azimuth and 0.6″ in elevation. The [accuracy guide](accuracy.md)
+  gives the details.
 
   ### Examples
 
-      iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
-      {343.3186660074121, 77.86323624455362}
+      iex> {azimuth, elevation} =
+      ...>   Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
+      iex> {Float.round(azimuth, 4), Float.round(elevation, 4)}
+      {343.3379, 77.8643}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 12 (sidereal time) and chapter 13 (transformation of
+    coordinates).
+
+  * Ibrahim Reda and Afshin Andreas, [Solar position algorithm for
+    solar radiation applications](https://doi.org/10.1016/j.solener.2003.12.003),
+    *Solar Energy* 76 (2004), 577–589.
+
+  * [Horizontal coordinate system](https://en.wikipedia.org/wiki/Horizontal_coordinate_system),
+    Wikipedia.
 
   """
-
-  # Use https://midcdmz.nrel.gov/solpos/spa.html for validation
-  # current implementation is approx 1 degree at variance with
-  # that calculator.
-
   @doc since: "0.11.0"
   @spec sun_azimuth_elevation(location(), Calendar.datetime()) ::
           {azimuth :: float, altitude :: float}
@@ -212,57 +253,80 @@ defmodule Astro do
   def sun_azimuth_elevation(location, unquote(Guards.datetime()) = date_time) do
     _ = calendar
 
-    with %Geo.PointZ{coordinates: {right_ascension, declination, _distance}} <-
-           sun_position_at(date_time) do
-      azimuth_elevation(location, date_time, right_ascension, declination)
-    end
+    moment = Time.date_time_to_moment(date_time)
+    {right_ascension, declination, _distance} = Solar.solar_position(moment)
+
+    azimuth_elevation(location, moment, right_ascension, declination)
   end
 
-  defp azimuth_elevation(location, date_time, right_ascension, declination) do
-    %Geo.PointZ{coordinates: {_longitude, latitude, _altitude}} =
+  # Meeus, Astronomical Algorithms, equations 13.5 and 13.6. Equation 13.5
+  # measures azimuth from the south; adding 180° measures it from the north.
+  defp azimuth_elevation(location, moment, right_ascension, declination) do
+    %Geo.PointZ{coordinates: {longitude, latitude, _altitude}} =
       Location.normalize_location(location)
 
-    local_sidereal_time =
-      Time.local_sidereal_time(location, date_time)
+    local_sidereal_time = Time.apparent_sidereal_from_moment(moment) + longitude
+    hour_angle = local_sidereal_time - right_ascension
 
-    hour_angle =
-      mod(local_sidereal_time - right_ascension, 360.0)
-
-    altitude =
-      :math.asin(
-        sin(declination) * sin(latitude) + cos(declination) * cos(latitude) * cos(hour_angle)
+    azimuth_from_south =
+      :math.atan2(
+        sin(hour_angle),
+        cos(hour_angle) * sin(latitude) - Math.tan(declination) * cos(latitude)
       )
-      |> to_degrees
 
-    a =
-      :math.acos(
-        (sin(declination) - sin(altitude) * sin(latitude)) / (cos(altitude) * cos(latitude))
-      )
-      |> to_degrees()
+    sin_elevation =
+      sin(latitude) * sin(declination) + cos(latitude) * cos(declination) * cos(hour_angle)
 
-    azimuth =
-      if sin(hour_angle) < 0.0, do: a, else: 360.0 - a
+    azimuth = mod(to_degrees(azimuth_from_south) + 180.0, 360.0)
+    elevation = to_degrees(:math.asin(sin_elevation))
 
-    {azimuth, altitude}
+    {azimuth, elevation}
   end
 
   @doc """
-  Returns a `t:Geo.PointZ.t/0` containing
-  the right ascension and declination of
-  the sun at a given date or date time.
+  Returns the Sun's apparent right ascension, declination and distance
+  at a date or date time.
+
+  This is the Sun's apparent geocentric position: where it is seen
+  from the centre of the Earth, referred to the true equator and
+  equinox of the date. Right ascension is measured eastward along the
+  celestial equator from the equinox and declination north of the
+  equator.
+
+  Where the loaded JPL DE440s ephemeris covers the moment, the
+  Earth-to-Sun vector is read from it at the moment less the light
+  time, corrected for aberration, and rotated from the ICRF to the
+  true equator of date by IAU 1976 precession and IAU 1980 nutation.
+  Elsewhere the Sun's longitude comes from the 49-term series of
+  Bretagnon and Simon, with aberration and nutation added, and is
+  converted to right ascension and declination with the true
+  obliquity of the ecliptic (Meeus, *Astronomical Algorithms*,
+  chapter 13).
 
   ### Arguments
 
   * `date_time` is a `t:DateTime.t/0` or a `t:Date.t/0` or
     any struct that meets the requirements of
-    `t:Calendar.date/0` or `t:Calendar.datetime/0`.
+    `t:Calendar.date/0` or `t:Calendar.datetime/0`. A date is
+    taken at 00:00 UTC.
 
   ### Returns
 
   * a `t:Geo.PointZ.t/0` struct with coordinates
     `{right_ascension, declination, distance}` with properties
-    `%{reference: :celestial, object: :sun}`.
-    `distance` is in meters.
+    `%{reference: :celestial, object: :sun}`. Right ascension is in
+    degrees from −180° to 180°, declination in degrees and
+    `distance` in metres.
+
+  ### Accuracy
+
+  Inside the ephemeris the reduction reproduces Meeus's
+  full-precision example 25.b to 0.2″. Outside it the series agree
+  with JPL over 1900–2100 to 0.76″ RMS in right ascension and 0.50″ in
+  declination (2.2″ and 1.3″ at most), and to 4,300 km in distance.
+  Far from the present the series drift, and ΔT, which places the
+  moment in Terrestrial Time, becomes uncertain by minutes to hours;
+  the [accuracy guide](accuracy.md) gives the details.
 
   ### Examples
 
@@ -272,6 +336,21 @@ defmodule Astro do
       {-161.621245, -7.784069, 149240324715}
       iex> properties
       %{object: :sun, reference: :celestial}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 25 (solar coordinates).
+
+  * Ryan S. Park and others, [The JPL Planetary and Lunar Ephemerides
+    DE440 and DE441](https://doi.org/10.3847/1538-3881/abd414),
+    *The Astronomical Journal* 161 (2021), 105.
+
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, for the series of Bretagnon and Simon.
+
+  * [Position of the Sun](https://en.wikipedia.org/wiki/Position_of_the_Sun),
+    Wikipedia.
 
   """
   @doc since: "0.6.0"
@@ -750,11 +829,24 @@ defmodule Astro do
   Sunrise is the moment when the upper limb of the sun appears on the
   horizon in the morning.
 
+  Refraction lifts the Sun by a standard 34′ at the horizon and its
+  semi-diameter is about 16′, so this is the moment the Sun's centre,
+  computed without refraction, is 50′ below the horizon. The
+  twilights are the moments the centre is 6°, 12° or 18° below it.
+
+  The Sun's altitude is calculated from its apparent geocentric
+  position (see `sun_position_at/1`) and the local apparent sidereal
+  time; its parallax, at most 8.8″, is ignored. The altitude is
+  sampled every 24 minutes across the day to bracket the crossing,
+  which is then narrowed by bisection to 0.01 s. The position comes
+  from the JPL DE440s ephemeris where the loaded kernel covers the
+  date, and from the analytical series elsewhere.
+
   ### Arguments
 
   * `location` is the observer's position as a `{longitude, latitude}`
-    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
-    also carries an elevation in metres. Longitude comes first.
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0`.
+    Longitude comes first. An elevation does not change the result.
 
   * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
     for the day of the sunrise.
@@ -819,6 +911,19 @@ defmodule Astro do
     in a time zone other than UTC and no time zone database is
     configured.
 
+  ### Accuracy
+
+  Against Skyfield, using the same ephemeris, results agree to 0.95 s
+  on average and 1.6 s at most; Skyfield uses the Sun's apparent
+  semi-diameter for the day rather than a fixed 16′. Against
+  timeanddate.com, which publishes to the minute, they agree to
+  28.8 s on average and within a minute in 307 of 310 cases. Outside
+  the ephemeris the series move the result by 0.07 s RMS and 0.21 s
+  at most. The atmosphere matters more than any of these: refraction
+  at the horizon departs from the standard 34′ with temperature and
+  pressure, and a high observer sees a lower horizon, and neither is
+  modelled. The [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> {:ok, date_time} = Astro.sunrise({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -827,6 +932,18 @@ defmodule Astro do
 
       iex> Astro.sunrise({-62.3481, 82.5018}, ~D[2019-12-04])
       {:error, :no_time}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting) and chapter 16
+    (atmospheric refraction).
+
+  * United States Naval Observatory, [Rise, Set, and Twilight
+    Definitions](https://aa.usno.navy.mil/faq/RST_defs).
+
+  * [Sunrise](https://en.wikipedia.org/wiki/Sunrise) and
+    [Twilight](https://en.wikipedia.org/wiki/Twilight), Wikipedia.
 
   """
   @spec sunrise(location, date, options) ::
@@ -849,11 +966,24 @@ defmodule Astro do
   Sunset is the moment when the upper limb of the sun disappears below
   the horizon in the evening.
 
+  Refraction lifts the Sun by a standard 34′ at the horizon and its
+  semi-diameter is about 16′, so this is the moment the Sun's centre,
+  computed without refraction, is 50′ below the horizon. The
+  twilights are the moments the centre is 6°, 12° or 18° below it.
+
+  The Sun's altitude is calculated from its apparent geocentric
+  position (see `sun_position_at/1`) and the local apparent sidereal
+  time; its parallax, at most 8.8″, is ignored. The altitude is
+  sampled every 24 minutes across the day to bracket the crossing,
+  which is then narrowed by bisection to 0.01 s. The position comes
+  from the JPL DE440s ephemeris where the loaded kernel covers the
+  date, and from the analytical series elsewhere.
+
   ### Arguments
 
   * `location` is the observer's position as a `{longitude, latitude}`
-    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0` that
-    also carries an elevation in metres. Longitude comes first.
+    tuple in degrees, a `t:Geo.Point.t/0`, or a `t:Geo.PointZ.t/0`.
+    Longitude comes first. An elevation does not change the result.
 
   * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or `t:DateTime.t/0`
     for the day of the sunset.
@@ -918,6 +1048,19 @@ defmodule Astro do
     in a time zone other than UTC and no time zone database is
     configured.
 
+  ### Accuracy
+
+  Against Skyfield, using the same ephemeris, results agree to 0.95 s
+  on average and 1.6 s at most; Skyfield uses the Sun's apparent
+  semi-diameter for the day rather than a fixed 16′. Against
+  timeanddate.com, which publishes to the minute, they agree to
+  28.8 s on average and within a minute in 307 of 310 cases. Outside
+  the ephemeris the series move the result by 0.07 s RMS and 0.21 s
+  at most. The atmosphere matters more than any of these: refraction
+  at the horizon departs from the standard 34′ with temperature and
+  pressure, and a high observer sees a lower horizon, and neither is
+  modelled. The [accuracy guide](accuracy.md) gives the details.
+
   ### Examples
 
       iex> {:ok, date_time} = Astro.sunset({151.20666584, -33.8559799094}, ~D[2019-12-04])
@@ -926,6 +1069,18 @@ defmodule Astro do
 
       iex> Astro.sunset({-62.3481, 82.5018}, ~D[2019-12-04])
       {:error, :no_time}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting) and chapter 16
+    (atmospheric refraction).
+
+  * United States Naval Observatory, [Rise, Set, and Twilight
+    Definitions](https://aa.usno.navy.mil/faq/RST_defs).
+
+  * [Sunset](https://en.wikipedia.org/wiki/Sunset) and
+    [Twilight](https://en.wikipedia.org/wiki/Twilight), Wikipedia.
 
   """
   @spec sunset(location, date, options) ::
@@ -1510,9 +1665,21 @@ defmodule Astro do
   end
 
   @doc """
-  Returns solar noon for a
-  given date and location as
-  a UTC datetime
+  Returns solar noon at a location on a date, as a UTC date time.
+
+  Solar noon is the moment the Sun crosses the local meridian, when it
+  is due north or south and highest in the sky. It is rarely 12:00 on
+  the clock: a mean Sun moving uniformly would cross the meridian at
+  12:00 local mean time, but the true Sun runs ahead of or behind it
+  by the equation of time, up to about 16 minutes, because the Earth's
+  orbit is elliptical and its axis is tilted.
+
+  Solar noon is found as the moment the Sun's local hour angle (the
+  local apparent sidereal time less the Sun's apparent right
+  ascension) is zero, by Newton's method from 12:00 local mean time;
+  see `Astro.Solar.solar_noon/2`. The Sun's position comes from the
+  JPL DE440s ephemeris where the loaded kernel covers the date, and
+  from the analytical series elsewhere.
 
   ### Arguments
 
@@ -1525,8 +1692,8 @@ defmodule Astro do
 
   ### Returns
 
-  * `{:ok, datetime}`, the UTC datetime of solar noon at the given
-    location on the given date.
+  * `{:ok, datetime}`, the UTC date time of solar noon at the given
+    location on the given UTC date.
 
   * `{:error, :invalid_date}` if `date` is not a valid date in its
     calendar.
@@ -1534,20 +1701,31 @@ defmodule Astro do
   * `{:error, :incompatible_calendars}` if its calendar cannot be
     converted to `Calendar.ISO`.
 
+  ### Accuracy
+
+  The hour angle is solved to a millisecond, so solar noon is as
+  accurate as the Sun's right ascension and the sidereal time. Inside
+  the ephemeris the right ascension is accurate to well under 0.01 s
+  of time; outside it the series move solar noon by 0.06 s RMS and
+  0.15 s at most over 1900–2100. Sidereal time follows the Earth's
+  rotation, UT1, and Astro takes UTC for it; the two differ by up to
+  0.9 s. The [accuracy guide](accuracy.md) describes how ΔT limits
+  results far from the present.
+
   ### Examples
 
       iex> Astro.solar_noon {151.20666584, -33.8559799094}, ~D[2019-12-06]
       {:ok, ~U[2019-12-06 01:45:52.977018Z]}
 
-  ### Notes
+  ### Reference
 
-  Solar noon is the moment when the sun passes a
-  location's meridian and reaches its highest position
-  in the sky. In most cases, it doesn't happen at 12 o'clock.
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting) and chapter 28
+    (equation of time).
 
-  At solar noon, the Sun reaches its
-  highest position in the sky as it passes the
-  local meridian.
+  * [Equation of time](https://en.wikipedia.org/wiki/Equation_of_time)
+    and [Hour angle](https://en.wikipedia.org/wiki/Hour_angle),
+    Wikipedia.
 
   """
   @spec solar_noon(Astro.location(), Calendar.date()) ::
@@ -1567,20 +1745,40 @@ defmodule Astro do
   end
 
   @doc """
-  Returns solar longitude for a
-  given date. Solar longitude is used
-  to identify the seasons.
+  Returns the Sun's apparent ecliptic longitude at a date or date time.
+
+  The ecliptic longitude is the Sun's position along the ecliptic,
+  the plane of the Earth's orbit, measured eastward from the equinox
+  of the date. It is 0° at the March equinox, 90° at the June
+  solstice, 180° at the September equinox and 270° at the December
+  solstice, so it measures how far through the tropical year (the
+  year of the seasons) the Earth has moved, without the irregularity
+  of leap years. Solar terms, such as those of the Chinese calendar,
+  are the moments it reaches multiples of 15°.
+
+  Where the loaded JPL DE440s ephemeris covers the moment, the
+  apparent position (see `sun_position_at/1`) is rotated from the
+  true equator to the ecliptic of date by the true obliquity.
+  Elsewhere it is the 49-term series of Bretagnon and Simon, with
+  aberration and nutation in longitude added.
 
   ### Arguments
 
-  * `date` is any `t:Date.t/0` in the Gregorian
-    calendar (for example, `Calendar.ISO`).
+  * `date` is a `t:Date.t/0`, `t:NaiveDateTime.t/0` or
+    `t:DateTime.t/0`. A date is taken at 00:00 UTC.
 
   ### Returns
 
-  * a `float` number of degrees between 0 and
-    360 representing the solar longitude
-    on `date`.
+  * the apparent ecliptic longitude in degrees, from 0 to 360.
+
+  ### Accuracy
+
+  Outside the ephemeris the series agree with JPL over 1900–2100 to
+  0.75″ RMS and 2.0″ at most, with a mean bias of +0.56″. The Sun
+  moves about 2.5″ a minute, so that bias puts the moment the Sun
+  reaches a given longitude about 14 s early. The
+  [accuracy guide](accuracy.md) gives the details, and how the series
+  and ΔT drift far from the present.
 
   ### Examples
 
@@ -1593,22 +1791,19 @@ defmodule Astro do
       iex> Astro.sun_apparent_longitude ~D[2019-12-23]
       270.8352772904792
 
-  ### Notes
+  ### Reference
 
-  Solar longitude (the ecliptic longitude of the sun)
-  in effect describes the position of the earth in its
-  orbit, being zero at the moment of the March
-  equinox.
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 25 (solar coordinates).
 
-  Since it is based on how far the earth has moved
-  in its orbit since the equinox, it is a measure of
-  what time of the tropical year (the year of seasons)
-  we are in, but without the inaccuracies of a calendar
-  date, which is perturbed by leap years and calendar
-  imperfections.
+  * Edward M. Reingold and Nachum Dershowitz, *Calendrical
+    Calculations*, for the series of Bretagnon and Simon.
+
+  * [Ecliptic coordinate system](https://en.wikipedia.org/wiki/Ecliptic_coordinate_system),
+    Wikipedia.
 
   """
-  @spec sun_apparent_longitude(Calendar.date()) :: degrees()
+  @spec sun_apparent_longitude(date()) :: degrees()
   def sun_apparent_longitude(date) do
     date
     |> Time.date_time_to_moment()
@@ -1619,10 +1814,17 @@ defmodule Astro do
   Returns the number of hours of daylight for a given
   location on a given date.
 
-  On Elixir 1.17+, the function `duration_of_daylight/2`
-  is recommended over this function since it returns a
-  `t:Duration.t/0` which can represent a full 24 hours
-  of daylight.
+  Daylight is the time the Sun is above the horizon during the local
+  calendar day, from the sunrise and sunset of `sunrise/3` and
+  `sunset/3` in the location's time zone. It is counted from the
+  events that fall within the day rather than as sunset less
+  sunrise, so a day near a polar circle on which the Sun sets just
+  after midnight and rises again a few hours later is handled. With
+  neither event, the day is all daylight or none, according to
+  whether the Sun is up.
+
+  `duration_of_daylight/2` is the same calculation returning a
+  `t:Duration.t/0`, which can represent a full 24 hours of daylight.
 
   ### Arguments
 
@@ -1642,6 +1844,13 @@ defmodule Astro do
   * `{:error, reason}` if the time zone for the location cannot be
     resolved.
 
+  ### Accuracy
+
+  It is taken from `sunrise/3` and `sunset/3`, each within 1.6 s of
+  Skyfield for the same definition of the horizon, and is rounded
+  down to the second. Refraction in the real atmosphere moves both
+  events, by different amounts.
+
   ### Examples
 
       iex> Astro.hours_of_daylight({151.20666584, -33.8559799094}, ~D[2019-12-10])
@@ -1655,18 +1864,15 @@ defmodule Astro do
       iex> Astro.hours_of_daylight({-62.3481, 82.5018}, ~D[2019-12-07])
       {:ok, ~T[00:00:00]}
 
-  ### Notes
+  ### Reference
 
-  Daylight is measured as the total time the Sun is above the horizon
-  during the local calendar day, so the result is correct regardless of
-  whether sunrise precedes sunset.
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting).
 
-  In latitudes above the polar circles (approximately +/- 66.5631
-  degrees) there will be no hours of daylight in winter and 24 hours of
-  daylight in summer. Just below the polar circles, near the solstice,
-  a single calendar day can contain a sunset (shortly after midnight)
-  followed by a sunrise (a few hours later); such days are handled
-  correctly and report close to, but less than, 24 hours.
+  * [Daytime](https://en.wikipedia.org/wiki/Daytime),
+    [Midnight sun](https://en.wikipedia.org/wiki/Midnight_sun) and
+    [Polar night](https://en.wikipedia.org/wiki/Polar_night),
+    Wikipedia.
 
   """
   @spec hours_of_daylight(Astro.location(), Calendar.date()) ::
@@ -1715,6 +1921,13 @@ defmodule Astro do
   * `{:error, reason}` if the time zone for the location cannot
     be resolved.
 
+  ### Accuracy
+
+  It is taken from `sunrise/3` and `sunset/3`, each within 1.6 s of
+  Skyfield for the same definition of the horizon, and is rounded
+  down to the second. Refraction in the real atmosphere moves both
+  events, by different amounts.
+
   ### Examples
 
       iex> Astro.duration_of_daylight({151.20666584, -33.8559799094}, ~D[2019-12-10])
@@ -1727,6 +1940,16 @@ defmodule Astro do
       # No daylight in the polar winter
       iex> Astro.duration_of_daylight({-62.3481, 82.5018}, ~D[2019-12-07])
       {:ok, %Duration{}}
+
+  ### Reference
+
+  * Jean Meeus, *Astronomical Algorithms*, 2nd edition (1998),
+    chapter 15 (rising, transit and setting).
+
+  * [Daytime](https://en.wikipedia.org/wiki/Daytime),
+    [Midnight sun](https://en.wikipedia.org/wiki/Midnight_sun) and
+    [Polar night](https://en.wikipedia.org/wiki/Polar_night),
+    Wikipedia.
 
   """
   @doc since: "2.3.0"

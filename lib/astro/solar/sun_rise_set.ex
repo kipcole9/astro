@@ -52,9 +52,8 @@ defmodule Astro.Solar.SunRiseSet do
 
   The [NOAA Solar Calculator](https://gml.noaa.gov/grad/solcalc/) uses the
   Meeus analytical polynomial series for solar position and an iterative
-  formula for the rise/set time. `Astro.Solar` (`lib/astro/solar.ex`)
-  implements this same NOAA/Meeus algorithm. Differences between this module
-  and the NOAA approach are typically under 30 seconds and arise from:
+  formula for the rise/set time. Differences between this module and the
+  NOAA approach are typically under 30 seconds and arise from:
 
   * This module evaluates solar positions from the JPL DE440s numerical
     ephemeris (Chebyshev polynomials fitted to a full n-body integration),

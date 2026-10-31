@@ -30,6 +30,8 @@
 
 * `Astro.solar_noon/2` evaluated the equation of time twelve hours early, so it was up to 18 s from the meridian transit. It is now the transit itself, to the microsecond rather than the second.
 
+* `Astro.sun_azimuth_elevation/2` used mean rather than apparent sidereal time, so its azimuth was about 0.3′ from NREL's solar position algorithm; it now agrees to 0.05″.
+
 * `Astro.Solar.solar_noon_utc/2` took west longitudes as positive, against its documentation, and `equation_of_time/1` omitted Meeus chapter 28's aberration and nutation terms.
 
 * `Astro.Lunar.lunar_phase_at/1` returned the chapter 49 estimate instead of the computed phase near every new moon, because its check for a large difference compared 359.9° with 0.1° as 359.8° apart.

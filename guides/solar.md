@@ -88,7 +88,7 @@ iex> Astro.hours_of_daylight({151.20666584, -33.8559799094}, ~D[2019-12-07])
 {:ok, ~T[14:18:44]}
 ```
 
-`duration_of_daylight/2` returns a `t:Duration.t/0` and can therefore express a full 24 hours honestly:
+`duration_of_daylight/2` returns a `t:Duration.t/0` and can therefore express a full 24 hours:
 
 ```elixir
 iex> Astro.duration_of_daylight({151.20666584, -33.8559799094}, ~D[2019-12-07])
@@ -127,11 +127,13 @@ Both are the moments the Sun's apparent longitude reaches a multiple of 90°, an
 
 For the geometry itself rather than the events derived from it.
 
-`sun_azimuth_elevation/2` gives the sun's apparent position from a place at an instant, as `{azimuth, elevation}` in degrees. Azimuth is measured clockwise from north; elevation is above the horizon.
+`sun_azimuth_elevation/2` gives the sun's position from a place at an instant, as `{azimuth, elevation}` in degrees. Azimuth is measured clockwise from north; elevation is above the horizon, without refraction.
 
 ```elixir
-iex> Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
-{343.3186660074121, 77.86323624455362}
+iex> {azimuth, elevation} =
+...>   Astro.sun_azimuth_elevation({151.20666584, -33.8559799094}, ~U[2019-12-04 02:00:00Z])
+iex> {Float.round(azimuth, 4), Float.round(elevation, 4)}
+{343.3379, 77.8643}
 ```
 
 `sun_position_at/1` gives the geocentric celestial position as a `Geo.PointZ` — right ascension and declination in degrees, with distance in metres:
