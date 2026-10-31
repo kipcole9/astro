@@ -656,6 +656,19 @@ defmodule Astro.Lunar do
     at_or_after
   end
 
+  @doc false
+  # `{:ok, t}` when the new moon and lunar phase searches can answer for
+  # `t`, within 50,000 years of J2000, and `{:error, :year_out_of_range}`
+  # otherwise. `Astro` checks this so that its searches return an error
+  # where the searches here raise.
+  def checked_search_moment(t) when abs(t - @j2000_moment) > @new_moon_range_days do
+    {:error, :year_out_of_range}
+  end
+
+  def checked_search_moment(t) do
+    {:ok, t}
+  end
+
   # The new moons either side of `t`: the last one before it and the first one
   # at or after it, each the moment the lunar phase passes 0°.
   #

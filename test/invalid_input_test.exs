@@ -96,6 +96,29 @@ defmodule Astro.InvalidInputTest do
       end
     end
 
+    # The same bound as equinoxes and solstices. Astro.Lunar's moment
+    # functions raise beyond it; the Astro functions return an error.
+    test "return an error more than 50,000 years from J2000" do
+      for year <- [-49_000, -60_000, 60_000, 1_000_000] do
+        {:ok, date} = Date.new(year, 6, 1)
+
+        assert Astro.date_time_new_moon_before(date) == {:error, :year_out_of_range}
+        assert Astro.date_time_new_moon_nearest(date) == {:error, :year_out_of_range}
+        assert Astro.date_time_new_moon_at_or_after(date) == {:error, :year_out_of_range}
+
+        assert Astro.date_time_lunar_phase_at_or_before(date, 180.0) ==
+                 {:error, :year_out_of_range}
+
+        assert Astro.date_time_lunar_phase_at_or_after(date, 90.0) ==
+                 {:error, :year_out_of_range}
+      end
+
+      {:ok, past} = Date.new(-47_000, 6, 1)
+      {:ok, future} = Date.new(51_000, 6, 1)
+      assert {:ok, _new_moon} = Astro.date_time_new_moon_before(past)
+      assert {:ok, _new_moon} = Astro.date_time_new_moon_at_or_after(future)
+    end
+
     test "return an error for a phase that is not from 0 to 360" do
       for phase <- [nil, "", :"", "90", -1, 360.5, 1.0e300] do
         assert Astro.date_time_lunar_phase_at_or_before(@date, phase) == {:error, :invalid_phase}

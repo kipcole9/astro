@@ -1,6 +1,6 @@
 # Invalid input
 
-**Status:** in progress, 2026-10-31
+**Status:** implemented (v2.10.0), 2026-10-31
 
 A library must return `{:error, reason}` on invalid input rather than raise. A survey on 2026-10-31 called every public `Astro` function with ten invalid values in each argument (`nil`, `""`, `:""`, `2024.0`, `"2024"`, `%{}`, `[]`, `{1, 2, 3}`, `:april`, `-1`). Every function raised for some of them, almost always `FunctionClauseError` from a guard. The functions that return `{:ok, _}` or `{:error, _}` have since been fixed; the table below is the survey as it was.
 
@@ -26,7 +26,11 @@ A library must return `{:error, reason}` on invalid input rather than raise. A s
 
 The new moon searches also raise `ArgumentError` more than 50,000 years from J2000, a bound chosen on 2026-10-31.
 
-## The decision needed
+## Decisions
+
+* **2026-10-31 — The seven bare-value functions keep raising.** They return a value rather than a tagged tuple, and the user decided they may raise on invalid input.
+
+## The question that was put
 
 Seven functions return a bare value rather than a tagged tuple: `sun_position_at/1`, `moon_position_at/1`, `sun_azimuth_elevation/2`, `sun_apparent_longitude/1`, `lunar_phase_at/1`, `illuminated_fraction_of_moon_at/1` and `lunar_phase_emoji/1`. Returning `{:error, reason}` from them changes their return type, which breaks callers that use the value directly. The options are to change them in a major release, to add tagged forms beside them, or to leave them raising and document it.
 
@@ -34,11 +38,9 @@ The functions that already return `{:ok, _}` or `{:error, _}` can gain error cla
 
 ## Tasks
 
-* [ ] **Decide the bare-value functions** — the seven above; change their return type, add tagged forms, or document that they raise.
-
-* [ ] **Decide the new moon bound** — the new moon searches raise `ArgumentError` beyond 50,000 years from J2000 while equinoxes and solstices return `{:error, :year_out_of_range}` at the same bound.
-
 ### Done
+
+* [x] **The new moon bound** — the five `Astro` moon searches return `{:error, :year_out_of_range}` beyond 50,000 years from J2000, as equinoxes and solstices do; the `Astro.Lunar` moment functions, which Calendrical's lunisolar compiler pipes, still raise. 2026-10-31.
 
 * [x] **Return errors from the tuple-returning functions** — location, date, options, phase, method, time zone resolver and database are checked, a missing tz_world backend is reported, and `test/invalid_input_test.exs` covers each. 2026-10-31.
 

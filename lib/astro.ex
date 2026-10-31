@@ -584,8 +584,9 @@ defmodule Astro do
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.
 
-  Raises `ArgumentError` for a date more than 50,000 years from J2000,
-  where the new moons can no longer be told apart reliably.
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000, beyond which the Meeus chapter 49 estimates can no
+    longer tell the lunations apart.
 
   ### Examples
 
@@ -594,10 +595,12 @@ defmodule Astro do
 
   """
   @doc since: "0.5.0"
-  @spec date_time_new_moon_before(date()) :: {:ok, DateTime.t()} | {:error, :invalid_date}
+  @spec date_time_new_moon_before(date()) ::
+          {:ok, DateTime.t()} | {:error, :invalid_date | :year_out_of_range}
 
   def date_time_new_moon_before(date) do
-    with {:ok, moment} <- Time.checked_moment(date) do
+    with {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment) do
       moment
       |> Lunar.date_time_new_moon_before()
       |> Time.date_time_from_moment()
@@ -608,7 +611,8 @@ defmodule Astro do
   # under this name, which then carried that function's documentation.
   @doc false
   @deprecated "Use Astro.date_time_new_moon_before/1 instead"
-  @spec date_time_new_moon_at_or_before(date()) :: {:ok, DateTime.t()} | {:error, :invalid_date}
+  @spec date_time_new_moon_at_or_before(date()) ::
+          {:ok, DateTime.t()} | {:error, :invalid_date | :year_out_of_range}
   def date_time_new_moon_at_or_before(date_time) do
     date_time_new_moon_before(date_time)
   end
@@ -631,6 +635,10 @@ defmodule Astro do
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.
 
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000, beyond which the Meeus chapter 49 estimates can no
+    longer tell the lunations apart.
+
   ### Examples
 
       iex> Astro.date_time_new_moon_nearest(~D[2021-08-23])
@@ -638,10 +646,12 @@ defmodule Astro do
 
   """
   @doc since: "2.0.0"
-  @spec date_time_new_moon_nearest(date()) :: {:ok, DateTime.t()} | {:error, :invalid_date}
+  @spec date_time_new_moon_nearest(date()) ::
+          {:ok, DateTime.t()} | {:error, :invalid_date | :year_out_of_range}
 
   def date_time_new_moon_nearest(date) do
-    with {:ok, moment} <- Time.checked_moment(date) do
+    with {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment) do
       moment
       |> Lunar.date_time_new_moon_nearest()
       |> Time.date_time_from_moment()
@@ -667,8 +677,9 @@ defmodule Astro do
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.
 
-  Raises `ArgumentError` for a date more than 50,000 years from J2000,
-  where the new moons can no longer be told apart reliably.
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000, beyond which the Meeus chapter 49 estimates can no
+    longer tell the lunations apart.
 
   ### Examples
 
@@ -677,10 +688,12 @@ defmodule Astro do
 
   """
   @doc since: "0.5.0"
-  @spec date_time_new_moon_at_or_after(date()) :: {:ok, DateTime.t()} | {:error, :invalid_date}
+  @spec date_time_new_moon_at_or_after(date()) ::
+          {:ok, DateTime.t()} | {:error, :invalid_date | :year_out_of_range}
 
   def date_time_new_moon_at_or_after(date) do
-    with {:ok, moment} <- Time.checked_moment(date) do
+    with {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment) do
       moment
       |> Lunar.date_time_new_moon_at_or_after()
       |> Time.date_time_from_moment()
@@ -848,6 +861,10 @@ defmodule Astro do
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.
 
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000, beyond which the Meeus chapter 49 estimates can no
+    longer tell the lunations apart.
+
   * `{:error, :invalid_phase}` if `phase` is not a number from 0 to
     360.
 
@@ -860,10 +877,11 @@ defmodule Astro do
 
   @doc since: "0.5.0"
   @spec date_time_lunar_phase_at_or_before(date(), Astro.phase()) ::
-          {:ok, DateTime.t()} | {:error, :invalid_date | :invalid_phase}
+          {:ok, DateTime.t()} | {:error, :invalid_date | :invalid_phase | :year_out_of_range}
 
   def date_time_lunar_phase_at_or_before(date, phase) when is_lunar_phase(phase) do
-    with {:ok, moment} <- Time.checked_moment(date) do
+    with {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment) do
       moment
       |> Lunar.date_time_lunar_phase_at_or_before(phase)
       |> Time.date_time_from_moment()
@@ -897,6 +915,10 @@ defmodule Astro do
   * `{:error, :invalid_date}` if `date_time` is not a valid date or
     date time in its calendar.
 
+  * `{:error, :year_out_of_range}` if `date_time` is more than 50,000
+    years from J2000, beyond which the Meeus chapter 49 estimates can no
+    longer tell the lunations apart.
+
   * `{:error, :invalid_phase}` if `phase` is not a number from 0 to
     360.
 
@@ -909,10 +931,11 @@ defmodule Astro do
 
   @doc since: "0.5.0"
   @spec date_time_lunar_phase_at_or_after(date(), Astro.phase()) ::
-          {:ok, DateTime.t()} | {:error, :invalid_date | :invalid_phase}
+          {:ok, DateTime.t()} | {:error, :invalid_date | :invalid_phase | :year_out_of_range}
 
   def date_time_lunar_phase_at_or_after(date, phase) when is_lunar_phase(phase) do
-    with {:ok, moment} <- Time.checked_moment(date) do
+    with {:ok, moment} <- Time.checked_moment(date),
+         {:ok, moment} <- Lunar.checked_search_moment(moment) do
       moment
       |> Lunar.date_time_lunar_phase_at_or_after(phase)
       |> Time.date_time_from_moment()
