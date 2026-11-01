@@ -240,4 +240,4 @@ MIX_ENV=test mix tz_world.update --force
 
 ## License
 
-Astro is released under the [Apache License 2.0](https://github.com/kipcole9/astro/blob/v2.11.0/LICENSE.md).
+Astro is released under the Apache License 2.0, and ships a subset of JPL's DE440s ephemeris under NAIF's rules for SPICE kernels; see [LICENSE.md](https://github.com/kipcole9/astro/blob/v2.11.0/LICENSE.md).
