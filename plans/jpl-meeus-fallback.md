@@ -1,6 +1,6 @@
 # JPL positions with a Meeus fallback
 
-**Status:** in progress, 2026-10-31
+**Status:** implemented (v2.10.0), 2026-11-01
 
 Astro computes the Sun and Moon from the JPL DE440s ephemeris, which covers 1900–2100 in the bundled file and 1849–2150 in the full kernel. Calendars need dates far outside that span, so Astro must answer for any date: from JPL where the loaded ephemeris covers the moment, and from the Meeus series where it does not.
 
@@ -74,11 +74,13 @@ Far from the present both series stay sane (the March equinox stays near 17–21
 
 ## Tasks
 
+### Deferred
+
 * [ ] **Validate far dates against DE441** — optional: DE441 covers −13,200 to +17,191, so it can measure both Meeus series at ±10,000 years. It is a 3 GB kernel, so this is a one-off check, not a CI job.
 
-* [ ] **Calendrical follow-up** — once released, remove `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error from `Calendrical.Islamic.Visibility`, and raise Calendrical's Astro requirement. In the Calendrical repository, by its maintainer.
-
 ### Done
+
+* [x] **Calendrical follow-up** — `covered?/1`, `searchable/1` and the `range: :jpl_ephemeris` error are gone from `Calendrical.Islamic.Visibility`, and Calendrical requires Astro `~> 2.10`. 2026-11-01, Calendrical v2.3.0.
 
 * [x] **Bound the far-date new moon search** — `ArgumentError` beyond ±50,000 years; within it the walk to the bracketing lunations is 0–1 steps, so no slope correction is needed. `date_time_new_moon_nearest/1` and the phase searches start from the phase and are not bounded. 2026-10-31.
 
